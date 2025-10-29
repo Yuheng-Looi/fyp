@@ -4,4 +4,5 @@ testDataSet/** filter=lfs diff=lfs merge=lfs -text
 backend/datasets/** filter=lfs diff=lfs merge=lfs -text
 backend/taiwan/** filter=lfs diff=lfs merge=lfs -text
 backend/testDataSet/** filter=lfs diff=lfs merge=lfs -text
+output/** filter=lfs diff=lfs merge=lfs -text
 *.csv filter=lfs diff=lfs merge=lfs -text
