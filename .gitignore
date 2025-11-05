@@ -1,3 +1,5 @@
 fypenv/
 pcap/
 CICFlowMeter/
+logs/
+__pycache__/
