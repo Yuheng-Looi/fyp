@@ -118,9 +118,8 @@ def get_feature_mappings():
     
     return features_20, csv_to_model
 
-
+"""Check if CSV has required columns for prediction"""
 def columnCheck(csv_path):
-    """Check if CSV has required columns for prediction"""
     try:
         # Read CSV headers
         df = pd.read_csv(csv_path, nrows=0)
@@ -138,19 +137,18 @@ def columnCheck(csv_path):
                 missing_features.append(f"{feature} (or {csv_name})")
         
         if missing_features:
-            print(f"Missing required columns: {missing_features}")
+            print(f"columnCheck(): Missing required columns: {missing_features}")
             return False
             
-        print("All required columns are present!")
+        print("columnCheck(): All required columns are present!")
         return True
         
     except Exception as e:
-        print(f"Error checking columns: {str(e)}")
+        print(f"columnCheck(): Error checking columns: {str(e)}")
         return False
 
-
+"""Clean features by handling infinity and extreme values"""
 def clean_features(df, columns):
-    """Clean features by handling infinity and extreme values"""
     df_clean = df.copy()
     
     for col in columns:
@@ -171,9 +169,8 @@ def clean_features(df, columns):
     
     return df_clean
 
-
+"""Make predictions using all three models and save results"""
 def predict(csv_path):
-    """Make predictions using all three models and save results"""
     try:
         # Create output directory if it doesn't exist
         output_dir = "../output"
@@ -206,16 +203,19 @@ def predict(csv_path):
         print("Scaling features...")
         df_features[scaled_cols] = scaler.transform(df_features[scaled_cols])
         
-        # Make predictions with each model
-        models = {
-            'predict20': 'best_xgb_20.json',
-            'predict50': 'best_xgb_50.json',
-            'predict80': 'best_xgb_80.json'
+        # Model to column name mapping - easy to add more models here
+        model_mapping = {
+            'best_xgb_20.json': 'model20',
+            'best_xgb_50.json': 'model50',
+            'best_xgb_80.json': 'model80'
+            # Add more models here, e.g.:
+            # 'best_xgb_custom.json': 'modelCustom',
+            # 'rf_model.json': 'modelRF'
         }
         
         print("Making predictions...")
-        for pred_col, model_file in models.items():
-            print(f"Using model: {model_file}")
+        for model_file, column_name in model_mapping.items():
+            print(f"Using model: {model_file} -> column: {column_name}")
             model = xgb.XGBClassifier()
             model.load_model(f"models/{model_file}")
             
@@ -230,7 +230,7 @@ def predict(csv_path):
             preds = model.predict(X)
             
             # Add predictions to full dataframe
-            df_full[pred_col] = preds
+            df_full[column_name] = preds
         
         # Save results
         output_path = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(csv_path))[0]}_predicted.csv")
@@ -238,10 +238,10 @@ def predict(csv_path):
         
         # Print summary
         print(f"\nPrediction Summary for {os.path.basename(csv_path)}:")
-        for pred_col in models.keys():
-            attacks = sum(df_full[pred_col] == 1)
+        for column_name in model_mapping.values():
+            attacks = sum(df_full[column_name] == 1)
             total = len(df_full)
-            print(f"{pred_col}: {attacks} attacks detected ({attacks/total*100:.2f}%)")
+            print(f"{column_name}: {attacks} attacks detected ({attacks/total*100:.2f}%)")
         
         print(f"\nResults saved to: {output_path}")
         return output_path
@@ -253,16 +253,17 @@ def predict(csv_path):
         traceback.print_exc()
         return None
 
-
-def convert_pcap_to_csv(pcap_path, output_dir="../testDataSet", replace=False):
-    """
+"""
     Convert pcap file to CSV using CICFlowMeter
     Args:
         pcap_path: Path to pcap file or directory containing pcap files
         output_dir: Directory where CSV files will be saved (default: ../testDataSet)
+        replace: Optional to replace existing CSV files (default: False -> skip convertion if CSV exists)
     Returns:
         Path to the generated CSV file
-    """
+"""
+def convert_pcap_to_csv(pcap_path, output_dir="../testDataSet", replace=False):
+    
     try:
         # Normalize paths
         pcap_path = os.path.abspath(pcap_path)
@@ -276,6 +277,27 @@ def convert_pcap_to_csv(pcap_path, output_dir="../testDataSet", replace=False):
         # Ensure output directory exists
         os.makedirs(output_dir, exist_ok=True)
         print(f"Output directory: {output_dir}")
+        
+        # Check if CSV already exists (skip conversion if replace=False)
+        pcap_basename = os.path.basename(pcap_path)
+        pcap_name_no_ext = os.path.splitext(pcap_basename)[0]
+        
+        # Expected final CSV name
+        final_csv_name = f"{pcap_name_no_ext}.csv"
+        final_csv_path = os.path.join(output_dir, final_csv_name)
+        
+        if not replace:
+            # Check if the file exists and is not empty
+            if os.path.exists(final_csv_path):
+                file_size = os.path.getsize(final_csv_path)
+                if file_size > 0:
+                    print(f"\n✓ CSV file already exists: {final_csv_path}")
+                    print(f"File size: {file_size:,} bytes")
+                    print("Skipping conversion (use replace=True to force reconversion)")
+                    return final_csv_path
+                else:
+                    print(f"Warning: Existing CSV file is empty, will reconvert")
+                    os.remove(final_csv_path)
         
         # Set jnetpcap path and verify it exists
         jnetpcap_path = os.path.abspath("../CICFlowMeter/jnetpcap/win/jnetpcap-1.4.r1425")
@@ -325,59 +347,19 @@ def convert_pcap_to_csv(pcap_path, output_dir="../testDataSet", replace=False):
         # Wait for file system to catch up
         time.sleep(2)
         
-        # CICFlowMeter typically generates files with pattern: <basename>_Flow.csv
-        # For example: mirror.pcap -> mirror.pcap_Flow.csv
-        pcap_basename = os.path.basename(pcap_path)
-        pcap_name_no_ext = os.path.splitext(pcap_basename)[0]
-        
-        # Check for different possible output filenames
-        possible_names = [
-            f"{pcap_basename}_Flow.csv",  # mirror.pcap_Flow.csv
-            f"{pcap_name_no_ext}_Flow.csv",  # mirror_Flow.csv
-            f"{pcap_name_no_ext}.csv",  # mirror.csv
-        ]
-        
-        generated_csv = None
-        for name in possible_names:
-            test_path = os.path.join(output_dir, name)
-            if os.path.exists(test_path):
-                generated_csv = test_path
-                print(f"Found generated CSV: {name}")
-                break
-        
-        if not generated_csv:
-            print(f"\nCSV file not found. Checking output directory...")
+        # Check if the expected CSV file was created
+        if not os.path.exists(final_csv_path):
+            print(f"\nCSV file not found at expected location: {final_csv_path}")
+            print("Checking output directory for generated files...")
             print("Files in output directory:")
             for f in os.listdir(output_dir):
                 print(f"  {f}")
-                if f.endswith('.csv') and pcap_name_no_ext in f:
-                    generated_csv = os.path.join(output_dir, f)
-                    print(f"  ^ Using this file")
-                    break
-        
-        if not generated_csv or not os.path.exists(generated_csv):
-            print(f"Error: Could not find generated CSV file")
             return None
             
         # Verify the CSV is not empty
-        if os.path.getsize(generated_csv) == 0:
+        if os.path.getsize(final_csv_path) == 0:
             print("Error: Generated CSV file is empty")
             return None
-        
-        # Rename to simpler format: <basename>.csv (e.g., mirror.csv)
-        final_csv_name = f"{pcap_name_no_ext}.csv"
-        final_csv_path = os.path.join(output_dir, final_csv_name)
-        
-        # If the file already has the desired name, we're done
-        if generated_csv != final_csv_path:
-            # Remove old file if it exists
-            if os.path.exists(final_csv_path):
-                os.remove(final_csv_path)
-                print(f"Removed existing file: {final_csv_name}")
-            
-            # Rename to final name
-            os.rename(generated_csv, final_csv_path)
-            print(f"Renamed to: {final_csv_name}")
         
         print(f"\n✓ Successfully converted to: {final_csv_path}")
         print(f"File size: {os.path.getsize(final_csv_path):,} bytes")
@@ -390,14 +372,13 @@ def convert_pcap_to_csv(pcap_path, output_dir="../testDataSet", replace=False):
         traceback.print_exc()
         return None
 
-
-def analyze_predictions(csv_path, pred_column='predict20'):
-    """
+"""
     Analyze prediction results with focus on ports and IP addresses
     Args:
         csv_path: Path to the predicted CSV file
         pred_column: Which prediction column to analyze (predict20/50/80)
-    """
+"""
+def analyze_predictions(csv_path, pred_column='predict20'):
     # Load predictions
     df = pd.read_csv(csv_path)
     
@@ -431,16 +412,15 @@ def analyze_predictions(csv_path, pred_column='predict20'):
     print(f"Total attacks detected: {total_attacks}")
     print(f"Attack percentage: {(total_attacks/total_flows)*100:.2f}%")
 
-
-def streamline_process(pcap_path, output_dir="../output"):
-    """
+"""
     Complete streamlined process from pcap to predictions
     Args:
         pcap_path: Path to pcap file to analyze
         output_dir: Directory for output files
     Returns:
         Path to the final prediction CSV file
-    """
+"""
+def streamline_process(pcap_path, output_dir="../output"):
     try:
         # Normalize paths
         pcap_path = os.path.abspath(pcap_path)
