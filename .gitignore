@@ -3,3 +3,4 @@ pcap/
 CICFlowMeter/
 logs/
 __pycache__/
+*.csv
