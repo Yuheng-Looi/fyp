@@ -172,8 +172,12 @@ def clean_features(df, columns):
 """Make predictions using all three models and save results"""
 def predict(csv_path):
     try:
+        # Base directory for module-local resources (models, scalers, output)
+        module_dir = os.path.dirname(__file__)
+
         # Create output directory if it doesn't exist
-        output_dir = "../output"
+        output_dir = os.path.join(module_dir, '..', 'output')
+        output_dir = os.path.abspath(output_dir)
         os.makedirs(output_dir, exist_ok=True)
         
         # Get feature mappings
@@ -182,8 +186,9 @@ def predict(csv_path):
         # Load full data to preserve all columns
         df_full = pd.read_csv(csv_path)
         
-        # Load scaler
-        scaler = joblib.load("scalers/benign_robust_scaler.pkl")
+        # Load scaler (module-local path)
+        scaler_path = os.path.join(module_dir, 'scalers', 'benign_robust_scaler.pkl')
+        scaler = joblib.load(scaler_path)
         
         # Process features for prediction
         df_features = df_full.copy()
@@ -205,32 +210,148 @@ def predict(csv_path):
         
         # Model to column name mapping - easy to add more models here
         model_mapping = {
-            'best_xgb_20.json': 'model20',
-            'best_xgb_50.json': 'model50',
-            'best_xgb_80.json': 'model80'
-            # Add more models here, e.g.:
-            # 'best_xgb_custom.json': 'modelCustom',
-            # 'rf_model.json': 'modelRF'
+            'best_xgb_20.json': 'xgb20',
+            'best_xgb_50.json': 'xgb50',
+            'best_xgb_80.json': 'xgb80',
+            'gnn_gat_50_25_25.pt': 'gnn50',
+            'gnn_gat_20_40_40.pt': 'gnn20',
+            'gnn_graphsage_50_25_25.pt': 'graphsage50'
+            # Add more models here
         }
         
         print("Making predictions...")
         for model_file, column_name in model_mapping.items():
+            model_path = os.path.join(module_dir, 'models', model_file)
+            ext = os.path.splitext(model_file)[1].lower()
             print(f"Using model: {model_file} -> column: {column_name}")
-            model = xgb.XGBClassifier()
-            model.load_model(f"models/{model_file}")
-            
-            # Get predictions
-            X = df_features[features_20]
-            
-            # Additional safety check
-            if X.isna().any().any():
-                print(f"Warning: NaN values found in features. Filling with 0...")
-                X = X.fillna(0)
-            
-            preds = model.predict(X)
-            
-            # Add predictions to full dataframe
-            df_full[column_name] = preds
+
+            # XGBoost models (JSON/Model/BST)
+            if ext in ('.json', '.model', '.bst'):
+                try:
+                    model = xgb.XGBClassifier()
+                    model.load_model(model_path)
+
+                    # Get predictions
+                    X = df_features[features_20]
+
+                    # Additional safety check
+                    if X.isna().any().any():
+                        print(f"Warning: NaN values found in features. Filling with 0...")
+                        X = X.fillna(0)
+
+                    preds = model.predict(X)
+
+                    # Add predictions to full dataframe
+                    df_full[column_name] = preds
+                except Exception as e:
+                    print(f"Failed to load XGBoost model {model_path}: {e}")
+                    df_full[column_name] = 0
+
+            # PyTorch GNN checkpoints (.pt) - load and run GNN inference
+            elif ext == '.pt':
+                try:
+                    # Import heavy deps lazily to avoid import errors when not needed
+                    import torch
+                    import importlib.util
+                    # Load gnn_utils from the same directory as this module to avoid import issues
+                    gnn_utils_path = os.path.join(module_dir, 'gnn_utils.py')
+                    spec = importlib.util.spec_from_file_location('gnn_utils', gnn_utils_path)
+                    gnn_utils = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(gnn_utils)
+                    GraphSAGEModel = gnn_utils.GraphSAGEModel
+                    GATModel = gnn_utils.GATModel
+                    build_knn_graph = gnn_utils.build_knn_graph
+
+                    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                    print(f"  -> Running GNN inference on device: {device}")
+
+                    # Load checkpoint
+                    checkpoint = torch.load(model_path, map_location=device)
+
+                    model_class = checkpoint.get('model_class', None)
+                    metadata = checkpoint.get('metadata', {}) or {}
+
+                    # Determine model hyperparameters from metadata or fallbacks
+                    num_features = metadata.get('num_features', len(features_20))
+                    num_classes = metadata.get('num_classes', None)
+                    hidden_dim = metadata.get('hidden_dim', metadata.get('hidden_size', 128))
+                    dropout = metadata.get('dropout', 0.3)
+                    heads = metadata.get('heads', 4)
+
+                    # Recreate model
+                    if model_class == 'GraphSAGEModel' or 'sage' in model_file.lower():
+                        model = GraphSAGEModel(num_features=num_features, hidden_dim=hidden_dim,
+                                               num_classes=num_classes or 2, dropout=dropout, device=device)
+                    elif model_class == 'GATModel' or 'gat' in model_file.lower():
+                        model = GATModel(num_features=num_features, hidden_dim=hidden_dim,
+                                         num_classes=num_classes or 2, dropout=dropout, heads=heads, device=device)
+                    else:
+                        # Unknown model class: attempt GraphSAGE as fallback
+                        print(f"  -> Unknown model class '{model_class}', attempting GraphSAGE fallback")
+                        model = GraphSAGEModel(num_features=num_features, hidden_dim=hidden_dim,
+                                               num_classes=num_classes or 2, dropout=dropout, device=device)
+
+                    # Load weights
+                    state = checkpoint.get('model_state_dict', checkpoint)
+                    if isinstance(state, dict):
+                        model.load_state_dict(state)
+                    else:
+                        print("  -> Warning: checkpoint format unexpected, skipping model load")
+
+                    model.to(device)
+                    model.eval()
+
+                    # Prepare inputs: use scaled features
+                    X_infer = df_features[features_20].copy()
+                    if X_infer.isna().any().any():
+                        X_infer = X_infer.fillna(0)
+
+                    X_np = X_infer.values
+
+                    # To avoid GPU OOM on very large datasets, subsample for full-graph GNN inference
+                    MAX_INFER_NODES = int(os.environ.get('GNN_INFER_MAX_NODES', 20000))
+                    n_nodes = X_np.shape[0]
+
+                    if n_nodes > MAX_INFER_NODES:
+                        print(f"  -> Large dataset ({n_nodes:,} nodes). Subsampling to {MAX_INFER_NODES:,} for GNN inference.")
+                        subsample_idx = np.random.choice(n_nodes, MAX_INFER_NODES, replace=False)
+                        X_sub = X_np[subsample_idx]
+
+                        # Build k-NN graph on subsample and run GNN
+                        edge_index_sub = build_knn_graph(X_sub, k=5, metric='euclidean')
+                        x_sub_tensor = torch.FloatTensor(X_sub).to(device)
+
+                        with torch.no_grad():
+                            out_sub = model(x_sub_tensor, edge_index_sub.to(device))
+                            preds_sub = out_sub.argmax(dim=1).cpu().numpy()
+
+                        # Propagate labels to full set via nearest-neighbor lookup in feature space
+                        from sklearn.neighbors import NearestNeighbors
+                        nn = NearestNeighbors(n_neighbors=1, algorithm='auto', n_jobs=-1)
+                        nn.fit(X_sub)
+                        distances, indices = nn.kneighbors(X_np)
+                        mapped_preds = preds_sub[indices[:,0]]
+
+                        df_full[column_name] = mapped_preds
+
+                    else:
+                        # Build k-NN graph for the full inference dataset
+                        edge_index = build_knn_graph(X_np, k=5, metric='euclidean')
+                        x_tensor = torch.FloatTensor(X_np).to(device)
+
+                        with torch.no_grad():
+                            out = model(x_tensor, edge_index.to(device))
+                            preds = out.argmax(dim=1).cpu().numpy()
+
+                        df_full[column_name] = preds
+                except Exception as e:
+                    print(f"Failed to run GNN inference for {model_path}: {e}")
+                    import traceback; traceback.print_exc()
+                    df_full[column_name] = 0
+
+            else:
+                print(f"Skipping unsupported model file: {model_path} (extension '{ext}')")
+                df_full[column_name] = 0
         
         # Save results
         output_path = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(csv_path))[0]}_predicted.csv")

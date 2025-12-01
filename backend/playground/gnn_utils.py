@@ -556,8 +556,7 @@ def load_and_preprocess_gnn_data(csv_paths, scaler_path='scalers/gnn_scaler.pkl'
     return X_scaled, y_encoded, scaler, label_encoder, feature_names
 
 
-def build_knn_graph(X, k=5, metric='euclidean'):
-    """
+"""
     Build k-nearest neighbors graph from feature matrix.
     
     Creates a graph where each node is connected to its k nearest neighbors
@@ -574,7 +573,9 @@ def build_knn_graph(X, k=5, metric='euclidean'):
     Example:
         >>> edge_index = build_knn_graph(X_scaled, k=5)
         >>> print(f"Created {edge_index.shape[1]} edges")
-    """
+"""
+def build_knn_graph(X, k=5, metric='euclidean'):
+    
     print(f"\nBuilding k-NN graph (k={k}, metric={metric})...")
     
     # Fit k-NN
@@ -684,10 +685,11 @@ class GraphSAGEModel(nn.Module):
         >>> model = GraphSAGEModel(num_features=20, hidden_dim=128, num_classes=5)
         >>> out = model(data.x, data.edge_index)
     """
-    def __init__(self, num_features, hidden_dim=128, num_classes=2, dropout=0.3, num_layers=2):
+    def __init__(self, num_features, hidden_dim=128, num_classes=2, dropout=0.3, num_layers=2, device=None):
         super(GraphSAGEModel, self).__init__()
         self.num_layers = num_layers
         self.dropout = dropout
+        self.device = device
         
         # First layer
         self.convs = nn.ModuleList()
@@ -699,14 +701,25 @@ class GraphSAGEModel(nn.Module):
         
         # Output layer
         self.lin = nn.Linear(hidden_dim, num_classes)
+        # Move model parameters to device if provided
+        if self.device is not None:
+            try:
+                self.to(self.device)
+            except Exception:
+                pass
         
     def forward(self, x, edge_index):
+        # Ensure input tensors are on the same device as the model (defensive)
+        if hasattr(self, 'device') and self.device is not None:
+            x = x.to(self.device)
+            edge_index = edge_index.to(self.device)
+
         # Apply SAGE layers
         for i, conv in enumerate(self.convs):
             x = conv(x, edge_index)
             x = F.relu(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
-        
+
         # Final linear layer
         x = self.lin(x)
         return x
@@ -735,10 +748,11 @@ class GATModel(nn.Module):
         >>> model = GATModel(num_features=20, hidden_dim=128, num_classes=5, heads=4)
         >>> out = model(data.x, data.edge_index)
     """
-    def __init__(self, num_features, hidden_dim=128, num_classes=2, dropout=0.3, num_layers=2, heads=4):
+    def __init__(self, num_features, hidden_dim=128, num_classes=2, dropout=0.3, num_layers=2, heads=4, device=None):
         super(GATModel, self).__init__()
         self.num_layers = num_layers
         self.dropout = dropout
+        self.device = device
         
         # First layer with multi-head attention
         self.convs = nn.ModuleList()
@@ -754,14 +768,25 @@ class GATModel(nn.Module):
         
         # Output layer
         self.lin = nn.Linear(hidden_dim, num_classes)
+        # Move model parameters to device if provided
+        if self.device is not None:
+            try:
+                self.to(self.device)
+            except Exception:
+                pass
         
     def forward(self, x, edge_index):
+        # Ensure input tensors are on the same device as the model (defensive)
+        if hasattr(self, 'device') and self.device is not None:
+            x = x.to(self.device)
+            edge_index = edge_index.to(self.device)
+
         # Apply GAT layers
         for i, conv in enumerate(self.convs):
             x = conv(x, edge_index)
             x = F.elu(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
-        
+
         # Final linear layer
         x = self.lin(x)
         return x
