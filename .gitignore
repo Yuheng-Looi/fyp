@@ -4,3 +4,4 @@ CICFlowMeter/
 logs/
 __pycache__/
 *.csv
+*.png
