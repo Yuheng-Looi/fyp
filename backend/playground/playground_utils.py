@@ -169,9 +169,182 @@ def clean_features(df, columns):
     
     return df_clean
 
-"""Make predictions using all three models and save results"""
-def predict(csv_path):
+
+# ============================================================================
+# LABEL MAPPINGS FOR DECODING PREDICTIONS
+# ============================================================================
+
+MULTICLASS_LABEL_MAP = {
+    0: 'BFA',
+    1: 'BOTNET',
+    2: 'DDoS',
+    3: 'DoS',
+    4: 'Normal',
+    5: 'Probe',
+    6: 'U2R',
+    7: 'Web-Attack'
+}
+
+BINARY_LABEL_MAP = {
+    0: 'Benign',
+    1: 'Attack'
+}
+
+
+def get_model_registry():
+    """
+    Returns the model registry organized by categories.
+    
+    Model Categories:
+    - XGB: XGBoost models (20 features)
+    - GNN20_binary: GNN models with 20 features for binary classification
+    - GNN20_multiclass: GNN models with 20 features for multiclass classification
+    - GNN52_binary: GNN models with 52 features for binary classification
+    - GNN52_multiclass: GNN models with 52 features for multiclass classification
+    """
+    return {
+        # XGBoost models (20 features, binary classification)
+        'XGB': {
+            'models/best_xgb_20.json': {'name': 'xgb_20', 'task': 'binary', 'features': 20},
+            'models/best_xgb_50.json': {'name': 'xgb_50', 'task': 'binary', 'features': 20},
+            'models/best_xgb_80.json': {'name': 'xgb_80', 'task': 'binary', 'features': 20},
+        },
+        # GNN 20-feature Binary models
+        'GNN20_binary': {
+            'models/binary/gnn_gat_70_15_15.pt': {'name': 'gnn20_bin_gat_70', 'task': 'binary', 'features': 20},
+            'models/binary/gnn_gat_50_25_25.pt': {'name': 'gnn20_bin_gat_50', 'task': 'binary', 'features': 20},
+            'models/binary/gnn_gat_20_40_40.pt': {'name': 'gnn20_bin_gat_20', 'task': 'binary', 'features': 20},
+            'models/binary/gnn_graphsage_70_15_15.pt': {'name': 'gnn20_bin_sage_70', 'task': 'binary', 'features': 20},
+            'models/binary/gnn_graphsage_50_25_25.pt': {'name': 'gnn20_bin_sage_50', 'task': 'binary', 'features': 20},
+            'models/binary/gnn_graphsage_20_40_40.pt': {'name': 'gnn20_bin_sage_20', 'task': 'binary', 'features': 20},
+        },
+        # GNN 20-feature Multiclass models
+        'GNN20_multiclass': {
+            'models/multiclass/gnn_gat_70_15_15.pt': {'name': 'gnn20_multi_gat_70', 'task': 'multiclass', 'features': 20},
+            'models/multiclass/gnn_gat_50_25_25.pt': {'name': 'gnn20_multi_gat_50', 'task': 'multiclass', 'features': 20},
+            'models/multiclass/gnn_gat_20_40_40.pt': {'name': 'gnn20_multi_gat_20', 'task': 'multiclass', 'features': 20},
+            'models/multiclass/gnn_graphsage_70_15_15.pt': {'name': 'gnn20_multi_sage_70', 'task': 'multiclass', 'features': 20},
+            'models/multiclass/gnn_graphsage_50_25_25.pt': {'name': 'gnn20_multi_sage_50', 'task': 'multiclass', 'features': 20},
+            'models/multiclass/gnn_graphsage_20_40_40.pt': {'name': 'gnn20_multi_sage_20', 'task': 'multiclass', 'features': 20},
+        },
+        # GNN 52-feature Binary models
+        'GNN52_binary': {
+            'models/binary_52/gnn_gat_70_15_15.pt': {'name': 'gnn52_bin_gat_70', 'task': 'binary', 'features': 52},
+            'models/binary_52/gnn_gat_50_25_25.pt': {'name': 'gnn52_bin_gat_50', 'task': 'binary', 'features': 52},
+            'models/binary_52/gnn_gat_20_40_40.pt': {'name': 'gnn52_bin_gat_20', 'task': 'binary', 'features': 52},
+            'models/binary_52/gnn_graphsage_70_15_15.pt': {'name': 'gnn52_bin_sage_70', 'task': 'binary', 'features': 52},
+            'models/binary_52/gnn_graphsage_50_25_25.pt': {'name': 'gnn52_bin_sage_50', 'task': 'binary', 'features': 52},
+            'models/binary_52/gnn_graphsage_20_40_40.pt': {'name': 'gnn52_bin_sage_20', 'task': 'binary', 'features': 52},
+        },
+        # GNN 52-feature Multiclass models
+        'GNN52_multiclass': {
+            'models/multiclass_52/gnn_gat_70_15_15.pt': {'name': 'gnn52_multi_gat_70', 'task': 'multiclass', 'features': 52},
+            'models/multiclass_52/gnn_gat_50_25_25.pt': {'name': 'gnn52_multi_gat_50', 'task': 'multiclass', 'features': 52},
+            'models/multiclass_52/gnn_gat_20_40_40.pt': {'name': 'gnn52_multi_gat_20', 'task': 'multiclass', 'features': 52},
+            'models/multiclass_52/gnn_graphsage_70_15_15.pt': {'name': 'gnn52_multi_sage_70', 'task': 'multiclass', 'features': 52},
+            'models/multiclass_52/gnn_graphsage_50_25_25.pt': {'name': 'gnn52_multi_sage_50', 'task': 'multiclass', 'features': 52},
+            'models/multiclass_52/gnn_graphsage_20_40_40.pt': {'name': 'gnn52_multi_sage_20', 'task': 'multiclass', 'features': 52},
+        },
+    }
+
+
+def get_models_by_selection(selection="all"):
+    """
+    Get models based on selection type.
+    
+    Args:
+        selection: One of:
+            - "all": All models (XGB + GNN20 + GNN52, binary + multiclass)
+            - "all_20_features": XGB + GNN20 (binary + multiclass)
+            - "gnn_52_features": GNN52 only (binary + multiclass)
+            - "binary": All binary models (XGB + GNN20_binary + GNN52_binary)
+            - "multiclass": All multiclass models (GNN20_multiclass + GNN52_multiclass)
+    
+    Returns:
+        dict: {model_path: model_info} for selected models
+    """
+    registry = get_model_registry()
+    selected = {}
+    
+    selection_lower = selection.lower().replace(" ", "_").replace("-", "_")
+    
+    if selection_lower in ["all", "all_models"]:
+        # All models
+        for category in registry.values():
+            selected.update(category)
+            
+    elif selection_lower in ["all_20_features", "all_20", "20_features", "20features"]:
+        # XGB + GNN20 (both binary and multiclass)
+        selected.update(registry['XGB'])
+        selected.update(registry['GNN20_binary'])
+        selected.update(registry['GNN20_multiclass'])
+        
+    elif selection_lower in ["gnn_52_features", "gnn52_features", "52_features", "52features", "gnn52"]:
+        # GNN52 only (both binary and multiclass)
+        selected.update(registry['GNN52_binary'])
+        selected.update(registry['GNN52_multiclass'])
+        
+    elif selection_lower in ["binary", "binary_only"]:
+        # All binary models
+        selected.update(registry['XGB'])
+        selected.update(registry['GNN20_binary'])
+        selected.update(registry['GNN52_binary'])
+        
+    elif selection_lower in ["multiclass", "multiclass_only", "multi"]:
+        # All multiclass models
+        selected.update(registry['GNN20_multiclass'])
+        selected.update(registry['GNN52_multiclass'])
+        
+    else:
+        print(f"Warning: Unknown selection '{selection}'. Using 'all' instead.")
+        print("Valid options: 'all', 'all_20_features', 'gnn_52_features', 'binary', 'multiclass'")
+        for category in registry.values():
+            selected.update(category)
+    
+    return selected
+
+
+def decode_prediction(value, task='binary'):
+    """
+    Decode numeric prediction to human-readable label.
+    
+    Args:
+        value: Numeric prediction (0, 1, 2, etc.)
+        task: 'binary' or 'multiclass'
+    
+    Returns:
+        str: Human-readable label
+    """
     try:
+        v = int(value)
+        if task == 'multiclass':
+            return MULTICLASS_LABEL_MAP.get(v, f'Unknown({v})')
+        else:
+            return BINARY_LABEL_MAP.get(v, f'Unknown({v})')
+    except:
+        return str(value)
+
+
+"""
+Make predictions using selected models and save results.
+
+Args:
+    csv_path: Path to CSV file with flow data
+    model_selection: Model selection type:
+        - "all": All models (default)
+        - "all_20_features": XGB + GNN 20-feature models
+        - "gnn_52_features": GNN 52-feature models only
+        - "binary": All binary classification models
+        - "multiclass": All multiclass classification models
+
+Returns:
+    Path to the output CSV file with predictions
+"""
+def predict(csv_path, model_selection="all"):
+    try:
+        import torch
+        import importlib.util
+        
         # Base directory for module-local resources (models, scalers, output)
         module_dir = os.path.dirname(__file__)
 
@@ -185,12 +358,14 @@ def predict(csv_path):
         
         # Load full data to preserve all columns
         df_full = pd.read_csv(csv_path)
+        print(f"Loaded {len(df_full)} rows from {csv_path}")
         
-        # Load scaler (module-local path)
-        scaler_path = os.path.join(module_dir, 'scalers', 'benign_robust_scaler.pkl')
-        scaler = joblib.load(scaler_path)
+        # Get selected models based on model_selection parameter
+        selected_models = get_models_by_selection(model_selection)
+        print(f"\nModel selection: '{model_selection}'")
+        print(f"Running {len(selected_models)} models...")
         
-        # Process features for prediction
+        # Process features for prediction (always need 20-feature set for now)
         df_features = df_full.copy()
         
         # Ensure we have all features in the correct format
@@ -203,27 +378,59 @@ def predict(csv_path):
         print("Cleaning features...")
         df_features = clean_features(df_features, features_20)
         
-        # Scale features (excluding 'Protocol')
-        scaled_cols = [col for col in features_20 if col != 'Protocol']
-        print("Scaling features...")
-        df_features[scaled_cols] = scaler.transform(df_features[scaled_cols])
+        # Load and apply scaler for 20-feature models
+        scaler_path_20 = os.path.join(module_dir, 'scalers', 'benign_robust_scaler.pkl')
+        if os.path.exists(scaler_path_20):
+            scaler_20 = joblib.load(scaler_path_20)
+            scaled_cols = [col for col in features_20 if col != 'Protocol']
+            print("Scaling 20-feature set...")
+            df_features_20 = df_features.copy()
+            df_features_20[scaled_cols] = scaler_20.transform(df_features_20[scaled_cols])
+        else:
+            print(f"Warning: Scaler not found at {scaler_path_20}")
+            df_features_20 = df_features.copy()
         
-        # Model to column name mapping - easy to add more models here
-        model_mapping = {
-            'best_xgb_20.json': 'xgb20',
-            'best_xgb_50.json': 'xgb50',
-            'best_xgb_80.json': 'xgb80',
-            'gnn_gat_50_25_25.pt': 'gnn50',
-            'gnn_gat_20_40_40.pt': 'gnn20',
-            'gnn_graphsage_50_25_25.pt': 'graphsage50'
-            # Add more models here
-        }
+        # Load gnn_utils for GNN inference
+        gnn_utils_path = os.path.join(module_dir, 'gnn_utils.py')
+        spec = importlib.util.spec_from_file_location('gnn_utils', gnn_utils_path)
+        gnn_utils = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(gnn_utils)
+        GraphSAGEModel = gnn_utils.GraphSAGEModel
+        GATModel = gnn_utils.GATModel
+        build_knn_graph = gnn_utils.build_knn_graph
         
-        print("Making predictions...")
-        for model_file, column_name in model_mapping.items():
-            model_path = os.path.join(module_dir, 'models', model_file)
-            ext = os.path.splitext(model_file)[1].lower()
-            print(f"Using model: {model_file} -> column: {column_name}")
+        # Setup GPU device with memory optimization
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
+        print(f"\nMaking predictions on device: {device}")
+        if device.type == 'cuda':
+            # Print GPU info
+            gpu_name = torch.cuda.get_device_name(0)
+            gpu_mem_total = torch.cuda.get_device_properties(0).total_memory / 1e9
+            gpu_mem_free = (torch.cuda.get_device_properties(0).total_memory - torch.cuda.memory_allocated()) / 1e9
+            print(f"GPU: {gpu_name} ({gpu_mem_total:.1f} GB total, {gpu_mem_free:.1f} GB free)")
+            
+            # Enable memory-efficient settings
+            torch.backends.cudnn.benchmark = True
+            torch.cuda.empty_cache()
+        print("="*60)
+        
+        # Track results for summary
+        results_summary = {}
+        
+        for model_rel_path, model_info in selected_models.items():
+            model_path = os.path.join(module_dir, model_rel_path)
+            column_name = model_info['name']
+            task = model_info['task']
+            num_features = model_info['features']
+            
+            # Check if model file exists
+            if not os.path.exists(model_path):
+                print(f"⚠ Skipping {column_name}: Model not found at {model_path}")
+                continue
+                
+            ext = os.path.splitext(model_path)[1].lower()
+            print(f"\n→ {column_name} ({task}, {num_features} features)")
 
             # XGBoost models (JSON/Model/BST)
             if ext in ('.json', '.model', '.bst'):
@@ -231,140 +438,172 @@ def predict(csv_path):
                     model = xgb.XGBClassifier()
                     model.load_model(model_path)
 
-                    # Get predictions
-                    X = df_features[features_20]
-
-                    # Additional safety check
+                    # Get predictions using 20-feature set
+                    X = df_features_20[features_20].copy()
                     if X.isna().any().any():
-                        print(f"Warning: NaN values found in features. Filling with 0...")
                         X = X.fillna(0)
 
                     preds = model.predict(X)
-
-                    # Add predictions to full dataframe
                     df_full[column_name] = preds
-                except Exception as e:
-                    print(f"Failed to load XGBoost model {model_path}: {e}")
-                    df_full[column_name] = 0
 
-            # PyTorch GNN checkpoints (.pt) - load and run GNN inference
+                    # Decode predictions to labels
+                    label_col = f"{column_name}_label"
+                    df_full[label_col] = df_full[column_name].apply(
+                        lambda v: decode_prediction(v, task)
+                    )
+                    
+                    # Store summary
+                    results_summary[column_name] = df_full[label_col].value_counts().to_dict()
+                    print(f"  ✓ Complete: {results_summary[column_name]}")
+                    
+                except Exception as e:
+                    print(f"  ✗ Failed: {e}")
+                    df_full[column_name] = -1
+
+            # PyTorch GNN checkpoints (.pt)
             elif ext == '.pt':
                 try:
-                    # Import heavy deps lazily to avoid import errors when not needed
-                    import torch
-                    import importlib.util
-                    # Load gnn_utils from the same directory as this module to avoid import issues
-                    gnn_utils_path = os.path.join(module_dir, 'gnn_utils.py')
-                    spec = importlib.util.spec_from_file_location('gnn_utils', gnn_utils_path)
-                    gnn_utils = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(gnn_utils)
-                    GraphSAGEModel = gnn_utils.GraphSAGEModel
-                    GATModel = gnn_utils.GATModel
-                    build_knn_graph = gnn_utils.build_knn_graph
-
-                    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-                    print(f"  -> Running GNN inference on device: {device}")
-
-                    # Load checkpoint
-                    checkpoint = torch.load(model_path, map_location=device)
-
-                    model_class = checkpoint.get('model_class', None)
+                    # Load checkpoint directly to GPU
+                    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
                     metadata = checkpoint.get('metadata', {}) or {}
-
-                    # Determine model hyperparameters from metadata or fallbacks
-                    num_features = metadata.get('num_features', len(features_20))
-                    num_classes = metadata.get('num_classes', None)
-                    hidden_dim = metadata.get('hidden_dim', metadata.get('hidden_size', 128))
-                    dropout = metadata.get('dropout', 0.3)
-                    heads = metadata.get('heads', 4)
-
-                    # Recreate model
-                    if model_class == 'GraphSAGEModel' or 'sage' in model_file.lower():
-                        model = GraphSAGEModel(num_features=num_features, hidden_dim=hidden_dim,
-                                               num_classes=num_classes or 2, dropout=dropout, device=device)
-                    elif model_class == 'GATModel' or 'gat' in model_file.lower():
-                        model = GATModel(num_features=num_features, hidden_dim=hidden_dim,
-                                         num_classes=num_classes or 2, dropout=dropout, heads=heads, device=device)
+                    
+                    # Get model parameters
+                    model_num_features = metadata.get('num_features', 20)
+                    num_classes = metadata.get('num_classes', 8 if task == 'multiclass' else 2)
+                    hidden_dim = metadata.get('hidden_dim', 64)
+                    dropout = metadata.get('dropout', 0.4)
+                    heads = metadata.get('heads', 2)
+                    num_layers = metadata.get('num_layers', 2)
+                    
+                    # Select appropriate feature set - keep as tensor on GPU
+                    X_infer = df_features_20[features_20].copy()
+                    if X_infer.isna().any().any():
+                        X_infer = X_infer.fillna(0)
+                    
+                    # Convert to GPU tensor immediately (RTX 3080 Ti 12GB can handle this)
+                    X_gpu = torch.tensor(X_infer.values, dtype=torch.float32, device=device)
+                    
+                    # Create model based on architecture
+                    model_file = os.path.basename(model_path)
+                    if 'sage' in model_file.lower() or 'graphsage' in model_file.lower():
+                        model = GraphSAGEModel(
+                            num_features=model_num_features,
+                            hidden_dim=hidden_dim,
+                            num_classes=num_classes,
+                            dropout=dropout,
+                            num_layers=num_layers,
+                            device=device
+                        )
                     else:
-                        # Unknown model class: attempt GraphSAGE as fallback
-                        print(f"  -> Unknown model class '{model_class}', attempting GraphSAGE fallback")
-                        model = GraphSAGEModel(num_features=num_features, hidden_dim=hidden_dim,
-                                               num_classes=num_classes or 2, dropout=dropout, device=device)
-
+                        model = GATModel(
+                            num_features=model_num_features,
+                            hidden_dim=hidden_dim,
+                            num_classes=num_classes,
+                            dropout=dropout,
+                            heads=heads,
+                            device=device
+                        )
+                    
                     # Load weights
                     state = checkpoint.get('model_state_dict', checkpoint)
                     if isinstance(state, dict):
                         model.load_state_dict(state)
-                    else:
-                        print("  -> Warning: checkpoint format unexpected, skipping model load")
-
+                    
+                    # Free checkpoint memory
+                    del checkpoint, state
+                    torch.cuda.empty_cache()
+                    
                     model.to(device)
                     model.eval()
-
-                    # Prepare inputs: use scaled features
-                    X_infer = df_features[features_20].copy()
-                    if X_infer.isna().any().any():
-                        X_infer = X_infer.fillna(0)
-
-                    X_np = X_infer.values
-
-                    # To avoid GPU OOM on very large datasets, subsample for full-graph GNN inference
-                    MAX_INFER_NODES = int(os.environ.get('GNN_INFER_MAX_NODES', 20000))
-                    n_nodes = X_np.shape[0]
-
-                    if n_nodes > MAX_INFER_NODES:
-                        print(f"  -> Large dataset ({n_nodes:,} nodes). Subsampling to {MAX_INFER_NODES:,} for GNN inference.")
-                        subsample_idx = np.random.choice(n_nodes, MAX_INFER_NODES, replace=False)
-                        X_sub = X_np[subsample_idx]
-
-                        # Build k-NN graph on subsample and run GNN
-                        edge_index_sub = build_knn_graph(X_sub, k=5, metric='euclidean')
-                        x_sub_tensor = torch.FloatTensor(X_sub).to(device)
-
-                        with torch.no_grad():
-                            out_sub = model(x_sub_tensor, edge_index_sub.to(device))
-                            preds_sub = out_sub.argmax(dim=1).cpu().numpy()
-
-                        # Propagate labels to full set via nearest-neighbor lookup in feature space
-                        from sklearn.neighbors import NearestNeighbors
-                        nn = NearestNeighbors(n_neighbors=1, algorithm='auto', n_jobs=-1)
-                        nn.fit(X_sub)
-                        distances, indices = nn.kneighbors(X_np)
-                        mapped_preds = preds_sub[indices[:,0]]
-
-                        df_full[column_name] = mapped_preds
-
+                    
+                    n_nodes = X_gpu.shape[0]
+                    
+                    # RTX 3080 Ti 12GB settings - can handle ~200k nodes comfortably
+                    # For larger datasets, use batching
+                    MAX_FULL_INFERENCE = 200000
+                    
+                    if n_nodes > MAX_FULL_INFERENCE:
+                        # Batch processing for very large datasets
+                        BATCH_SIZE = 100000  # 100k per batch is fine for 12GB
+                        print(f"    Processing {n_nodes:,} nodes in batches of {BATCH_SIZE:,}")
+                        all_preds = torch.zeros(n_nodes, dtype=torch.long, device=device)
+                        
+                        for batch_start in range(0, n_nodes, BATCH_SIZE):
+                            batch_end = min(batch_start + BATCH_SIZE, n_nodes)
+                            X_batch = X_gpu[batch_start:batch_end]
+                            
+                            # Build kNN graph - uses CPU sklearn but that's fine
+                            edge_index_batch = build_knn_graph(
+                                X_batch.cpu().numpy(), k=5, metric='euclidean'
+                            ).to(device)
+                            
+                            with torch.no_grad():
+                                out = model(X_batch, edge_index_batch)
+                                all_preds[batch_start:batch_end] = out.argmax(dim=1)
+                            
+                            del edge_index_batch, out
+                        
+                        preds = all_preds.cpu().numpy()
+                        del all_preds
                     else:
-                        # Build k-NN graph for the full inference dataset
-                        edge_index = build_knn_graph(X_np, k=5, metric='euclidean')
-                        x_tensor = torch.FloatTensor(X_np).to(device)
-
+                        # Full inference on GPU - most datasets will fit here
+                        # Build kNN graph
+                        edge_index = build_knn_graph(
+                            X_gpu.cpu().numpy(), k=5, metric='euclidean'
+                        ).to(device)
+                        
                         with torch.no_grad():
-                            out = model(x_tensor, edge_index.to(device))
+                            out = model(X_gpu, edge_index)
                             preds = out.argmax(dim=1).cpu().numpy()
-
-                        df_full[column_name] = preds
+                        
+                        del edge_index, out
+                    
+                    # Clean up GPU tensors
+                    del X_gpu, model
+                    torch.cuda.empty_cache()
+                    
+                    df_full[column_name] = preds
+                    
+                    # Decode predictions to labels
+                    label_col = f"{column_name}_label"
+                    df_full[label_col] = df_full[column_name].apply(
+                        lambda v: decode_prediction(v, task)
+                    )
+                    
+                    # Store summary
+                    results_summary[column_name] = df_full[label_col].value_counts().to_dict()
+                    print(f"  ✓ Complete: {results_summary[column_name]}")
+                    
+                    del preds
+                    
                 except Exception as e:
-                    print(f"Failed to run GNN inference for {model_path}: {e}")
-                    import traceback; traceback.print_exc()
-                    df_full[column_name] = 0
-
+                    print(f"  ✗ Failed: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    df_full[column_name] = -1
+                    torch.cuda.empty_cache()
             else:
-                print(f"Skipping unsupported model file: {model_path} (extension '{ext}')")
-                df_full[column_name] = 0
+                print(f"  ⚠ Unsupported model format: {ext}")
         
         # Save results
-        output_path = os.path.join(output_dir, f"{os.path.splitext(os.path.basename(csv_path))[0]}_predicted.csv")
+        output_filename = f"{os.path.splitext(os.path.basename(csv_path))[0]}_predicted.csv"
+        output_path = os.path.join(output_dir, output_filename)
         df_full.to_csv(output_path, index=False)
         
         # Print summary
-        print(f"\nPrediction Summary for {os.path.basename(csv_path)}:")
-        for column_name in model_mapping.values():
-            attacks = sum(df_full[column_name] == 1)
-            total = len(df_full)
-            print(f"{column_name}: {attacks} attacks detected ({attacks/total*100:.2f}%)")
+        print("\n" + "="*60)
+        print(f"PREDICTION SUMMARY for {os.path.basename(csv_path)}")
+        print("="*60)
+        print(f"Total flows: {len(df_full):,}")
+        print(f"Models run: {len(results_summary)}")
+        print("\nResults by model:")
+        for model_name, counts in results_summary.items():
+            print(f"\n  {model_name}:")
+            for label, count in sorted(counts.items(), key=lambda x: -x[1]):
+                pct = count / len(df_full) * 100
+                print(f"    {label}: {count:,} ({pct:.1f}%)")
         
-        print(f"\nResults saved to: {output_path}")
+        print(f"\n✓ Results saved to: {output_path}")
         return output_path
         
     except Exception as e:
@@ -373,6 +612,7 @@ def predict(csv_path):
         import traceback
         traceback.print_exc()
         return None
+
 
 """
     Convert pcap file to CSV using CICFlowMeter

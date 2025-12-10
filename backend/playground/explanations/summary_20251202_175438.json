@@ -1,0 +1,218 @@
+{
+  "BFA": {
+    "top_features": [
+      [
+        "Fwd Pkts/s",
+        0.7340056300163269
+      ],
+      [
+        "Init Bwd Win Byts",
+        0.7153518795967102
+      ],
+      [
+        "Fwd IAT Mean",
+        0.5861392716566721
+      ],
+      [
+        "Pkt Len Mean",
+        0.5681481063365936
+      ],
+      [
+        "Fwd IAT Tot",
+        0.5552967190742493
+      ]
+    ],
+    "avg_important_edges": 13.333333333333334,
+    "avg_neighbors": 6.0,
+    "prediction_accuracy": 0.0
+  },
+  "BOTNET": {
+    "top_features": [
+      [
+        "Flow IAT Min",
+        0.7253093719482422
+      ],
+      [
+        "Init Bwd Win Byts",
+        0.6392123699188232
+      ],
+      [
+        "Dst Port",
+        0.4823761433362961
+      ],
+      [
+        "Bwd IAT Min",
+        0.4275822341442108
+      ],
+      [
+        "Pkt Len Max",
+        0.3177817761898041
+      ]
+    ],
+    "avg_important_edges": 6.333333333333333,
+    "avg_neighbors": 6.333333333333333,
+    "prediction_accuracy": 0.0
+  },
+  "DDoS": {
+    "top_features": [
+      [
+        "Flow Pkts/s",
+        0.7275424798329672
+      ],
+      [
+        "Protocol",
+        0.7095200618108114
+      ],
+      [
+        "Flow Duration",
+        0.30080051720142365
+      ],
+      [
+        "Init Bwd Win Byts",
+        0.28715914487838745
+      ],
+      [
+        "Flow IAT Max",
+        0.28652437031269073
+      ]
+    ],
+    "avg_important_edges": 0.0,
+    "avg_neighbors": 5.0,
+    "prediction_accuracy": 1.0
+  },
+  "DoS": {
+    "top_features": [
+      [
+        "Fwd IAT Tot",
+        0.6815106868743896
+      ],
+      [
+        "Fwd IAT Max",
+        0.6702455580234528
+      ],
+      [
+        "Bwd Pkt Len Max",
+        0.5520594517389933
+      ],
+      [
+        "Flow Duration",
+        0.506739929318428
+      ],
+      [
+        "Fwd IAT Mean",
+        0.4425575335820516
+      ]
+    ],
+    "avg_important_edges": 17.666666666666668,
+    "avg_neighbors": 7.0,
+    "prediction_accuracy": 0.6666666666666666
+  },
+  "Normal": {
+    "top_features": [
+      [
+        "Bwd Pkt Len Min",
+        0.6994820833206177
+      ],
+      [
+        "Protocol",
+        0.6632660031318665
+      ],
+      [
+        "Pkt Len Max",
+        0.5458894371986389
+      ],
+      [
+        "Pkt Len Mean",
+        0.4904041886329651
+      ],
+      [
+        "Fwd Pkts/s",
+        0.47353896498680115
+      ]
+    ],
+    "avg_important_edges": 36.333333333333336,
+    "avg_neighbors": 7.333333333333333,
+    "prediction_accuracy": 0.6666666666666666
+  },
+  "Probe": {
+    "top_features": [
+      [
+        "Fwd IAT Mean",
+        0.511751115322113
+      ],
+      [
+        "Fwd IAT Tot",
+        0.5113934874534607
+      ],
+      [
+        "Bwd IAT Min",
+        0.5113839308420817
+      ],
+      [
+        "Init Bwd Win Byts",
+        0.5080516934394836
+      ],
+      [
+        "Fwd IAT Max",
+        0.49229902029037476
+      ]
+    ],
+    "avg_important_edges": 6.0,
+    "avg_neighbors": 5.333333333333333,
+    "prediction_accuracy": 0.3333333333333333
+  },
+  "U2R": {
+    "top_features": [
+      [
+        "Tot Fwd Pkts",
+        0.6690427660942078
+      ],
+      [
+        "Fwd IAT Tot",
+        0.5685206651687622
+      ],
+      [
+        "Fwd IAT Max",
+        0.5606006383895874
+      ],
+      [
+        "Bwd Pkt Len Min",
+        0.4996364414691925
+      ],
+      [
+        "Flow IAT Min",
+        0.4986551105976105
+      ]
+    ],
+    "avg_important_edges": 16.0,
+    "avg_neighbors": 8.0,
+    "prediction_accuracy": 0.6666666666666666
+  },
+  "Web-Attack": {
+    "top_features": [
+      [
+        "Pkt Len Mean",
+        0.6964694857597351
+      ],
+      [
+        "Fwd IAT Mean",
+        0.6132278740406036
+      ],
+      [
+        "Bwd IAT Mean",
+        0.6084269881248474
+      ],
+      [
+        "Fwd Pkts/s",
+        0.6051076948642731
+      ],
+      [
+        "Fwd IAT Tot",
+        0.5956540405750275
+      ]
+    ],
+    "avg_important_edges": 24.333333333333332,
+    "avg_neighbors": 7.0,
+    "prediction_accuracy": 0.3333333333333333
+  }
+}

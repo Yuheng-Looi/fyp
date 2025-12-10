@@ -1,0 +1,1374 @@
+{
+  "BFA": [
+    {
+      "node_idx": 263,
+      "predicted_class": 3,
+      "true_class": 0,
+      "top_features": [
+        [
+          "Fwd Pkts/s",
+          0.7340056300163269
+        ],
+        [
+          "Init Bwd Win Byts",
+          0.7153518795967102
+        ],
+        [
+          "Fwd IAT Tot",
+          0.7066924571990967
+        ],
+        [
+          "Bwd IAT Mean",
+          0.3285255432128906
+        ],
+        [
+          "Flow IAT Min",
+          0.30022695660591125
+        ],
+        [
+          "Fwd IAT Mean",
+          0.29083511233329773
+        ],
+        [
+          "Bwd Pkt Len Max",
+          0.2901468873023987
+        ],
+        [
+          "Fwd Header Len",
+          0.2901061773300171
+        ],
+        [
+          "Pkt Len Mean",
+          0.27835026383399963
+        ],
+        [
+          "Flow IAT Max",
+          0.2763766646385193
+        ]
+      ],
+      "num_important_edges": 5,
+      "neighbors": [
+        288,
+        257,
+        231,
+        264,
+        150,
+        249
+      ]
+    },
+    {
+      "node_idx": 25772,
+      "predicted_class": 1,
+      "true_class": 0,
+      "top_features": [
+        [
+          "Fwd IAT Mean",
+          0.7184065580368042
+        ],
+        [
+          "Pkt Len Mean",
+          0.705784022808075
+        ],
+        [
+          "Dst Port",
+          0.42042437195777893
+        ],
+        [
+          "Bwd Pkt Len Max",
+          0.3411105275154114
+        ],
+        [
+          "Flow IAT Std",
+          0.2978692948818207
+        ],
+        [
+          "Tot Fwd Pkts",
+          0.2969018816947937
+        ],
+        [
+          "Pkt Len Max",
+          0.2874336242675781
+        ],
+        [
+          "Bwd IAT Min",
+          0.28466713428497314
+        ],
+        [
+          "Bwd Pkt Len Min",
+          0.2827168405056
+        ],
+        [
+          "Fwd IAT Max",
+          0.2821056544780731
+        ]
+      ],
+      "num_important_edges": 19,
+      "neighbors": [
+        17737,
+        29033,
+        6893,
+        28564,
+        33367
+      ]
+    },
+    {
+      "node_idx": 16899,
+      "predicted_class": 1,
+      "true_class": 0,
+      "top_features": [
+        [
+          "Fwd IAT Mean",
+          0.7491761445999146
+        ],
+        [
+          "Pkt Len Mean",
+          0.7203100323677063
+        ],
+        [
+          "Flow IAT Max",
+          0.6608783006668091
+        ],
+        [
+          "Fwd IAT Tot",
+          0.40390098094940186
+        ],
+        [
+          "Pkt Len Max",
+          0.28893882036209106
+        ],
+        [
+          "Dst Port",
+          0.2869619131088257
+        ],
+        [
+          "Flow Pkts/s",
+          0.28322672843933105
+        ],
+        [
+          "Flow Duration",
+          0.28077998757362366
+        ],
+        [
+          "Bwd IAT Min",
+          0.2781030833721161
+        ],
+        [
+          "Fwd Header Len",
+          0.27321118116378784
+        ]
+      ],
+      "num_important_edges": 16,
+      "neighbors": [
+        31906,
+        35790,
+        4787,
+        6195,
+        28756,
+        15447,
+        5435
+      ]
+    }
+  ],
+  "BOTNET": [
+    {
+      "node_idx": 55239,
+      "predicted_class": 7,
+      "true_class": 1,
+      "top_features": [
+        [
+          "Flow IAT Min",
+          0.707666277885437
+        ],
+        [
+          "Init Bwd Win Byts",
+          0.6392123699188232
+        ],
+        [
+          "Pkt Len Max",
+          0.3177817761898041
+        ],
+        [
+          "Flow Duration",
+          0.30704760551452637
+        ],
+        [
+          "Flow Pkts/s",
+          0.30189579725265503
+        ],
+        [
+          "Bwd Pkt Len Min",
+          0.3013607859611511
+        ],
+        [
+          "Bwd IAT Min",
+          0.298980176448822
+        ],
+        [
+          "Fwd Pkts/s",
+          0.29326143860816956
+        ],
+        [
+          "Fwd IAT Max",
+          0.2898714542388916
+        ],
+        [
+          "Bwd IAT Mean",
+          0.2896599769592285
+        ]
+      ],
+      "num_important_edges": 0,
+      "neighbors": [
+        37219,
+        42917,
+        41198,
+        43215,
+        47192
+      ]
+    },
+    {
+      "node_idx": 64411,
+      "predicted_class": 6,
+      "true_class": 1,
+      "top_features": [
+        [
+          "Flow IAT Min",
+          0.7429524660110474
+        ],
+        [
+          "Dst Port",
+          0.6772540807723999
+        ],
+        [
+          "Bwd Pkt Len Max",
+          0.30623459815979004
+        ],
+        [
+          "Bwd Pkt Len Min",
+          0.30380797386169434
+        ],
+        [
+          "Fwd IAT Tot",
+          0.30078059434890747
+        ],
+        [
+          "Flow Duration",
+          0.2979889512062073
+        ],
+        [
+          "Bwd IAT Min",
+          0.29433831572532654
+        ],
+        [
+          "Pkt Len Mean",
+          0.2909487783908844
+        ],
+        [
+          "Flow Pkts/s",
+          0.2798846364021301
+        ],
+        [
+          "Tot Fwd Pkts",
+          0.2755716145038605
+        ]
+      ],
+      "num_important_edges": 11,
+      "neighbors": [
+        62177,
+        67749,
+        41709,
+        56467,
+        51125
+      ]
+    },
+    {
+      "node_idx": 58755,
+      "predicted_class": 0,
+      "true_class": 1,
+      "top_features": [
+        [
+          "Bwd IAT Min",
+          0.6894282102584839
+        ],
+        [
+          "Pkt Len Mean",
+          0.31083351373672485
+        ],
+        [
+          "Flow Pkts/s",
+          0.2946413457393646
+        ],
+        [
+          "Bwd Pkt Len Min",
+          0.29270151257514954
+        ],
+        [
+          "Fwd IAT Max",
+          0.2878713309764862
+        ],
+        [
+          "Dst Port",
+          0.28749820590019226
+        ],
+        [
+          "Fwd IAT Mean",
+          0.2872398793697357
+        ],
+        [
+          "Flow Duration",
+          0.2863102853298187
+        ],
+        [
+          "Fwd Pkts/s",
+          0.2848621606826782
+        ],
+        [
+          "Flow IAT Max",
+          0.2833476960659027
+        ]
+      ],
+      "num_important_edges": 8,
+      "neighbors": [
+        69219,
+        51142,
+        52871,
+        70920,
+        54353,
+        69330,
+        46835,
+        71477,
+        51388
+      ]
+    }
+  ],
+  "DDoS": [
+    {
+      "node_idx": 180543,
+      "predicted_class": 2,
+      "true_class": 2,
+      "top_features": [
+        [
+          "Protocol",
+          0.7240601778030396
+        ],
+        [
+          "Flow Pkts/s",
+          0.7014899849891663
+        ],
+        [
+          "Flow Duration",
+          0.315658301115036
+        ],
+        [
+          "Flow IAT Min",
+          0.2948906719684601
+        ],
+        [
+          "Init Bwd Win Byts",
+          0.28715914487838745
+        ],
+        [
+          "Fwd Header Len",
+          0.27927207946777344
+        ],
+        [
+          "Bwd IAT Min",
+          0.27841711044311523
+        ],
+        [
+          "Pkt Len Mean",
+          0.27781942486763
+        ],
+        [
+          "Tot Fwd Pkts",
+          0.27637308835983276
+        ],
+        [
+          "Flow IAT Std",
+          0.2686845660209656
+        ]
+      ],
+      "num_important_edges": 0,
+      "neighbors": [
+        147144,
+        147149,
+        147128,
+        147132,
+        147135
+      ]
+    },
+    {
+      "node_idx": 122282,
+      "predicted_class": 2,
+      "true_class": 2,
+      "top_features": [
+        [
+          "Flow Pkts/s",
+          0.7403490543365479
+        ],
+        [
+          "Protocol",
+          0.6872904300689697
+        ],
+        [
+          "Fwd Header Len",
+          0.29182809591293335
+        ],
+        [
+          "Dst Port",
+          0.28431937098503113
+        ],
+        [
+          "Pkt Len Mean",
+          0.2692222595214844
+        ],
+        [
+          "Tot Fwd Pkts",
+          0.2684512734413147
+        ],
+        [
+          "Bwd IAT Min",
+          0.2675270736217499
+        ],
+        [
+          "Flow IAT Min",
+          0.2671225666999817
+        ],
+        [
+          "Flow IAT Max",
+          0.266755610704422
+        ],
+        [
+          "Bwd IAT Mean",
+          0.26248404383659363
+        ]
+      ],
+      "num_important_edges": 0,
+      "neighbors": [
+        74471,
+        74570,
+        73842,
+        73943,
+        73725
+      ]
+    },
+    {
+      "node_idx": 160974,
+      "predicted_class": 2,
+      "true_class": 2,
+      "top_features": [
+        [
+          "Flow Pkts/s",
+          0.7407884001731873
+        ],
+        [
+          "Protocol",
+          0.7172095775604248
+        ],
+        [
+          "Tot Fwd Pkts",
+          0.3065811097621918
+        ],
+        [
+          "Flow IAT Max",
+          0.3062931299209595
+        ],
+        [
+          "Bwd IAT Min",
+          0.29311075806617737
+        ],
+        [
+          "Flow IAT Min",
+          0.28624865412712097
+        ],
+        [
+          "Flow Duration",
+          0.2859427332878113
+        ],
+        [
+          "Flow IAT Std",
+          0.28171128034591675
+        ],
+        [
+          "Bwd IAT Mean",
+          0.27445217967033386
+        ],
+        [
+          "Fwd Pkts/s",
+          0.26849353313446045
+        ]
+      ],
+      "num_important_edges": 0,
+      "neighbors": [
+        147144,
+        147149,
+        147128,
+        147132,
+        147135
+      ]
+    }
+  ],
+  "DoS": [
+    {
+      "node_idx": 237408,
+      "predicted_class": 0,
+      "true_class": 3,
+      "top_features": [
+        [
+          "Fwd IAT Max",
+          0.7405313849449158
+        ],
+        [
+          "Fwd IAT Tot",
+          0.7189033627510071
+        ],
+        [
+          "Fwd IAT Mean",
+          0.31500864028930664
+        ],
+        [
+          "Flow IAT Std",
+          0.2958179712295532
+        ],
+        [
+          "Bwd Pkt Len Max",
+          0.29514843225479126
+        ],
+        [
+          "Fwd Pkts/s",
+          0.29220178723335266
+        ],
+        [
+          "Bwd IAT Mean",
+          0.28240033984184265
+        ],
+        [
+          "Fwd Header Len",
+          0.2805238962173462
+        ],
+        [
+          "Bwd IAT Min",
+          0.27930748462677
+        ],
+        [
+          "Flow Pkts/s",
+          0.2752203047275543
+        ]
+      ],
+      "num_important_edges": 8,
+      "neighbors": [
+        239780,
+        242053,
+        238608,
+        241107,
+        239796,
+        241270,
+        236601
+      ]
+    },
+    {
+      "node_idx": 207445,
+      "predicted_class": 3,
+      "true_class": 3,
+      "top_features": [
+        [
+          "Flow Duration",
+          0.7314096689224243
+        ],
+        [
+          "Fwd IAT Mean",
+          0.7109975814819336
+        ],
+        [
+          "Fwd IAT Tot",
+          0.6441180109977722
+        ],
+        [
+          "Bwd Pkt Len Max",
+          0.6265783905982971
+        ],
+        [
+          "Fwd IAT Max",
+          0.5999597311019897
+        ],
+        [
+          "Flow IAT Max",
+          0.3645845055580139
+        ],
+        [
+          "Bwd IAT Mean",
+          0.33756494522094727
+        ],
+        [
+          "Flow IAT Std",
+          0.31445956230163574
+        ],
+        [
+          "Fwd Pkts/s",
+          0.2988576292991638
+        ],
+        [
+          "Flow IAT Min",
+          0.28877103328704834
+        ]
+      ],
+      "num_important_edges": 38,
+      "neighbors": [
+        204872,
+        203181,
+        207346,
+        210514,
+        204312,
+        210042,
+        215388
+      ]
+    },
+    {
+      "node_idx": 206098,
+      "predicted_class": 3,
+      "true_class": 3,
+      "top_features": [
+        [
+          "Bwd Pkt Len Max",
+          0.7344515323638916
+        ],
+        [
+          "Pkt Len Mean",
+          0.3339531421661377
+        ],
+        [
+          "Pkt Len Max",
+          0.31701335310935974
+        ],
+        [
+          "Fwd IAT Mean",
+          0.30166637897491455
+        ],
+        [
+          "Flow IAT Std",
+          0.29062774777412415
+        ],
+        [
+          "Bwd IAT Min",
+          0.2899602949619293
+        ],
+        [
+          "Fwd Header Len",
+          0.28937551379203796
+        ],
+        [
+          "Bwd IAT Mean",
+          0.2846720814704895
+        ],
+        [
+          "Flow Duration",
+          0.28207018971443176
+        ],
+        [
+          "Flow IAT Min",
+          0.28139007091522217
+        ]
+      ],
+      "num_important_edges": 7,
+      "neighbors": [
+        230790,
+        216424,
+        206929,
+        216913,
+        213046,
+        229015,
+        212541
+      ]
+    }
+  ],
+  "Normal": [
+    {
+      "node_idx": 278715,
+      "predicted_class": 4,
+      "true_class": 4,
+      "top_features": [
+        [
+          "Fwd Pkts/s",
+          0.7248928546905518
+        ],
+        [
+          "Bwd Pkt Len Min",
+          0.659328043460846
+        ],
+        [
+          "Init Bwd Win Byts",
+          0.6585381627082825
+        ],
+        [
+          "Flow IAT Max",
+          0.2846916615962982
+        ],
+        [
+          "Fwd Header Len",
+          0.28365540504455566
+        ],
+        [
+          "Flow IAT Min",
+          0.28343144059181213
+        ],
+        [
+          "Flow Pkts/s",
+          0.2705996036529541
+        ],
+        [
+          "Flow Duration",
+          0.2697736918926239
+        ],
+        [
+          "Dst Port",
+          0.26866415143013
+        ],
+        [
+          "Bwd IAT Mean",
+          0.25839269161224365
+        ]
+      ],
+      "num_important_edges": 56,
+      "neighbors": [
+        279586,
+        297285,
+        279272,
+        286891,
+        278540,
+        280216,
+        296982,
+        278712,
+        280250
+      ]
+    },
+    {
+      "node_idx": 255429,
+      "predicted_class": 4,
+      "true_class": 4,
+      "top_features": [
+        [
+          "Bwd Pkt Len Min",
+          0.7396361231803894
+        ],
+        [
+          "Protocol",
+          0.6632660031318665
+        ],
+        [
+          "Fwd Pkts/s",
+          0.37621739506721497
+        ],
+        [
+          "Bwd Pkt Len Max",
+          0.33532801270484924
+        ],
+        [
+          "Pkt Len Mean",
+          0.30003082752227783
+        ],
+        [
+          "Flow IAT Std",
+          0.29107213020324707
+        ],
+        [
+          "Dst Port",
+          0.2903238534927368
+        ],
+        [
+          "Flow Duration",
+          0.2783985733985901
+        ],
+        [
+          "Init Bwd Win Byts",
+          0.2727878987789154
+        ],
+        [
+          "Bwd IAT Mean",
+          0.26982206106185913
+        ]
+      ],
+      "num_important_edges": 20,
+      "neighbors": [
+        258752,
+        298560,
+        306249,
+        314228,
+        251292
+      ]
+    },
+    {
+      "node_idx": 253189,
+      "predicted_class": 1,
+      "true_class": 4,
+      "top_features": [
+        [
+          "Dst Port",
+          0.7042135000228882
+        ],
+        [
+          "Pkt Len Mean",
+          0.6807775497436523
+        ],
+        [
+          "Pkt Len Max",
+          0.5458894371986389
+        ],
+        [
+          "Fwd Pkts/s",
+          0.3195066452026367
+        ],
+        [
+          "Flow Duration",
+          0.30430868268013
+        ],
+        [
+          "Flow IAT Std",
+          0.2967231571674347
+        ],
+        [
+          "Bwd IAT Min",
+          0.290243923664093
+        ],
+        [
+          "Flow IAT Min",
+          0.284759521484375
+        ],
+        [
+          "Flow IAT Max",
+          0.2801213562488556
+        ],
+        [
+          "Fwd IAT Mean",
+          0.2704058289527893
+        ]
+      ],
+      "num_important_edges": 33,
+      "neighbors": [
+        253856,
+        254244,
+        254917,
+        304521,
+        309291,
+        308140,
+        256466,
+        305727
+      ]
+    }
+  ],
+  "Probe": [
+    {
+      "node_idx": 367165,
+      "predicted_class": 2,
+      "true_class": 5,
+      "top_features": [
+        [
+          "Flow Pkts/s",
+          0.7030897736549377
+        ],
+        [
+          "Flow Duration",
+          0.3049752712249756
+        ],
+        [
+          "Dst Port",
+          0.29800236225128174
+        ],
+        [
+          "Flow IAT Max",
+          0.29162096977233887
+        ],
+        [
+          "Bwd IAT Min",
+          0.28830039501190186
+        ],
+        [
+          "Tot Fwd Pkts",
+          0.27711647748947144
+        ],
+        [
+          "Fwd Header Len",
+          0.2757717967033386
+        ],
+        [
+          "Fwd Pkts/s",
+          0.26229819655418396
+        ],
+        [
+          "Pkt Len Mean",
+          0.2614758312702179
+        ],
+        [
+          "Flow IAT Std",
+          0.2526334524154663
+        ]
+      ],
+      "num_important_edges": 3,
+      "neighbors": [
+        369956,
+        385510,
+        386663,
+        353148,
+        381950
+      ]
+    },
+    {
+      "node_idx": 355503,
+      "predicted_class": 0,
+      "true_class": 5,
+      "top_features": [
+        [
+          "Bwd IAT Min",
+          0.727396547794342
+        ],
+        [
+          "Dst Port",
+          0.3017674684524536
+        ],
+        [
+          "Flow IAT Max",
+          0.2941310703754425
+        ],
+        [
+          "Bwd IAT Mean",
+          0.2911983132362366
+        ],
+        [
+          "Pkt Len Mean",
+          0.28416383266448975
+        ],
+        [
+          "Flow IAT Min",
+          0.2820209860801697
+        ],
+        [
+          "Flow Pkts/s",
+          0.27799636125564575
+        ],
+        [
+          "Tot Fwd Pkts",
+          0.27668946981430054
+        ],
+        [
+          "Fwd Pkts/s",
+          0.2665344476699829
+        ],
+        [
+          "Fwd Header Len",
+          0.26648539304733276
+        ]
+      ],
+      "num_important_edges": 5,
+      "neighbors": [
+        374593,
+        387778,
+        380099,
+        355857,
+        363547
+      ]
+    },
+    {
+      "node_idx": 329681,
+      "predicted_class": 5,
+      "true_class": 5,
+      "top_features": [
+        [
+          "Flow IAT Max",
+          0.610757052898407
+        ],
+        [
+          "Bwd IAT Min",
+          0.5184548497200012
+        ],
+        [
+          "Fwd IAT Mean",
+          0.511751115322113
+        ],
+        [
+          "Fwd IAT Tot",
+          0.5113934874534607
+        ],
+        [
+          "Init Bwd Win Byts",
+          0.5080516934394836
+        ],
+        [
+          "Flow Duration",
+          0.4996457099914551
+        ],
+        [
+          "Fwd IAT Max",
+          0.49229902029037476
+        ],
+        [
+          "Flow IAT Std",
+          0.48163455724716187
+        ],
+        [
+          "Bwd Pkt Len Max",
+          0.46223384141921997
+        ],
+        [
+          "Tot Fwd Pkts",
+          0.424676775932312
+        ]
+      ],
+      "num_important_edges": 10,
+      "neighbors": [
+        330560,
+        329125,
+        373641,
+        363436,
+        330899,
+        319356
+      ]
+    }
+  ],
+  "U2R": [
+    {
+      "node_idx": 393858,
+      "predicted_class": 6,
+      "true_class": 6,
+      "top_features": [
+        [
+          "Fwd Pkts/s",
+          0.32264670729637146
+        ],
+        [
+          "Bwd Pkt Len Min",
+          0.3079703450202942
+        ],
+        [
+          "Dst Port",
+          0.30141711235046387
+        ],
+        [
+          "Pkt Len Mean",
+          0.29614269733428955
+        ],
+        [
+          "Flow IAT Min",
+          0.2924894392490387
+        ],
+        [
+          "Init Bwd Win Byts",
+          0.2899126410484314
+        ],
+        [
+          "Fwd IAT Mean",
+          0.28154996037483215
+        ],
+        [
+          "Bwd IAT Min",
+          0.2793339192867279
+        ],
+        [
+          "Bwd IAT Mean",
+          0.2757859528064728
+        ],
+        [
+          "Pkt Len Max",
+          0.27111533284187317
+        ]
+      ],
+      "num_important_edges": 18,
+      "neighbors": [
+        400416,
+        422849,
+        425445,
+        408907,
+        401165,
+        403919,
+        419759,
+        407892,
+        403127,
+        425690
+      ]
+    },
+    {
+      "node_idx": 391476,
+      "predicted_class": 4,
+      "true_class": 6,
+      "top_features": [
+        [
+          "Fwd IAT Mean",
+          0.49987712502479553
+        ],
+        [
+          "Fwd IAT Max",
+          0.4931700825691223
+        ],
+        [
+          "Flow IAT Min",
+          0.4792909622192383
+        ],
+        [
+          "Bwd IAT Mean",
+          0.47360482811927795
+        ],
+        [
+          "Flow Duration",
+          0.45254090428352356
+        ],
+        [
+          "Fwd IAT Tot",
+          0.43787163496017456
+        ],
+        [
+          "Flow IAT Max",
+          0.4025260806083679
+        ],
+        [
+          "Flow IAT Std",
+          0.37040773034095764
+        ],
+        [
+          "Bwd Pkt Len Max",
+          0.3071410357952118
+        ],
+        [
+          "Fwd Header Len",
+          0.30395248532295227
+        ]
+      ],
+      "num_important_edges": 9,
+      "neighbors": [
+        399877,
+        409126,
+        395531,
+        422827,
+        408367,
+        416250,
+        395934
+      ]
+    },
+    {
+      "node_idx": 425275,
+      "predicted_class": 6,
+      "true_class": 6,
+      "top_features": [
+        [
+          "Flow IAT Min",
+          0.7241849303245544
+        ],
+        [
+          "Fwd IAT Tot",
+          0.6991696953773499
+        ],
+        [
+          "Bwd Pkt Len Min",
+          0.6913025379180908
+        ],
+        [
+          "Tot Fwd Pkts",
+          0.6690427660942078
+        ],
+        [
+          "Fwd IAT Mean",
+          0.6581677794456482
+        ],
+        [
+          "Fwd IAT Max",
+          0.6280311942100525
+        ],
+        [
+          "Bwd IAT Mean",
+          0.4769429862499237
+        ],
+        [
+          "Fwd Header Len",
+          0.32491815090179443
+        ],
+        [
+          "Init Bwd Win Byts",
+          0.3163297176361084
+        ],
+        [
+          "Bwd IAT Min",
+          0.31578853726387024
+        ]
+      ],
+      "num_important_edges": 21,
+      "neighbors": [
+        400737,
+        427594,
+        399149,
+        396980,
+        420692,
+        422270,
+        426399
+      ]
+    }
+  ],
+  "Web-Attack": [
+    {
+      "node_idx": 449551,
+      "predicted_class": 7,
+      "true_class": 7,
+      "top_features": [
+        [
+          "Bwd Pkt Len Max",
+          0.7350931763648987
+        ],
+        [
+          "Fwd Pkts/s",
+          0.7311515808105469
+        ],
+        [
+          "Fwd IAT Mean",
+          0.7133722305297852
+        ],
+        [
+          "Fwd IAT Max",
+          0.676997184753418
+        ],
+        [
+          "Fwd IAT Tot",
+          0.6724557876586914
+        ],
+        [
+          "Pkt Len Mean",
+          0.6715750098228455
+        ],
+        [
+          "Flow IAT Max",
+          0.6476997137069702
+        ],
+        [
+          "Flow Duration",
+          0.4902925193309784
+        ],
+        [
+          "Init Bwd Win Byts",
+          0.4195331931114197
+        ],
+        [
+          "Flow IAT Min",
+          0.3218523859977722
+        ]
+      ],
+      "num_important_edges": 19,
+      "neighbors": [
+        432748,
+        434540,
+        454801,
+        431446,
+        436478
+      ]
+    },
+    {
+      "node_idx": 449432,
+      "predicted_class": 4,
+      "true_class": 7,
+      "top_features": [
+        [
+          "Pkt Len Mean",
+          0.7213639616966248
+        ],
+        [
+          "Pkt Len Max",
+          0.7081047892570496
+        ],
+        [
+          "Fwd IAT Tot",
+          0.7072215676307678
+        ],
+        [
+          "Bwd IAT Mean",
+          0.6954833269119263
+        ],
+        [
+          "Flow Duration",
+          0.5844608545303345
+        ],
+        [
+          "Fwd Pkts/s",
+          0.4931924641132355
+        ],
+        [
+          "Flow IAT Max",
+          0.47195810079574585
+        ],
+        [
+          "Bwd Pkt Len Max",
+          0.37531396746635437
+        ],
+        [
+          "Fwd IAT Max",
+          0.37018901109695435
+        ],
+        [
+          "Fwd Header Len",
+          0.3248879313468933
+        ]
+      ],
+      "num_important_edges": 14,
+      "neighbors": [
+        443173,
+        462347,
+        437805,
+        459571,
+        429174,
+        464025
+      ]
+    },
+    {
+      "node_idx": 440696,
+      "predicted_class": 4,
+      "true_class": 7,
+      "top_features": [
+        [
+          "Fwd Pkts/s",
+          0.5909790396690369
+        ],
+        [
+          "Bwd Pkt Len Max",
+          0.5425156354904175
+        ],
+        [
+          "Bwd IAT Mean",
+          0.5213706493377686
+        ],
+        [
+          "Fwd IAT Mean",
+          0.5130835175514221
+        ],
+        [
+          "Init Bwd Win Byts",
+          0.41464224457740784
+        ],
+        [
+          "Fwd IAT Tot",
+          0.40728476643562317
+        ],
+        [
+          "Pkt Len Max",
+          0.40712156891822815
+        ],
+        [
+          "Flow IAT Std",
+          0.3918393850326538
+        ],
+        [
+          "Flow Duration",
+          0.38592708110809326
+        ],
+        [
+          "Fwd IAT Max",
+          0.34686607122421265
+        ]
+      ],
+      "num_important_edges": 40,
+      "neighbors": [
+        434563,
+        433603,
+        449284,
+        439882,
+        452810,
+        429390,
+        443441,
+        448339,
+        461460,
+        463322
+      ]
+    }
+  ]
+}

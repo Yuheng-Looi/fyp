@@ -1,512 +1,293 @@
 """
-Utility functions for GNN training and CTGAN synthetic data generation.
-This module contains helper functions for data preprocessing, synthetic data generation,
-and quality assessment for network intrusion detection datasets.
+GNN Training Utilities for Network Intrusion Detection.
+
+This module contains:
+- Fixed label mapping (multiclass and binary)
+- Protocol-aware kNN graph construction
+- GNN models (GraphSAGE, GAT)
+- Training functions with early stopping
+- Explainability utilities (GNNExplainer, feature attribution)
+- CTGAN synthetic data generation helpers
+
+UPDATED: Protocol-aware graph, fixed label maps, explainability support.
 """
 
-import pandas as pd
-import numpy as np
 import os
-import gc
+import json
+import copy
+import warnings
 from datetime import datetime
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.metrics import mean_squared_error, mean_absolute_error
+from collections import Counter
+
+import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import joblib
+
+from sklearn.preprocessing import RobustScaler, MinMaxScaler
+from sklearn.neighbors import NearestNeighbors
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    confusion_matrix, classification_report, mean_squared_error, mean_absolute_error
+)
 from scipy.spatial.distance import jensenshannon
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-
-def calculate_target_samples(data, balance_strategy='moderate'):
-    """
-    Calculate target sample sizes for each class based on the balance strategy.
-    
-    This function determines how many samples each class should have to create
-    a balanced dataset. Three strategies are available:
-    - 'aggressive': All classes equal to median size
-    - 'moderate': Reduce majority by 25%, increase minority to 50% of reduced majority
-    - 'conservative': Only increase minority to 25% of majority class
-    
-    Args:
-        data (pd.DataFrame): DataFrame containing the data with 'Label' column
-        balance_strategy (str): Strategy for balancing - 'aggressive', 'moderate', or 'conservative'
-    
-    Returns:
-        dict: Dictionary mapping label to target sample size
-    
-    Example:
-        >>> target_samples = calculate_target_samples(df, balance_strategy='moderate')
-        >>> print(target_samples)
-        {0: 50000, 1: 25000, 2: 25000}
-    """
-    label_counts = data['Label'].value_counts()
-    median_count = label_counts.median()
-    max_count = label_counts.max()
-    
-    target_samples = {}
-    
-    if balance_strategy == 'aggressive':
-        # Make all classes equal to median size
-        target_size = int(median_count)
-        target_samples = {label: target_size for label in label_counts.index}
-        
-    elif balance_strategy == 'moderate':
-        # Reduce majority classes to 75% of original, increase minority to 50% of that
-        majority_target = int(max_count * 0.75)
-        minority_target = int(majority_target * 0.5)
-        
-        for label in label_counts.index:
-            if label_counts[label] > majority_target:
-                target_samples[label] = majority_target
-            elif label_counts[label] < minority_target:
-                target_samples[label] = minority_target
-            else:
-                target_samples[label] = label_counts[label]
-                
-    else:  # conservative
-        # Only increase minority classes to 25% of majority class
-        minority_target = int(max_count * 0.25)
-        
-        for label in label_counts.index:
-            if label_counts[label] < minority_target:
-                target_samples[label] = minority_target
-            else:
-                target_samples[label] = label_counts[label]
-    
-    return target_samples
-
-
-def calculate_synthetic_quality_metrics(original_data, synthetic_data, numerical_columns):
-    """
-    Calculate quality metrics comparing original and synthetic data distributions.
-    
-    This function computes various statistical metrics to assess how well the synthetic
-    data matches the original data distribution. Lower values indicate better quality.
-    
-    Metrics calculated:
-    - Mean Absolute Error (MAE): Average absolute difference in feature means
-    - Mean Squared Error (MSE): Average squared difference in feature means
-    - Jensen-Shannon Divergence: Distribution similarity (0 = identical, 1 = completely different)
-    
-    Args:
-        original_data (pd.DataFrame): Original real data
-        synthetic_data (pd.DataFrame): Generated synthetic data
-        numerical_columns (list): List of numerical column names to compare
-    
-    Returns:
-        dict: Dictionary containing quality metrics:
-            - 'mae_mean': Mean Absolute Error of feature means
-            - 'mse_mean': Mean Squared Error of feature means
-            - 'js_divergence': Average Jensen-Shannon divergence across features
-            - 'feature_correlation_diff': Difference in correlation matrices
-    
-    Example:
-        >>> metrics = calculate_synthetic_quality_metrics(orig_df, synth_df, num_cols)
-        >>> print(f"Quality Score (JS): {metrics['js_divergence']:.4f}")
-    """
-    metrics = {}
-    
-    # Calculate mean and std for each numerical feature
-    orig_means = original_data[numerical_columns].mean()
-    synth_means = synthetic_data[numerical_columns].mean()
-    
-    orig_stds = original_data[numerical_columns].std()
-    synth_stds = synthetic_data[numerical_columns].std()
-    
-    # Mean Absolute Error for means
-    metrics['mae_mean'] = mean_absolute_error(orig_means, synth_means)
-    
-    # Mean Squared Error for means
-    metrics['mse_mean'] = mean_squared_error(orig_means, synth_means)
-    
-    # Jensen-Shannon divergence for distributions
-    js_scores = []
-    for col in numerical_columns:
-        # Create histograms with same bins
-        orig_hist, bins = np.histogram(original_data[col], bins=50, density=True)
-        synth_hist, _ = np.histogram(synthetic_data[col], bins=bins, density=True)
-        
-        # Add small epsilon to avoid division by zero
-        orig_hist = orig_hist + 1e-10
-        synth_hist = synth_hist + 1e-10
-        
-        # Normalize to probability distributions
-        orig_hist = orig_hist / orig_hist.sum()
-        synth_hist = synth_hist / synth_hist.sum()
-        
-        # Calculate JS divergence
-        js_score = jensenshannon(orig_hist, synth_hist)
-        js_scores.append(js_score)
-    
-    metrics['js_divergence'] = np.mean(js_scores)
-    
-    # Correlation difference
-    orig_corr = original_data[numerical_columns].corr()
-    synth_corr = synthetic_data[numerical_columns].corr()
-    metrics['feature_correlation_diff'] = np.abs(orig_corr - synth_corr).mean().mean()
-    
-    return metrics
-
-
-def print_quality_report(original_data, synthetic_data, label_value, numerical_columns):
-    """
-    Print a comprehensive quality report comparing original and synthetic data.
-    
-    This function generates a detailed report showing:
-    - Sample counts comparison
-    - Statistical quality metrics
-    - Feature-level statistics comparison
-    - Data quality assessment
-    
-    Args:
-        original_data (pd.DataFrame): Original real data for specific label
-        synthetic_data (pd.DataFrame): Generated synthetic data for specific label
-        label_value: Label value being analyzed
-        numerical_columns (list): List of numerical column names
-    
-    Returns:
-        None: Prints report to console
-    
-    Example:
-        >>> print_quality_report(orig_subset, synth_subset, label=1, num_cols=features)
-    """
-    print(f"\n{'='*80}")
-    print(f"QUALITY REPORT FOR LABEL {label_value}")
-    print(f"{'='*80}")
-    
-    print(f"\nSample Counts:")
-    print(f"  Original samples: {len(original_data):,}")
-    print(f"  Synthetic samples: {len(synthetic_data):,}")
-    print(f"  Total samples: {len(original_data) + len(synthetic_data):,}")
-    
-    # Calculate quality metrics
-    metrics = calculate_synthetic_quality_metrics(original_data, synthetic_data, numerical_columns)
-    
-    print(f"\nQuality Metrics:")
-    print(f"  Mean Absolute Error (MAE):        {metrics['mae_mean']:.6f}")
-    print(f"  Mean Squared Error (MSE):         {metrics['mse_mean']:.6f}")
-    print(f"  Jensen-Shannon Divergence:        {metrics['js_divergence']:.6f}")
-    print(f"  Feature Correlation Difference:   {metrics['feature_correlation_diff']:.6f}")
-    
-    # Quality assessment
-    js_div = metrics['js_divergence']
-    if js_div < 0.1:
-        quality = "EXCELLENT"
-    elif js_div < 0.2:
-        quality = "GOOD"
-    elif js_div < 0.3:
-        quality = "ACCEPTABLE"
-    else:
-        quality = "POOR"
-    
-    print(f"\n  Overall Quality Assessment: {quality}")
-    print(f"  (JS Divergence < 0.1 = Excellent, < 0.2 = Good, < 0.3 = Acceptable)")
-    
-    # Show sample statistics for a few key features
-    print(f"\nFeature Statistics Comparison (first 5 features):")
-    print(f"{'Feature':<30} {'Orig Mean':<12} {'Synth Mean':<12} {'Diff %':<10}")
-    print(f"{'-'*70}")
-    
-    for col in numerical_columns[:5]:
-        orig_mean = original_data[col].mean()
-        synth_mean = synthetic_data[col].mean()
-        diff_pct = ((synth_mean - orig_mean) / orig_mean * 100) if orig_mean != 0 else 0
-        print(f"{col:<30} {orig_mean:<12.4f} {synth_mean:<12.4f} {diff_pct:>+9.2f}%")
-
-
-def train_and_generate_ctgan(data, feature_count, subset_label=None, target_size=None, epochs=300):
-    """
-    Train a CTGAN model and generate synthetic data for balancing datasets.
-    
-    This function trains a Conditional Tabular GAN on network flow data to generate
-    synthetic samples for minority classes or undersample majority classes. It includes:
-    - Data scaling and preprocessing
-    - CTGAN model training with optimized hyperparameters
-    - Synthetic data generation
-    - Quality assessment and reporting
-    - Model checkpointing
-    
-    The function handles both oversampling (generating new samples) and undersampling
-    (reducing samples) based on the target_size parameter.
-    
-    Args:
-        data (pd.DataFrame): DataFrame containing the training data
-        feature_count (int): Number of features in the dataset (52 or 20)
-        subset_label (int, optional): Specific label to generate data for. If None, uses all data
-        target_size (int, optional): Target number of samples for the class
-        epochs (int, optional): Number of training epochs. Default is 300
-    
-    Returns:
-        pd.DataFrame or None: Combined original and synthetic data, or None if error occurs
-    
-    Example:
-        >>> balanced_data = train_and_generate_ctgan(
-        ...     df, 
-        ...     feature_count=20, 
-        ...     subset_label=1, 
-        ...     target_size=50000,
-        ...     epochs=300
-        ... )
-    
-    Note:
-        - For undersampling (target_size < current size), returns random sample without training
-        - Saves trained model to 'checkpoints/ctgan/ctgan_{feature_count}_label_{label}.pkl'
-        - Prints quality metrics comparing synthetic to original data
-    """
-    from ctgan import CTGAN
-    
-    # Filter data if subset_label is provided
-    if subset_label is not None:
-        data_subset = data[data['Label'] == subset_label].copy()
-    else:
-        data_subset = data.copy()
-        
-    if len(data_subset) == 0:
-        print(f"❌ No samples found for label {subset_label}")
-        return None
-    
-    print(f"\n{'='*80}")
-    print(f"TRAINING CTGAN - {feature_count} features, Label {subset_label}")
-    print(f"{'='*80}")
-    print(f"Original samples: {len(data_subset):,}")
-    print(f"Target samples: {target_size:,}")
-    
-    # Check if we need to undersample
-    if target_size is not None and target_size < len(data_subset):
-        print(f"\n⚠️  Undersampling from {len(data_subset):,} to {target_size:,} samples")
-        sampled_data = data_subset.sample(n=target_size, random_state=42)
-        print(f"✓ Undersampling complete")
-        return sampled_data
-    
-    # Identify column types
-    columns = data_subset.columns.tolist()
-    categorical_columns = ['Protocol', 'Label'] if 'Protocol' in columns else ['Label']
-    numerical_columns = [col for col in columns if col not in categorical_columns]
-    
-    print(f"\nFeature types:")
-    print(f"  Numerical features: {len(numerical_columns)}")
-    print(f"  Categorical features: {len(categorical_columns)}")
-    
-    # Scale numerical columns to [0, 1] range for better CTGAN performance
-    scaler = MinMaxScaler()
-    data_scaled = data_subset.copy()
-    data_scaled[numerical_columns] = scaler.fit_transform(data_subset[numerical_columns])
-    
-    # Initialize CTGAN with optimized parameters
-    print(f"\n🔧 Initializing CTGAN model...")
-    ctgan = CTGAN(
-        epochs=epochs,
-        batch_size=500,
-        generator_dim=(256, 256),
-        discriminator_dim=(256, 256),
-        generator_lr=2e-4,
-        discriminator_lr=2e-4,
-        verbose=True
-    )
-    
-    # Train the model
-    print(f"\n🚀 Training CTGAN for {epochs} epochs...")
-    try:
-        ctgan.fit(data_scaled, discrete_columns=categorical_columns)
-        print(f"✓ Training complete")
-        
-    except Exception as e:
-        print(f"❌ Error during training: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return None
-    
-    # Calculate number of samples to generate
-    sample_size = target_size - len(data_subset) if target_size else len(data_subset)
-    
-    if sample_size <= 0:
-        print(f"\n⚠️  No synthetic samples needed (target already met)")
-        return data_subset
-    
-    print(f"\n🎲 Generating {sample_size:,} synthetic samples...")
-    try:
-        synthetic_data = ctgan.sample(sample_size)
-        print(f"✓ Generation complete")
-        
-    except Exception as e:
-        print(f"❌ Error during generation: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return None
-    
-    # Inverse transform the scaled features
-    synthetic_data_unscaled = synthetic_data.copy()
-    synthetic_data_unscaled[numerical_columns] = scaler.inverse_transform(synthetic_data[numerical_columns])
-    
-    # Ensure label column matches if generating for specific label
-    if subset_label is not None:
-        synthetic_data_unscaled['Label'] = subset_label
-    
-    # Print quality report
-    print_quality_report(data_subset, synthetic_data_unscaled, subset_label, numerical_columns)
-    
-    # Combine original and synthetic data
-    final_data = pd.concat([data_subset, synthetic_data_unscaled], ignore_index=True)
-    print(f"\n✓ Final dataset size: {len(final_data):,} samples")
-    
-    # Save the model
-    model_path = f'checkpoints/ctgan/ctgan_{feature_count}'
-    model_path += f'_label_{subset_label}' if subset_label is not None else ''
-    model_path += '.pkl'
-    
-    try:
-        ctgan.save(model_path)
-        print(f"💾 Model saved to: {model_path}")
-    except Exception as e:
-        print(f"⚠️  Warning: Could not save model: {str(e)}")
-    
-    return final_data
-
-
-def plot_label_distribution_comparison(original_data, balanced_data, title="Label Distribution"):
-    """
-    Plot comparison of label distributions before and after balancing.
-    
-    Creates a bar chart showing the number of samples per label in both
-    original and balanced datasets for visual comparison.
-    
-    Args:
-        original_data (pd.DataFrame): Original unbalanced data
-        balanced_data (pd.DataFrame): Balanced data after CTGAN processing
-        title (str, optional): Plot title. Default is "Label Distribution"
-    
-    Returns:
-        None: Displays matplotlib plot
-    
-    Example:
-        >>> plot_label_distribution_comparison(df_original, df_balanced)
-    """
-    plt.figure(figsize=(12, 6))
-    
-    # Get label counts
-    orig_counts = original_data['Label'].value_counts().sort_index()
-    balanced_counts = balanced_data['Label'].value_counts().sort_index()
-    
-    # Get all unique labels
-    all_labels = sorted(set(orig_counts.index) | set(balanced_counts.index))
-    
-    # Set up bar positions
-    x = np.arange(len(all_labels))
-    width = 0.35
-    
-    # Plot bars
-    plt.bar(x - width/2, [orig_counts.get(label, 0) for label in all_labels], 
-            width, label='Original', color='skyblue', alpha=0.8)
-    plt.bar(x + width/2, [balanced_counts.get(label, 0) for label in all_labels], 
-            width, label='Balanced', color='lightgreen', alpha=0.8)
-    
-    # Customize plot
-    plt.title(title, fontsize=14, fontweight='bold', pad=20)
-    plt.xlabel('Label', fontsize=12)
-    plt.ylabel('Number of Samples', fontsize=12)
-    plt.xticks(x, all_labels, rotation=45, ha='right')
-    plt.legend(fontsize=11)
-    plt.grid(True, alpha=0.3, axis='y')
-    
-    # Add value labels on bars
-    for i, label in enumerate(all_labels):
-        orig_val = orig_counts.get(label, 0)
-        balanced_val = balanced_counts.get(label, 0)
-        
-        plt.text(i - width/2, orig_val, f'{orig_val:,}', 
-                ha='center', va='bottom', fontsize=9)
-        plt.text(i + width/2, balanced_val, f'{balanced_val:,}', 
-                ha='center', va='bottom', fontsize=9)
-    
-    plt.tight_layout()
-    plt.show()
-
-
-def print_dataset_summary(data, dataset_name="Dataset"):
-    """
-    Print a comprehensive summary of dataset statistics.
-    
-    Displays label distribution, class imbalance ratios, and basic statistics
-    for understanding the dataset composition.
-    
-    Args:
-        data (pd.DataFrame): Dataset to analyze
-        dataset_name (str, optional): Name to display in report. Default is "Dataset"
-    
-    Returns:
-        None: Prints summary to console
-    
-    Example:
-        >>> print_dataset_summary(df, dataset_name="Training Data (52 features)")
-    """
-    print(f"\n{'='*80}")
-    print(f"{dataset_name.upper()} SUMMARY")
-    print(f"{'='*80}")
-    
-    print(f"\nTotal samples: {len(data):,}")
-    print(f"Total features: {len(data.columns) - 1}")  # -1 for Label column
-    
-    label_counts = data['Label'].value_counts().sort_index()
-    max_count = label_counts.max()
-    min_count = label_counts.min()
-    
-    print(f"\nLabel Distribution:")
-    print(f"{'Label':<10} {'Count':<12} {'Percentage':<12} {'Imbalance Ratio':<15}")
-    print(f"{'-'*55}")
-    
-    for label, count in label_counts.items():
-        percentage = (count / len(data)) * 100
-        ratio = max_count / count if count > 0 else float('inf')
-        print(f"{label:<10} {count:<12,} {percentage:<11.2f}% {ratio:<14.2f}x")
-    
-    print(f"\nImbalance Statistics:")
-    print(f"  Majority class size: {max_count:,}")
-    print(f"  Minority class size: {min_count:,}")
-    print(f"  Imbalance ratio: {max_count/min_count:.2f}:1")
-
-
-# ======================== GNN Training Utilities ========================
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from torch_geometric.data import Data
-from torch_geometric.nn import SAGEConv, GATConv, global_mean_pool
-from sklearn.preprocessing import RobustScaler, LabelEncoder
-from sklearn.neighbors import NearestNeighbors
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
-import joblib
-from collections import Counter
-import copy
+from torch_geometric.nn import SAGEConv, GATConv
+from torch_geometric.explain import Explainer, GNNExplainer
+
+warnings.filterwarnings('ignore')
+
+# ============================================================================
+# LABEL MAPPING (FIXED - DO NOT USE LabelEncoder)
+# ============================================================================
+
+LABEL_MAP = {
+    0: 'BFA',
+    1: 'BOTNET',
+    2: 'DDoS',
+    3: 'DoS',
+    4: 'Normal',
+    5: 'Probe',
+    6: 'U2R',
+    7: 'Web-Attack'
+}
+
+REVERSE_LABEL_MAP = {v: k for k, v in LABEL_MAP.items()}
+
+BINARY_LABEL_MAP = {
+    0: 'Benign',
+    1: 'Attack'
+}
+
+REVERSE_BINARY_LABEL_MAP = {v: k for k, v in BINARY_LABEL_MAP.items()}
 
 
-def load_and_preprocess_gnn_data(csv_paths, scaler_path='scalers/gnn_scaler.pkl', fit_scaler=True):
+def get_label_map(binary=False):
+    """Return label mapping dictionary."""
+    return BINARY_LABEL_MAP if binary else LABEL_MAP
+
+
+def get_reverse_label_map(binary=False):
+    """Return reverse label mapping dictionary."""
+    return REVERSE_BINARY_LABEL_MAP if binary else REVERSE_LABEL_MAP
+
+
+def encode_labels(labels, binary=False):
+    """
+    Encode string labels to integers using the fixed label map.
+    
+    Args:
+        labels: array-like of string labels
+        binary: if True, use binary encoding (Normal->0, others->1)
+    
+    Returns:
+        numpy array of encoded labels
+    """
+    labels = np.array([str(l).strip() for l in labels])
+    
+    if binary:
+        # Binary: Normal -> 0 (Benign), everything else -> 1 (Attack)
+        encoded = np.where(labels == 'Normal', 0, 1)
+    else:
+        # Multiclass: use fixed reverse label map
+        encoded = np.zeros(len(labels), dtype=np.int64)
+        for i, label in enumerate(labels):
+            if label in REVERSE_LABEL_MAP:
+                encoded[i] = REVERSE_LABEL_MAP[label]
+            else:
+                # Try to find partial match or default
+                matched = False
+                for key in REVERSE_LABEL_MAP:
+                    if key.lower() in label.lower() or label.lower() in key.lower():
+                        encoded[i] = REVERSE_LABEL_MAP[key]
+                        matched = True
+                        break
+                if not matched:
+                    print(f"  Warning: Unknown label '{label}', defaulting to Normal (4)")
+                    encoded[i] = 4  # Default to Normal
+    
+    return encoded
+
+
+def decode_labels(encoded, binary=False):
+    """
+    Decode integer labels back to string names.
+    
+    Args:
+        encoded: array-like of integer labels
+        binary: if True, use binary decoding
+    
+    Returns:
+        list of string labels
+    """
+    label_map = get_label_map(binary)
+    return [label_map.get(int(e), 'Unknown') for e in encoded]
+
+
+# ============================================================================
+# PROTOCOL-AWARE kNN GRAPH CONSTRUCTION
+# ============================================================================
+
+def get_protocol_group(protocol_value):
+    """
+    Map protocol values to groups: TCP, UDP, ICMP, or Other.
+    
+    Protocol numbers: 6=TCP, 17=UDP, 1=ICMP
+    """
+    try:
+        p = int(protocol_value)
+        if p == 6:
+            return 'TCP'
+        elif p == 17:
+            return 'UDP'
+        elif p == 1:
+            return 'ICMP'
+        else:
+            return 'Other'
+    except (ValueError, TypeError):
+        # Handle string protocols
+        p_str = str(protocol_value).upper()
+        if 'TCP' in p_str:
+            return 'TCP'
+        elif 'UDP' in p_str:
+            return 'UDP'
+        elif 'ICMP' in p_str:
+            return 'ICMP'
+        else:
+            return 'Other'
+
+
+def build_protocol_aware_knn_graph(X, protocols, k=5, metric='euclidean'):
+    """
+    Build k-NN graph with protocol awareness.
+    
+    Edges are only created between nodes with the same protocol.
+    This prevents mixing TCP/UDP/ICMP flows in the graph structure.
+    
+    Args:
+        X: Feature matrix (n_samples, n_features)
+        protocols: Array of protocol values for each sample
+        k: Number of neighbors (default 5)
+        metric: Distance metric (default 'euclidean')
+    
+    Returns:
+        edge_index: torch.Tensor of shape (2, num_edges)
+    """
+    print(f"\nBuilding Protocol-Aware k-NN graph (k={k})...")
+    
+    n_samples = X.shape[0]
+    protocols = np.array(protocols)
+    
+    # Map protocols to groups
+    protocol_groups = np.array([get_protocol_group(p) for p in protocols])
+    unique_groups = np.unique(protocol_groups)
+    
+    print(f"  Protocol groups found: {dict(Counter(protocol_groups))}")
+    
+    all_edges = []
+    
+    for group in unique_groups:
+        # Get indices for this protocol group
+        group_mask = protocol_groups == group
+        group_indices = np.where(group_mask)[0]
+        n_group = len(group_indices)
+        
+        if n_group < 2:
+            print(f"  Skipping {group}: only {n_group} samples")
+            continue
+        
+        # Extract features for this group
+        X_group = X[group_indices]
+        
+        # Build k-NN within group (use min of k and group size - 1)
+        k_actual = min(k, n_group - 1)
+        if k_actual < 1:
+            continue
+            
+        knn = NearestNeighbors(n_neighbors=k_actual + 1, metric=metric, n_jobs=-1)
+        knn.fit(X_group)
+        distances, indices = knn.kneighbors(X_group)
+        
+        # Build edges (skip self-loops)
+        for local_i in range(n_group):
+            global_i = group_indices[local_i]
+            for j in range(1, k_actual + 1):  # Skip index 0 (self)
+                local_j = indices[local_i, j]
+                global_j = group_indices[local_j]
+                all_edges.append([global_i, global_j])
+        
+        print(f"  {group}: {n_group} nodes, {n_group * k_actual} edges")
+    
+    if len(all_edges) == 0:
+        print("  Warning: No edges created! Creating fallback edges...")
+        # Fallback: create at least some edges
+        for i in range(min(100, n_samples)):
+            j = (i + 1) % n_samples
+            all_edges.append([i, j])
+    
+    edge_index = torch.tensor(all_edges, dtype=torch.long).t().contiguous()
+    
+    print(f"  ✓ Total graph: {n_samples} nodes, {edge_index.shape[1]} edges")
+    print(f"  Average degree: {edge_index.shape[1] / n_samples:.2f}")
+    
+    return edge_index
+
+
+# Legacy function name for compatibility
+def build_knn_graph(X, k=5, metric='euclidean', protocols=None):
+    """
+    Build k-NN graph. If protocols provided, uses protocol-aware construction.
+    """
+    if protocols is not None:
+        return build_protocol_aware_knn_graph(X, protocols, k, metric)
+    
+    # Fallback to simple k-NN if no protocol info
+    print(f"\nBuilding simple k-NN graph (k={k}, metric={metric})...")
+    
+    knn = NearestNeighbors(n_neighbors=k+1, metric=metric, n_jobs=-1)
+    knn.fit(X)
+    distances, indices = knn.kneighbors(X)
+    
+    edges = []
+    for i in range(len(X)):
+        for j in indices[i][1:]:
+            edges.append([i, j])
+    
+    edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
+    
+    print(f"  ✓ Created graph: {len(X)} nodes, {edge_index.shape[1]} edges")
+    return edge_index
+
+
+# ============================================================================
+# DATA LOADING AND PREPROCESSING
+# ============================================================================
+
+def load_and_preprocess_gnn_data(csv_paths, scaler_path='scalers/gnn_scaler.pkl', 
+                                  fit_scaler=True, binary_labels=False):
     """
     Load and preprocess CSV files for GNN training.
     
-    This function loads one or more CSV files, encodes labels, applies RobustScaler
-    to numerical features, and saves/loads the scaler for consistent preprocessing.
+    Uses FIXED label mapping (not LabelEncoder).
+    Extracts Protocol column for graph construction.
     
     Args:
-        csv_paths (str or list): Single path or list of paths to CSV files
-        scaler_path (str): Path to save/load the scaler. Default: 'scalers/gnn_scaler.pkl'
-        fit_scaler (bool): If True, fit new scaler. If False, load existing. Default: True
+        csv_paths: Single path or list of paths to CSV files
+        scaler_path: Path to save/load the scaler
+        fit_scaler: If True, fit new scaler; if False, load existing
+        binary_labels: If True, convert to binary (Normal vs Attack)
     
     Returns:
-        tuple: (X_scaled, y_encoded, scaler, label_encoder, feature_names)
-            - X_scaled: numpy array of scaled features
-            - y_encoded: numpy array of encoded labels (0, 1, 2, ...)
-            - scaler: fitted RobustScaler object
-            - label_encoder: fitted LabelEncoder object
-            - feature_names: list of feature column names
-    
-    Example:
-        >>> X, y, scaler, le, features = load_and_preprocess_gnn_data(
-        ...     'checkpoints/ctgan/balanced_20.csv'
-        ... )
+        tuple: (X_scaled, y_encoded, scaler, protocols, feature_names, label_map)
     """
     print("Loading and preprocessing data for GNN...")
     
-    # Load CSV(s)
     if isinstance(csv_paths, str):
         csv_paths = [csv_paths]
     
@@ -519,33 +300,45 @@ def load_and_preprocess_gnn_data(csv_paths, scaler_path='scalers/gnn_scaler.pkl'
     data = pd.concat(dfs, ignore_index=True)
     print(f"  Combined shape: {data.shape}")
     
-    # Separate features and labels
-    y = data['Label'].values
+    # Extract labels
+    y_raw = data['Label'].astype(str).values
+    
+    # Extract Protocol before dropping
+    if 'Protocol' in data.columns:
+        protocols = data['Protocol'].values.copy()
+    else:
+        print("  Warning: No 'Protocol' column found, using default (TCP)")
+        protocols = np.full(len(data), 6)  # Default to TCP
+    
+    # Prepare features (drop Label column only, keep Protocol for features)
     X = data.drop(columns=['Label'])
     
-    # Handle any remaining NaN/inf
+    feature_names = X.columns.tolist()
+    
+    # Handle NaN/inf
     X = X.replace([np.inf, -np.inf], np.nan)
     X = X.fillna(X.median())
-    
-    feature_names = X.columns.tolist()
     X = X.values
     
-    # Encode labels
-    label_encoder = LabelEncoder()
-    y_encoded = label_encoder.fit_transform(y)
+    # Encode labels using fixed mapping
+    y_encoded = encode_labels(y_raw, binary=binary_labels)
+    
+    label_map = get_label_map(binary_labels)
     
     print(f"\n  Features: {len(feature_names)}")
-    print(f"  Classes: {len(label_encoder.classes_)} -> {label_encoder.classes_}")
-    print(f"  Class distribution: {dict(zip(*np.unique(y_encoded, return_counts=True)))}")
+    print(f"  Label mapping: {label_map}")
+    print(f"  Class distribution: {dict(Counter(y_encoded))}")
     
     # Scale features
+    scaler_dir = os.path.dirname(scaler_path)
+    if scaler_dir:
+        os.makedirs(scaler_dir, exist_ok=True)
+    
     if fit_scaler:
         print(f"\n  Fitting RobustScaler...")
         scaler = RobustScaler()
         X_scaled = scaler.fit_transform(X)
         
-        # Save scaler
-        os.makedirs(os.path.dirname(scaler_path), exist_ok=True)
         joblib.dump(scaler, scaler_path)
         print(f"  ✓ Scaler saved to: {scaler_path}")
     else:
@@ -553,73 +346,56 @@ def load_and_preprocess_gnn_data(csv_paths, scaler_path='scalers/gnn_scaler.pkl'
         scaler = joblib.load(scaler_path)
         X_scaled = scaler.transform(X)
     
-    return X_scaled, y_encoded, scaler, label_encoder, feature_names
+    return X_scaled, y_encoded, scaler, protocols, feature_names, label_map
 
 
-"""
-    Build k-nearest neighbors graph from feature matrix.
-    
-    Creates a graph where each node is connected to its k nearest neighbors
-    in feature space. Returns edge indices in PyTorch Geometric format.
+def create_train_val_test_masks(n_samples, y, train_ratio=0.7, val_ratio=0.15, random_state=42):
+    """
+    Create train/val/test masks with stratification.
     
     Args:
-        X (numpy.ndarray): Feature matrix (n_samples, n_features)
-        k (int): Number of nearest neighbors. Default: 5
-        metric (str): Distance metric for k-NN. Default: 'euclidean'
+        n_samples: Total number of samples
+        y: Labels for stratification
+        train_ratio: Training set ratio
+        val_ratio: Validation set ratio
+        random_state: Random seed
     
     Returns:
-        torch.Tensor: Edge index tensor of shape (2, num_edges)
+        tuple: (train_mask, val_mask, test_mask) as boolean numpy arrays
+    """
+    test_ratio = 1.0 - train_ratio - val_ratio
     
-    Example:
-        >>> edge_index = build_knn_graph(X_scaled, k=5)
-        >>> print(f"Created {edge_index.shape[1]} edges")
-"""
-def build_knn_graph(X, k=5, metric='euclidean'):
+    idx = np.arange(n_samples)
     
-    print(f"\nBuilding k-NN graph (k={k}, metric={metric})...")
+    # First split: train vs (val+test)
+    train_idx, temp_idx = train_test_split(
+        idx, test_size=(val_ratio + test_ratio), 
+        random_state=random_state, stratify=y
+    )
     
-    # Fit k-NN
-    knn = NearestNeighbors(n_neighbors=k+1, metric=metric, n_jobs=-1)
-    knn.fit(X)
+    # Second split: val vs test
+    val_relative = val_ratio / (val_ratio + test_ratio)
+    val_idx, test_idx = train_test_split(
+        temp_idx, test_size=(1 - val_relative),
+        random_state=random_state, stratify=y[temp_idx]
+    )
     
-    # Get neighbors (exclude self)
-    distances, indices = knn.kneighbors(X)
+    train_mask = np.zeros(n_samples, dtype=bool)
+    val_mask = np.zeros(n_samples, dtype=bool)
+    test_mask = np.zeros(n_samples, dtype=bool)
     
-    # Build edge list
-    edges = []
-    for i in range(len(X)):
-        for j in indices[i][1:]:  # Skip first (self)
-            edges.append([i, j])
+    train_mask[train_idx] = True
+    val_mask[val_idx] = True
+    test_mask[test_idx] = True
     
-    edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
+    print(f"  Split: Train={train_mask.sum()}, Val={val_mask.sum()}, Test={test_mask.sum()}")
     
-    print(f"  ✓ Created graph: {len(X)} nodes, {edge_index.shape[1]} edges")
-    print(f"  Average degree: {edge_index.shape[1] / len(X):.2f}")
-    
-    return edge_index
+    return train_mask, val_mask, test_mask
 
 
 def create_pyg_data(X, y, edge_index, train_mask, val_mask, test_mask):
     """
     Create PyTorch Geometric Data object for GNN training.
-    
-    Wraps features, labels, edges, and train/val/test masks into a single
-    Data object compatible with PyTorch Geometric models.
-    
-    Args:
-        X (numpy.ndarray): Feature matrix
-        y (numpy.ndarray): Label array
-        edge_index (torch.Tensor): Edge connectivity
-        train_mask (numpy.ndarray): Boolean mask for training nodes
-        val_mask (numpy.ndarray): Boolean mask for validation nodes
-        test_mask (numpy.ndarray): Boolean mask for test nodes
-    
-    Returns:
-        Data: PyTorch Geometric Data object
-    
-    Example:
-        >>> data = create_pyg_data(X, y, edge_index, train_m, val_m, test_m)
-        >>> print(f"Data: {data.num_nodes} nodes, {data.num_edges} edges")
     """
     data = Data(
         x=torch.FloatTensor(X),
@@ -632,186 +408,96 @@ def create_pyg_data(X, y, edge_index, train_mask, val_mask, test_mask):
     return data
 
 
+# ============================================================================
+# GNN MODELS
+# ============================================================================
+
+class GraphSAGEModel(nn.Module):
+    """GraphSAGE model for node classification."""
+    
+    def __init__(self, num_features, hidden_dim=128, num_classes=8, dropout=0.3, num_layers=2, device=None):
+        super(GraphSAGEModel, self).__init__()
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self.device = device
+        
+        self.convs = nn.ModuleList()
+        self.convs.append(SAGEConv(num_features, hidden_dim))
+        
+        for _ in range(num_layers - 1):
+            self.convs.append(SAGEConv(hidden_dim, hidden_dim))
+        
+        self.lin = nn.Linear(hidden_dim, num_classes)
+        
+        if self.device is not None:
+            self.to(self.device)
+    
+    def forward(self, x, edge_index):
+        for conv in self.convs:
+            x = conv(x, edge_index)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        
+        x = self.lin(x)
+        return x
+
+
+class GATModel(nn.Module):
+    """Graph Attention Network model for node classification."""
+    
+    def __init__(self, num_features, hidden_dim=128, num_classes=8, dropout=0.3, num_layers=2, heads=4, device=None):
+        super(GATModel, self).__init__()
+        self.num_layers = num_layers
+        self.dropout = dropout
+        self.device = device
+        
+        self.convs = nn.ModuleList()
+        self.convs.append(GATConv(num_features, hidden_dim, heads=heads, dropout=dropout))
+        
+        for _ in range(num_layers - 2):
+            self.convs.append(GATConv(hidden_dim * heads, hidden_dim, heads=heads, dropout=dropout))
+        
+        if num_layers > 1:
+            self.convs.append(GATConv(hidden_dim * heads, hidden_dim, heads=1, dropout=dropout))
+        
+        self.lin = nn.Linear(hidden_dim, num_classes)
+        
+        if self.device is not None:
+            self.to(self.device)
+    
+    def forward(self, x, edge_index):
+        for i, conv in enumerate(self.convs):
+            x = conv(x, edge_index)
+            x = F.elu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        
+        x = self.lin(x)
+        return x
+
+
+# ============================================================================
+# TRAINING FUNCTIONS
+# ============================================================================
+
 def calculate_class_weights(y_train):
-    """
-    Calculate class weights for weighted cross-entropy loss.
-    
-    Computes inverse class frequency weights to handle class imbalance.
-    More weight is given to minority classes.
-    
-    Args:
-        y_train (numpy.ndarray): Training labels
-    
-    Returns:
-        torch.Tensor: Class weights tensor
-    
-    Example:
-        >>> weights = calculate_class_weights(y_train)
-        >>> criterion = nn.CrossEntropyLoss(weight=weights)
-    """
+    """Calculate inverse frequency class weights for loss function."""
     class_counts = Counter(y_train)
     total = len(y_train)
-    num_classes = len(class_counts)
+    num_classes = max(class_counts.keys()) + 1
     
     weights = torch.zeros(num_classes)
     for cls, count in class_counts.items():
         weights[cls] = total / (num_classes * count)
     
     print(f"\nClass weights (inverse frequency):")
-    for cls in range(num_classes):
+    for cls in sorted(class_counts.keys()):
         print(f"  Class {cls}: {weights[cls]:.4f}")
     
     return weights
 
 
-class GraphSAGEModel(nn.Module):
-    """
-    GraphSAGE model for node classification.
-    
-    Implements a Graph Sample and Aggregate neural network with configurable
-    hidden dimensions, number of layers, and dropout. Uses mean aggregation.
-    
-    Architecture:
-    - Input -> SAGEConv -> ReLU -> Dropout -> SAGEConv -> ReLU -> Dropout -> Linear -> Output
-    
-    Args:
-        num_features (int): Number of input features
-        hidden_dim (int): Hidden layer dimension. Default: 128
-        num_classes (int): Number of output classes
-        dropout (float): Dropout probability. Default: 0.3
-        num_layers (int): Number of SAGE layers. Default: 2
-    
-    Example:
-        >>> model = GraphSAGEModel(num_features=20, hidden_dim=128, num_classes=5)
-        >>> out = model(data.x, data.edge_index)
-    """
-    def __init__(self, num_features, hidden_dim=128, num_classes=2, dropout=0.3, num_layers=2, device=None):
-        super(GraphSAGEModel, self).__init__()
-        self.num_layers = num_layers
-        self.dropout = dropout
-        self.device = device
-        
-        # First layer
-        self.convs = nn.ModuleList()
-        self.convs.append(SAGEConv(num_features, hidden_dim))
-        
-        # Hidden layers
-        for _ in range(num_layers - 1):
-            self.convs.append(SAGEConv(hidden_dim, hidden_dim))
-        
-        # Output layer
-        self.lin = nn.Linear(hidden_dim, num_classes)
-        # Move model parameters to device if provided
-        if self.device is not None:
-            try:
-                self.to(self.device)
-            except Exception:
-                pass
-        
-    def forward(self, x, edge_index):
-        # Ensure input tensors are on the same device as the model (defensive)
-        if hasattr(self, 'device') and self.device is not None:
-            x = x.to(self.device)
-            edge_index = edge_index.to(self.device)
-
-        # Apply SAGE layers
-        for i, conv in enumerate(self.convs):
-            x = conv(x, edge_index)
-            x = F.relu(x)
-            x = F.dropout(x, p=self.dropout, training=self.training)
-
-        # Final linear layer
-        x = self.lin(x)
-        return x
-
-
-class GATModel(nn.Module):
-    """
-    Graph Attention Network (GAT) model for node classification.
-    
-    Implements a GAT with multi-head attention, configurable hidden dimensions,
-    number of layers, and dropout. Attention allows the model to weigh neighbor
-    importance dynamically.
-    
-    Architecture:
-    - Input -> GATConv (multi-head) -> ELU -> Dropout -> GATConv -> ELU -> Dropout -> Linear -> Output
-    
-    Args:
-        num_features (int): Number of input features
-        hidden_dim (int): Hidden layer dimension. Default: 128
-        num_classes (int): Number of output classes
-        dropout (float): Dropout probability. Default: 0.3
-        num_layers (int): Number of GAT layers. Default: 2
-        heads (int): Number of attention heads in first layer. Default: 4
-    
-    Example:
-        >>> model = GATModel(num_features=20, hidden_dim=128, num_classes=5, heads=4)
-        >>> out = model(data.x, data.edge_index)
-    """
-    def __init__(self, num_features, hidden_dim=128, num_classes=2, dropout=0.3, num_layers=2, heads=4, device=None):
-        super(GATModel, self).__init__()
-        self.num_layers = num_layers
-        self.dropout = dropout
-        self.device = device
-        
-        # First layer with multi-head attention
-        self.convs = nn.ModuleList()
-        self.convs.append(GATConv(num_features, hidden_dim, heads=heads, dropout=dropout))
-        
-        # Hidden layers
-        for _ in range(num_layers - 2):
-            self.convs.append(GATConv(hidden_dim * heads, hidden_dim, heads=heads, dropout=dropout))
-        
-        # Last GAT layer with single head
-        if num_layers > 1:
-            self.convs.append(GATConv(hidden_dim * heads, hidden_dim, heads=1, dropout=dropout))
-        
-        # Output layer
-        self.lin = nn.Linear(hidden_dim, num_classes)
-        # Move model parameters to device if provided
-        if self.device is not None:
-            try:
-                self.to(self.device)
-            except Exception:
-                pass
-        
-    def forward(self, x, edge_index):
-        # Ensure input tensors are on the same device as the model (defensive)
-        if hasattr(self, 'device') and self.device is not None:
-            x = x.to(self.device)
-            edge_index = edge_index.to(self.device)
-
-        # Apply GAT layers
-        for i, conv in enumerate(self.convs):
-            x = conv(x, edge_index)
-            x = F.elu(x)
-            x = F.dropout(x, p=self.dropout, training=self.training)
-
-        # Final linear layer
-        x = self.lin(x)
-        return x
-
-
 def train_gnn_epoch(model, data, optimizer, criterion, device):
-    """
-    Train GNN for one epoch.
-    
-    Performs one forward pass, computes loss on training nodes, backpropagates,
-    and updates model weights.
-    
-    Args:
-        model: GNN model
-        data: PyTorch Geometric Data object
-        optimizer: PyTorch optimizer
-        criterion: Loss function
-        device: torch device (cpu or cuda)
-    
-    Returns:
-        float: Training loss for the epoch
-    
-    Example:
-        >>> loss = train_gnn_epoch(model, data, optimizer, criterion, device)
-    """
+    """Train GNN for one epoch."""
     model.train()
     data = data.to(device)
     
@@ -825,32 +511,7 @@ def train_gnn_epoch(model, data, optimizer, criterion, device):
 
 
 def evaluate_gnn(model, data, mask, device):
-    """
-    Evaluate GNN on a specific split (train/val/test).
-    
-    Computes accuracy, precision, recall, F1 score, and predictions
-    for nodes in the specified mask.
-    
-    Args:
-        model: GNN model
-        data: PyTorch Geometric Data object
-        mask: Boolean mask for evaluation nodes
-        device: torch device
-    
-    Returns:
-        dict: Dictionary containing:
-            - 'accuracy': Overall accuracy
-            - 'precision': Macro-averaged precision
-            - 'recall': Macro-averaged recall
-            - 'f1': Macro-averaged F1 score
-            - 'loss': Cross-entropy loss
-            - 'predictions': Predicted labels
-            - 'true_labels': True labels
-    
-    Example:
-        >>> metrics = evaluate_gnn(model, data, data.val_mask, device)
-        >>> print(f"Val Acc: {metrics['accuracy']:.4f}")
-    """
+    """Evaluate GNN on a specific split."""
     model.eval()
     data = data.to(device)
     
@@ -858,18 +519,14 @@ def evaluate_gnn(model, data, mask, device):
         out = model(data.x, data.edge_index)
         pred = out.argmax(dim=1)
         
-        # Get masked predictions and labels
-        mask_indices = mask.cpu().numpy()
         y_pred = pred[mask].cpu().numpy()
         y_true = data.y[mask].cpu().numpy()
         
-        # Compute metrics
         accuracy = accuracy_score(y_true, y_pred)
         precision = precision_score(y_true, y_pred, average='macro', zero_division=0)
         recall = recall_score(y_true, y_pred, average='macro', zero_division=0)
         f1 = f1_score(y_true, y_pred, average='macro', zero_division=0)
         
-        # Compute loss
         criterion = nn.CrossEntropyLoss()
         loss = criterion(out[mask], data.y[mask]).item()
     
@@ -884,34 +541,13 @@ def evaluate_gnn(model, data, mask, device):
     }
 
 
-def train_gnn_with_early_stopping(model, data, optimizer, criterion, device, 
+def train_gnn_with_early_stopping(model, data, optimizer, criterion, device,
                                    num_epochs=200, patience=20, verbose=True):
     """
     Train GNN with early stopping based on validation loss.
     
-    Trains the model for multiple epochs, tracks validation loss, and stops
-    early if validation loss doesn't improve for 'patience' epochs. Returns
-    the best model and training history.
-    
-    Args:
-        model: GNN model
-        data: PyTorch Geometric Data object
-        optimizer: PyTorch optimizer
-        criterion: Loss function with class weights
-        device: torch device
-        num_epochs (int): Maximum number of epochs. Default: 200
-        patience (int): Early stopping patience. Default: 20
-        verbose (bool): Print progress every 10 epochs. Default: True
-    
     Returns:
         tuple: (best_model, history)
-            - best_model: Model with best validation loss
-            - history: Dictionary with training/validation metrics per epoch
-    
-    Example:
-        >>> best_model, history = train_gnn_with_early_stopping(
-        ...     model, data, optimizer, criterion, device, num_epochs=200
-        ... )
     """
     history = {
         'train_loss': [],
@@ -927,19 +563,14 @@ def train_gnn_with_early_stopping(model, data, optimizer, criterion, device,
     print(f"\nTraining GNN (max {num_epochs} epochs, patience {patience})...")
     
     for epoch in range(num_epochs):
-        # Train
         train_loss = train_gnn_epoch(model, data, optimizer, criterion, device)
-        
-        # Evaluate on validation
         val_metrics = evaluate_gnn(model, data, data.val_mask, device)
         
-        # Record history
         history['train_loss'].append(train_loss)
         history['val_loss'].append(val_metrics['loss'])
         history['val_accuracy'].append(val_metrics['accuracy'])
         history['val_f1'].append(val_metrics['f1'])
         
-        # Early stopping check
         if val_metrics['loss'] < best_val_loss:
             best_val_loss = val_metrics['loss']
             best_model = copy.deepcopy(model)
@@ -947,14 +578,12 @@ def train_gnn_with_early_stopping(model, data, optimizer, criterion, device,
         else:
             patience_counter += 1
         
-        # Print progress
         if verbose and (epoch % 10 == 0 or patience_counter == 0):
             print(f"  Epoch {epoch:3d}: Train Loss={train_loss:.4f}, "
                   f"Val Loss={val_metrics['loss']:.4f}, "
                   f"Val Acc={val_metrics['accuracy']:.4f}, "
                   f"Val F1={val_metrics['f1']:.4f}")
         
-        # Early stopping
         if patience_counter >= patience:
             print(f"\n  ✓ Early stopping at epoch {epoch} (no improvement for {patience} epochs)")
             break
@@ -964,23 +593,8 @@ def train_gnn_with_early_stopping(model, data, optimizer, criterion, device,
     return best_model, history
 
 
-def print_detailed_metrics(metrics, label_encoder, split_name="Test"):
-    """
-    Print detailed classification metrics including per-class performance.
-    
-    Displays overall metrics, per-class accuracy/recall/F1, and confusion matrix.
-    
-    Args:
-        metrics (dict): Metrics dictionary from evaluate_gnn()
-        label_encoder: LabelEncoder with class names
-        split_name (str): Name of split (e.g., "Test", "Val"). Default: "Test"
-    
-    Returns:
-        None: Prints to console
-    
-    Example:
-        >>> print_detailed_metrics(test_metrics, label_encoder, "Test")
-    """
+def print_detailed_metrics(metrics, label_map, split_name="Test"):
+    """Print detailed classification metrics."""
     print(f"\n{'='*80}")
     print(f"{split_name.upper()} SET METRICS")
     print(f"{'='*80}")
@@ -991,51 +605,643 @@ def print_detailed_metrics(metrics, label_encoder, split_name="Test"):
     print(f"  Recall:    {metrics['recall']:.4f}")
     print(f"  F1 Score:  {metrics['f1']:.4f}")
     
-    # Per-class metrics
-    print(f"\nPer-Class Metrics:")
     y_true = metrics['true_labels']
     y_pred = metrics['predictions']
     
+    # Get class names for report
+    unique_labels = sorted(set(y_true) | set(y_pred))
+    target_names = [label_map.get(l, str(l)) for l in unique_labels]
+    
+    print(f"\nPer-Class Metrics:")
     report = classification_report(y_true, y_pred, 
-                                   target_names=[str(c) for c in label_encoder.classes_],
+                                   labels=unique_labels,
+                                   target_names=target_names,
                                    zero_division=0,
                                    digits=4)
     print(report)
     
-    # Confusion matrix
-    cm = confusion_matrix(y_true, y_pred)
+    cm = confusion_matrix(y_true, y_pred, labels=unique_labels)
     print(f"\nConfusion Matrix:")
-    print(f"  Rows = True labels, Columns = Predicted labels")
-    print(f"  Classes: {label_encoder.classes_}")
+    print(f"  Classes: {[label_map.get(l, str(l)) for l in unique_labels]}")
     print(cm)
+    
+    return cm
 
 
-def save_gnn_model(model, path, metadata=None):
-    """
-    Save trained GNN model and metadata.
-    
-    Saves model state dict and optional metadata (hyperparameters, metrics, etc.)
-    to a .pt file for later reuse.
-    
-    Args:
-        model: Trained GNN model
-        path (str): Save path (e.g., 'models/gnn_sage_70_15_15.pt')
-        metadata (dict, optional): Additional info to save (metrics, config, etc.)
-    
-    Returns:
-        None
-    
-    Example:
-        >>> save_gnn_model(best_model, 'models/gnn_sage.pt', 
-        ...                metadata={'split': '70/15/15', 'val_f1': 0.85})
-    """
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+def save_gnn_model(model, path, metadata=None, label_map=None):
+    """Save trained GNN model with metadata and label mapping."""
+    model_dir = os.path.dirname(path)
+    if model_dir:
+        os.makedirs(model_dir, exist_ok=True)
     
     checkpoint = {
         'model_state_dict': model.state_dict(),
         'model_class': model.__class__.__name__,
-        'metadata': metadata or {}
+        'metadata': metadata or {},
+        'label_map': label_map or LABEL_MAP
     }
     
     torch.save(checkpoint, path)
     print(f"  ✓ Model saved to: {path}")
+
+
+# ============================================================================
+# COMPLETE TRAINING PIPELINE
+# ============================================================================
+
+def train_gnn_multiclass(csv_path, split_name, train_ratio, val_ratio, 
+                         model_type='GAT', save_dir='models', device=None):
+    """
+    Complete multiclass GNN training pipeline.
+    
+    Args:
+        csv_path: Path to training CSV
+        split_name: Name for saving (e.g., '70_15_15')
+        train_ratio: Training set ratio
+        val_ratio: Validation set ratio
+        model_type: 'GAT' or 'GraphSAGE'
+        save_dir: Directory to save model
+        device: torch device
+    
+    Returns:
+        tuple: (best_model, test_metrics, label_map, data, feature_names)
+    """
+    print(f"\n{'='*80}")
+    print(f"TRAINING MULTICLASS {model_type} - Split {split_name}")
+    print(f"{'='*80}")
+    
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
+    
+    # Load data
+    scaler_path = f'scalers/gnn_scaler_multiclass_{split_name}.pkl'
+    X, y, scaler, protocols, feature_names, label_map = load_and_preprocess_gnn_data(
+        csv_path, scaler_path=scaler_path, fit_scaler=True, binary_labels=False
+    )
+    
+    n_samples = X.shape[0]
+    num_features = X.shape[1]
+    num_classes = len(set(y))
+    
+    # Check if dataset is too large for GPU
+    MAX_GPU_NODES = int(os.environ.get('GNN_MAX_GPU_NODES', 50000))
+    if device.type == 'cuda' and n_samples > MAX_GPU_NODES:
+        print(f"  Dataset ({n_samples} nodes) > GPU limit ({MAX_GPU_NODES}). Using CPU.")
+        device = torch.device('cpu')
+    
+    # Build protocol-aware graph
+    edge_index = build_protocol_aware_knn_graph(X, protocols, k=5)
+    
+    # Create masks
+    train_mask, val_mask, test_mask = create_train_val_test_masks(
+        n_samples, y, train_ratio=train_ratio, val_ratio=val_ratio
+    )
+    
+    # Create PyG data
+    data = create_pyg_data(X, y, edge_index, train_mask, val_mask, test_mask)
+    
+    # Create model
+    if model_type.upper() == 'GAT':
+        model = GATModel(num_features=num_features, hidden_dim=64, 
+                        num_classes=num_classes, heads=2, device=device)
+    else:
+        model = GraphSAGEModel(num_features=num_features, hidden_dim=64,
+                               num_classes=num_classes, device=device)
+    
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
+    
+    # Calculate class weights
+    y_train = y[train_mask]
+    weights = calculate_class_weights(y_train)
+    criterion = nn.CrossEntropyLoss(weight=weights.to(device))
+    
+    # Train
+    best_model, history = train_gnn_with_early_stopping(
+        model, data, optimizer, criterion, device,
+        num_epochs=200, patience=20, verbose=True
+    )
+    
+    # Evaluate on test set
+    test_metrics = evaluate_gnn(best_model, data, data.test_mask, device)
+    print_detailed_metrics(test_metrics, label_map, "Test")
+    
+    # Check for low accuracy
+    if test_metrics['accuracy'] < 0.5:
+        print("\n⚠️  WARNING: Low accuracy (<50%). Diagnostics:")
+        print(f"  - Train samples: {train_mask.sum()}")
+        print(f"  - Unique classes in train: {len(set(y[train_mask]))}")
+        print(f"  - Class distribution: {dict(Counter(y[train_mask]))}")
+    
+    # Save model
+    os.makedirs(save_dir, exist_ok=True)
+    model_name = f"gnn_{model_type.lower()}_{split_name}.pt"
+    model_path = os.path.join(save_dir, model_name)
+    save_gnn_model(best_model, model_path, 
+                   metadata={'split': split_name, 'test_f1': test_metrics['f1'],
+                            'num_features': num_features, 'num_classes': num_classes},
+                   label_map=label_map)
+    
+    return best_model, test_metrics, label_map, data, feature_names
+
+
+def train_gnn_binary(csv_path, model_type='GAT', save_dir='models', device=None):
+    """
+    Complete binary GNN training pipeline.
+    
+    Binary labels: 0=Benign (Normal), 1=Attack (all others)
+    """
+    print(f"\n{'='*80}")
+    print(f"TRAINING BINARY {model_type}")
+    print(f"{'='*80}")
+    
+    if device is None:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f"Using device: {device}")
+    
+    # Load data with binary labels
+    scaler_path = 'scalers/gnn_scaler_binary.pkl'
+    X, y, scaler, protocols, feature_names, label_map = load_and_preprocess_gnn_data(
+        csv_path, scaler_path=scaler_path, fit_scaler=True, binary_labels=True
+    )
+    
+    n_samples = X.shape[0]
+    num_features = X.shape[1]
+    num_classes = 2
+    
+    # Check GPU limit
+    MAX_GPU_NODES = int(os.environ.get('GNN_MAX_GPU_NODES', 50000))
+    if device.type == 'cuda' and n_samples > MAX_GPU_NODES:
+        print(f"  Dataset ({n_samples} nodes) > GPU limit ({MAX_GPU_NODES}). Using CPU.")
+        device = torch.device('cpu')
+    
+    # Build protocol-aware graph
+    edge_index = build_protocol_aware_knn_graph(X, protocols, k=5)
+    
+    # Create masks (70/15/15 split for binary)
+    train_mask, val_mask, test_mask = create_train_val_test_masks(
+        n_samples, y, train_ratio=0.7, val_ratio=0.15
+    )
+    
+    # Create PyG data
+    data = create_pyg_data(X, y, edge_index, train_mask, val_mask, test_mask)
+    
+    # Create model
+    if model_type.upper() == 'GAT':
+        model = GATModel(num_features=num_features, hidden_dim=64,
+                        num_classes=num_classes, heads=2, device=device)
+    else:
+        model = GraphSAGEModel(num_features=num_features, hidden_dim=64,
+                               num_classes=num_classes, device=device)
+    
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
+    
+    # Calculate class weights
+    y_train = y[train_mask]
+    weights = calculate_class_weights(y_train)
+    criterion = nn.CrossEntropyLoss(weight=weights.to(device))
+    
+    # Train
+    best_model, history = train_gnn_with_early_stopping(
+        model, data, optimizer, criterion, device,
+        num_epochs=200, patience=20, verbose=True
+    )
+    
+    # Evaluate
+    test_metrics = evaluate_gnn(best_model, data, data.test_mask, device)
+    print_detailed_metrics(test_metrics, label_map, "Test")
+    
+    # Check for low accuracy
+    if test_metrics['accuracy'] < 0.5:
+        print("\n⚠️  WARNING: Low accuracy (<50%). Diagnostics:")
+        print(f"  - Class distribution: {dict(Counter(y[train_mask]))}")
+    
+    # Save model
+    os.makedirs(save_dir, exist_ok=True)
+    model_name = f"gnn_{model_type.lower()}_binary.pt"
+    model_path = os.path.join(save_dir, model_name)
+    save_gnn_model(best_model, model_path,
+                   metadata={'binary': True, 'test_f1': test_metrics['f1'],
+                            'num_features': num_features},
+                   label_map=label_map)
+    
+    return best_model, test_metrics, label_map, data, feature_names
+
+
+# ============================================================================
+# EXPLAINABILITY UTILITIES
+# ============================================================================
+
+def explain_node(model, data, node_idx, device, feature_names=None):
+    """
+    Explain a single node's prediction using GNNExplainer.
+    
+    Returns:
+        dict: Explanation with top features, neighbors, edges
+    """
+    model.eval()
+    data = data.to(device)
+    
+    try:
+        explainer = Explainer(
+            model=model,
+            algorithm=GNNExplainer(epochs=100),
+            explanation_type='model',
+            node_mask_type='attributes',
+            edge_mask_type='object',
+            model_config=dict(
+                mode='multiclass_classification',
+                task_level='node',
+                return_type='log_probs',
+            ),
+        )
+        
+        explanation = explainer(data.x, data.edge_index, index=node_idx)
+        
+        # Extract feature importance
+        node_mask = explanation.node_mask
+        if node_mask is not None:
+            node_mask = node_mask.cpu().numpy()
+            if len(node_mask.shape) > 1:
+                feature_importance = node_mask[node_idx] if node_idx < len(node_mask) else node_mask.mean(axis=0)
+            else:
+                feature_importance = node_mask
+        else:
+            feature_importance = np.zeros(data.x.shape[1])
+        
+        # Get top features
+        top_k = min(10, len(feature_importance))
+        top_feature_idx = np.argsort(feature_importance)[-top_k:][::-1]
+        
+        if feature_names is not None:
+            top_features = [(feature_names[i], float(feature_importance[i])) for i in top_feature_idx]
+        else:
+            top_features = [(f"Feature_{i}", float(feature_importance[i])) for i in top_feature_idx]
+        
+        # Extract edge importance
+        edge_mask = explanation.edge_mask
+        if edge_mask is not None:
+            edge_mask = edge_mask.cpu().numpy()
+            important_edges = np.where(edge_mask > 0.5)[0]
+        else:
+            important_edges = []
+        
+        # Find neighbors
+        edge_index = data.edge_index.cpu().numpy()
+        neighbors = []
+        for i in range(edge_index.shape[1]):
+            if edge_index[0, i] == node_idx:
+                neighbors.append(int(edge_index[1, i]))
+            elif edge_index[1, i] == node_idx:
+                neighbors.append(int(edge_index[0, i]))
+        neighbors = list(set(neighbors))[:10]  # Limit to 10 neighbors
+        
+        # Get prediction
+        with torch.no_grad():
+            out = model(data.x, data.edge_index)
+            pred = out[node_idx].argmax().item()
+            true_label = data.y[node_idx].item()
+        
+        return {
+            'node_idx': node_idx,
+            'predicted_class': pred,
+            'true_class': true_label,
+            'top_features': top_features,
+            'num_important_edges': len(important_edges),
+            'neighbors': neighbors
+        }
+        
+    except Exception as e:
+        print(f"  Warning: GNNExplainer failed for node {node_idx}: {e}")
+        # Return basic info without explanation
+        with torch.no_grad():
+            out = model(data.x, data.edge_index)
+            pred = out[node_idx].argmax().item()
+            true_label = data.y[node_idx].item()
+        
+        return {
+            'node_idx': node_idx,
+            'predicted_class': pred,
+            'true_class': true_label,
+            'top_features': [],
+            'num_important_edges': 0,
+            'neighbors': [],
+            'error': str(e)
+        }
+
+
+def explain_nodes_by_class(model, data, device, label_map, feature_names=None, n_per_class=3):
+    """
+    Explain N random nodes per class.
+    
+    Args:
+        model: Trained GNN model
+        data: PyG Data object
+        device: torch device
+        label_map: Label mapping dict
+        feature_names: List of feature names
+        n_per_class: Number of nodes to explain per class
+    
+    Returns:
+        dict: Explanations grouped by class
+    """
+    print(f"\nExplaining {n_per_class} nodes per class...")
+    
+    y = data.y.cpu().numpy()
+    unique_classes = sorted(set(y))
+    
+    explanations = {}
+    
+    for cls in unique_classes:
+        class_name = label_map.get(cls, str(cls))
+        class_indices = np.where(y == cls)[0]
+        
+        if len(class_indices) == 0:
+            continue
+        
+        # Sample random nodes
+        n_sample = min(n_per_class, len(class_indices))
+        sampled_indices = np.random.choice(class_indices, n_sample, replace=False)
+        
+        explanations[class_name] = []
+        
+        for node_idx in sampled_indices:
+            exp = explain_node(model, data, int(node_idx), device, feature_names)
+            explanations[class_name].append(exp)
+        
+        print(f"  {class_name}: explained {n_sample} nodes")
+    
+    return explanations
+
+
+def summarize_explanations(explanations, label_map, save_path=None):
+    """
+    Summarize explanations across all classes.
+    
+    Args:
+        explanations: Dict of explanations from explain_nodes_by_class
+        label_map: Label mapping dict
+        save_path: Optional path to save summary (JSON)
+    
+    Returns:
+        dict: Summary with top features per class
+    """
+    print("\n" + "="*80)
+    print("EXPLANATION SUMMARY")
+    print("="*80)
+    
+    summary = {}
+    
+    for class_name, class_explanations in explanations.items():
+        print(f"\n{class_name}:")
+        
+        # Aggregate feature importance
+        feature_scores = {}
+        total_edges = 0
+        total_neighbors = 0
+        correct_predictions = 0
+        
+        for exp in class_explanations:
+            for feat_name, score in exp.get('top_features', []):
+                if feat_name not in feature_scores:
+                    feature_scores[feat_name] = []
+                feature_scores[feat_name].append(score)
+            
+            total_edges += exp.get('num_important_edges', 0)
+            total_neighbors += len(exp.get('neighbors', []))
+            
+            if exp['predicted_class'] == exp['true_class']:
+                correct_predictions += 1
+        
+        # Average scores
+        avg_feature_scores = {k: np.mean(v) for k, v in feature_scores.items()}
+        top_features = sorted(avg_feature_scores.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        print(f"  Top influential features:")
+        for feat, score in top_features:
+            print(f"    - {feat}: {score:.4f}")
+        
+        n_explanations = len(class_explanations) if class_explanations else 1
+        print(f"  Avg important edges: {total_edges / n_explanations:.1f}")
+        print(f"  Avg neighbors: {total_neighbors / n_explanations:.1f}")
+        print(f"  Prediction accuracy: {correct_predictions}/{len(class_explanations)}")
+        
+        summary[class_name] = {
+            'top_features': top_features,
+            'avg_important_edges': total_edges / n_explanations,
+            'avg_neighbors': total_neighbors / n_explanations,
+            'prediction_accuracy': correct_predictions / n_explanations if n_explanations > 0 else 0
+        }
+    
+    # Save if path provided
+    if save_path:
+        save_dir = os.path.dirname(save_path)
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
+        
+        # Convert to JSON-serializable format
+        json_summary = {}
+        for cls, data in summary.items():
+            json_summary[cls] = {
+                'top_features': [(str(f), float(s)) for f, s in data['top_features']],
+                'avg_important_edges': float(data['avg_important_edges']),
+                'avg_neighbors': float(data['avg_neighbors']),
+                'prediction_accuracy': float(data['prediction_accuracy'])
+            }
+        
+        with open(save_path, 'w') as f:
+            json.dump(json_summary, f, indent=2)
+        print(f"\n✓ Summary saved to: {save_path}")
+    
+    return summary
+
+
+def run_explainability(model, data, device, label_map, feature_names, 
+                       save_dir='explanations', n_per_class=3):
+    """
+    Run complete explainability pipeline.
+    
+    Args:
+        model: Trained GNN model
+        data: PyG Data object
+        device: torch device
+        label_map: Label mapping dict
+        feature_names: List of feature names
+        save_dir: Directory to save explanations
+        n_per_class: Nodes to explain per class
+    
+    Returns:
+        dict: Summary of explanations
+    """
+    os.makedirs(save_dir, exist_ok=True)
+    
+    print(f"\n{'='*80}")
+    print("RUNNING EXPLAINABILITY ANALYSIS")
+    print(f"{'='*80}")
+    
+    # Explain nodes by class
+    explanations = explain_nodes_by_class(
+        model, data, device, label_map, feature_names, n_per_class
+    )
+    
+    # Save raw explanations
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    exp_path = os.path.join(save_dir, f"explanations_{timestamp}.json")
+    
+    # Convert to JSON-serializable
+    json_explanations = {}
+    for cls, exps in explanations.items():
+        json_explanations[cls] = []
+        for exp in exps:
+            json_exp = {
+                'node_idx': int(exp['node_idx']),
+                'predicted_class': int(exp['predicted_class']),
+                'true_class': int(exp['true_class']),
+                'top_features': [(str(f), float(s)) for f, s in exp.get('top_features', [])],
+                'num_important_edges': int(exp.get('num_important_edges', 0)),
+                'neighbors': [int(n) for n in exp.get('neighbors', [])]
+            }
+            json_explanations[cls].append(json_exp)
+    
+    with open(exp_path, 'w') as f:
+        json.dump(json_explanations, f, indent=2)
+    print(f"✓ Raw explanations saved to: {exp_path}")
+    
+    # Summarize
+    summary_path = os.path.join(save_dir, f"summary_{timestamp}.json")
+    summary = summarize_explanations(explanations, label_map, summary_path)
+    
+    return summary
+
+
+# ============================================================================
+# CTGAN UTILITIES (PRESERVED FROM ORIGINAL)
+# ============================================================================
+
+def calculate_target_samples(data, balance_strategy='moderate'):
+    """Calculate target sample sizes for each class based on balance strategy."""
+    label_counts = data['Label'].value_counts()
+    median_count = label_counts.median()
+    max_count = label_counts.max()
+    
+    target_samples = {}
+    
+    if balance_strategy == 'aggressive':
+        target_size = int(median_count)
+        target_samples = {label: target_size for label in label_counts.index}
+        
+    elif balance_strategy == 'moderate':
+        majority_target = int(max_count * 0.75)
+        minority_target = int(majority_target * 0.5)
+        
+        for label in label_counts.index:
+            if label_counts[label] > majority_target:
+                target_samples[label] = majority_target
+            elif label_counts[label] < minority_target:
+                target_samples[label] = minority_target
+            else:
+                target_samples[label] = label_counts[label]
+                
+    else:  # conservative
+        minority_target = int(max_count * 0.25)
+        
+        for label in label_counts.index:
+            if label_counts[label] < minority_target:
+                target_samples[label] = minority_target
+            else:
+                target_samples[label] = label_counts[label]
+    
+    return target_samples
+
+
+def calculate_synthetic_quality_metrics(original_data, synthetic_data, numerical_columns):
+    """Calculate quality metrics comparing original and synthetic data."""
+    metrics = {}
+    
+    orig_means = original_data[numerical_columns].mean()
+    synth_means = synthetic_data[numerical_columns].mean()
+    
+    metrics['mae_mean'] = mean_absolute_error(orig_means, synth_means)
+    metrics['mse_mean'] = mean_squared_error(orig_means, synth_means)
+    
+    js_scores = []
+    for col in numerical_columns:
+        orig_hist, bins = np.histogram(original_data[col], bins=50, density=True)
+        synth_hist, _ = np.histogram(synthetic_data[col], bins=bins, density=True)
+        
+        orig_hist = orig_hist + 1e-10
+        synth_hist = synth_hist + 1e-10
+        
+        orig_hist = orig_hist / orig_hist.sum()
+        synth_hist = synth_hist / synth_hist.sum()
+        
+        js_score = jensenshannon(orig_hist, synth_hist)
+        js_scores.append(js_score)
+    
+    metrics['js_divergence'] = np.mean(js_scores)
+    
+    orig_corr = original_data[numerical_columns].corr()
+    synth_corr = synthetic_data[numerical_columns].corr()
+    metrics['feature_correlation_diff'] = np.abs(orig_corr - synth_corr).mean().mean()
+    
+    return metrics
+
+
+def print_quality_report(original_data, synthetic_data, label_value, numerical_columns):
+    """Print quality report comparing original and synthetic data."""
+    print(f"\n{'='*80}")
+    print(f"QUALITY REPORT FOR LABEL {label_value}")
+    print(f"{'='*80}")
+    
+    print(f"\nSample Counts:")
+    print(f"  Original samples: {len(original_data):,}")
+    print(f"  Synthetic samples: {len(synthetic_data):,}")
+    print(f"  Total samples: {len(original_data) + len(synthetic_data):,}")
+    
+    metrics = calculate_synthetic_quality_metrics(original_data, synthetic_data, numerical_columns)
+    
+    print(f"\nQuality Metrics:")
+    print(f"  Mean Absolute Error (MAE):        {metrics['mae_mean']:.6f}")
+    print(f"  Mean Squared Error (MSE):         {metrics['mse_mean']:.6f}")
+    print(f"  Jensen-Shannon Divergence:        {metrics['js_divergence']:.6f}")
+    print(f"  Feature Correlation Difference:   {metrics['feature_correlation_diff']:.6f}")
+    
+    js_div = metrics['js_divergence']
+    if js_div < 0.1:
+        quality = "EXCELLENT"
+    elif js_div < 0.2:
+        quality = "GOOD"
+    elif js_div < 0.3:
+        quality = "ACCEPTABLE"
+    else:
+        quality = "POOR"
+    
+    print(f"\n  Overall Quality Assessment: {quality}")
+
+
+def print_dataset_summary(data, dataset_name="Dataset"):
+    """Print comprehensive dataset summary."""
+    print(f"\n{'='*80}")
+    print(f"{dataset_name.upper()} SUMMARY")
+    print(f"{'='*80}")
+    
+    print(f"\nTotal samples: {len(data):,}")
+    print(f"Total features: {len(data.columns) - 1}")
+    
+    label_counts = data['Label'].value_counts().sort_index()
+    max_count = label_counts.max()
+    min_count = label_counts.min()
+    
+    print(f"\nLabel Distribution:")
+    print(f"{'Label':<15} {'Count':<12} {'Percentage':<12} {'Imbalance Ratio':<15}")
+    print(f"{'-'*55}")
+    
+    for label, count in label_counts.items():
+        percentage = (count / len(data)) * 100
+        ratio = max_count / count if count > 0 else float('inf')
+        print(f"{label:<15} {count:<12,} {percentage:<11.2f}% {ratio:<14.2f}x")
+    
+    print(f"\nImbalance Statistics:")
+    print(f"  Majority class size: {max_count:,}")
+    print(f"  Minority class size: {min_count:,}")
+    print(f"  Imbalance ratio: {max_count/min_count:.2f}:1")

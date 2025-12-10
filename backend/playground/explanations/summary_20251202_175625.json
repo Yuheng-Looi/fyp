@@ -1,0 +1,56 @@
+{
+  "Benign": {
+    "top_features": [
+      [
+        "Fwd Pkts/s",
+        0.7352629899978638
+      ],
+      [
+        "Tot Fwd Pkts",
+        0.7124955654144287
+      ],
+      [
+        "Bwd Pkt Len Max",
+        0.55223498493433
+      ],
+      [
+        "Fwd IAT Max",
+        0.5492696017026901
+      ],
+      [
+        "Fwd Header Len",
+        0.4971519410610199
+      ]
+    ],
+    "avg_important_edges": 0.2,
+    "avg_neighbors": 6.0,
+    "prediction_accuracy": 0.8
+  },
+  "Attack": {
+    "top_features": [
+      [
+        "Init Bwd Win Byts",
+        0.5330448150634766
+      ],
+      [
+        "Dst Port",
+        0.5003093332052231
+      ],
+      [
+        "Fwd IAT Tot",
+        0.4911232888698578
+      ],
+      [
+        "Flow IAT Min",
+        0.42088339328765867
+      ],
+      [
+        "Fwd IAT Max",
+        0.40138307213783264
+      ]
+    ],
+    "avg_important_edges": 2.6,
+    "avg_neighbors": 7.2,
+    "prediction_accuracy": 0.6
+  }
+}
