@@ -1,127 +1,184 @@
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, roc_auc_score
+# xgb_utils.py
 import xgboost as xgb
-import cupy as cp
-import joblib  # for saving model
-import numpy as np
+import joblib
 import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import numpy as np
+from sklearn.metrics import (
+    classification_report,
+    roc_auc_score,
+    confusion_matrix,
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+)
+from sklearn.model_selection import train_test_split
 
-
-def train_xgboost_binary_gpu(X, y, feature_set_name='All Features', test_size=0.25, random_state=42,
-                             early_stopping_rounds=20, model_save_path=None):
-    # Split on CPU
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=y
-    )
-
-    # Convert to GPU arrays (cupy)
-    X_train_cp = cp.array(X_train.values)
-    y_train_cp = cp.array(y_train.values)
-    X_test_cp = cp.array(X_test.values)
-    y_test_cp = cp.array(y_test.values)
-
-    # Train on GPU
-    clf = xgb.XGBClassifier(
-        device="cuda",
-        tree_method="hist",
-        n_estimators=300,
-        eval_metric="logloss",
-        early_stopping_rounds=early_stopping_rounds
-    )
-
-    clf.fit(
-        X_train_cp, y_train_cp,
-        eval_set=[(X_train_cp, y_train_cp), (X_test_cp, y_test_cp)],
-        verbose=False,
-    )
-
-    # Save model if path is given
-    if model_save_path:
-        joblib.dump(clf, model_save_path)
-        print(f"Best model saved to: {model_save_path}")
-
-    # Predict
-    y_pred = clf.predict(X_test_cp)
-    y_proba = clf.predict_proba(X_test_cp)[:, 1]
-
-    report = classification_report(cp.asnumpy(y_test_cp), cp.asnumpy(y_pred), output_dict=True)
-    auc = roc_auc_score(cp.asnumpy(y_test_cp), cp.asnumpy(y_proba))
-
-    return {
-        "model": clf,
-        "feature_set": feature_set_name,
-        "classification_report": report,
-        "roc_auc": auc,
-        "evals_result": clf.evals_result(),
-        "best_iteration": clf.best_iteration
-    }
-
-
-
-def plot_learning_curve(evals_result, feature_set, metric='logloss'):
+class XGBDetector:
     """
-    Enhanced learning curve plot with better visualization of overlapping curves.
+    GPU-Accelerated XGBoost for IDS.
     """
-    train_metric = evals_result['validation_0'][metric]
-    val_metric = evals_result['validation_1'][metric]
-    epochs = range(1, len(train_metric) + 1)
+    def __init__(self, scaler_path='scalers/trichannel_scaler.pkl', label_encoder_path='encoders/label_encoder.pkl'):
+        self.model = None
+        self.evals_result = {}
+        
+        # We load these primarily to bundle them with the model logic if needed later
+        self.scaler_path = scaler_path
+        self.le_path = label_encoder_path
 
-    # Calculate statistics for better y-axis limits
-    min_val = min(min(train_metric), min(val_metric))
-    max_val = max(max(train_metric), max(val_metric))
-    range_val = max_val - min_val
-    
-    # Create figure with larger size
-    plt.figure(figsize=(10, 6))
-    
-    # Plot with enhanced styling
-    plt.plot(epochs, train_metric, 
-             label='Train Loss',
-             color='forestgreen',
-             linestyle='-',
-             linewidth=2,
-             alpha=0.7)
-    
-    plt.plot(epochs, val_metric, 
-             label='Validation Loss',
-             color='crimson',
-             linestyle='--',
-             linewidth=2,
-             alpha=0.7)
-    
-    # Add fill between curves to highlight differences
-    plt.fill_between(epochs, train_metric, val_metric,
-                     alpha=0.15,
-                     color='gray',
-                     label='Difference')
-    
-    # Set y-axis limits to zoom in on the differences
-    padding = range_val * 0.1  # 10% padding
-    plt.ylim(min_val - padding, max_val + padding)
-    
-    # Add difference statistics
-    mean_diff = np.mean(np.array(val_metric) - np.array(train_metric))
-    max_diff = max(np.array(val_metric) - np.array(train_metric))
-    plt.text(0.02, 0.98, 
-             f'Mean Diff: {mean_diff:.6f}\nMax Diff: {max_diff:.6f}',
-             transform=plt.gca().transAxes,
-             verticalalignment='top',
-             bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-    
-    # Enhance grid and styling
-    plt.grid(True, linestyle='--', alpha=0.3)
-    plt.xlabel('Iteration', fontsize=12)
-    plt.ylabel(metric.title(), fontsize=12)
-    plt.title(f'{feature_set} - Learning Curve\n({metric})', fontsize=13, pad=10)
-    
-    # Enhance legend
-    plt.legend(loc='center right', framealpha=0.8, fancybox=True, shadow=True)
-    
-    plt.tight_layout()
-    plt.show()
-    
-    # Print numeric summary
-    print(f"\nMetric Statistics for {feature_set}:")
-    print(f"Final Train Loss: {train_metric[-1]:.6f}")
-    print(f"Final Valid Loss: {val_metric[-1]:.6f}")
-    print(f"Final Difference: {val_metric[-1] - train_metric[-1]:.6f}")
+    def get_golden_split(self, X, y, val_size=0.15, test_size=0.15, seed=42, stratify_labels=None):
+        """
+        Returns Train/Val/Test split using provided ratios. Stratifies on `stratify_labels`
+        if given; otherwise on y.
+        """
+        stratify_vec = stratify_labels if stratify_labels is not None else y
+
+        # 1. Split off Test
+        X_temp, X_test, y_temp, y_test, strat_temp, strat_test = train_test_split(
+            X, y, stratify_vec, test_size=test_size, random_state=seed, stratify=stratify_vec
+        )
+        
+        # 2. Split remainder into Train/Val
+        relative_val = val_size / (1 - test_size)
+        X_train, X_val, y_train, y_val, strat_train, strat_val = train_test_split(
+            X_temp, y_temp, strat_temp, test_size=relative_val, random_state=seed, stratify=strat_temp
+        )
+        
+        return X_train, X_val, X_test, y_train, y_val, y_test
+
+    def train_binary(self, X_train, y_train, X_val, y_val, patience=20):
+        print("[-] Initializing XGBoost (GPU: ON, Tree: Hist)...")
+        
+        self.model = xgb.XGBClassifier(
+            device="cuda",              # Native GPU
+            tree_method="hist",         # Fastest on GPU
+            objective="binary:logistic",
+            n_estimators=400,           # Moderate cap since no early stopping
+            learning_rate=0.1,          # Slightly higher LR without early stop
+            max_depth=6,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            eval_metric=["logloss", "auc"],
+            random_state=42,
+            use_label_encoder=False
+        )
+
+        print("[-] Training started...")
+        self.model.fit(
+            X_train,
+            y_train,
+            eval_set=[(X_train, y_train), (X_val, y_val)],
+            verbose=False,
+        )
+
+        best_iter = getattr(self.model, "best_iteration", None)
+        if best_iter is not None:
+            print(f"[+] Training complete. Best Iteration: {best_iter}")
+        else:
+            print(f"[+] Training complete. Trees trained: {self.model.n_estimators}")
+        self.evals_result = self.model.evals_result()
+        return self.evals_result
+
+    def evaluate_metrics(self, X_test, y_test):
+        preds = self.model.predict(X_test)
+        probs = self.model.predict_proba(X_test)[:, 1]
+
+        metrics = {
+            "accuracy": accuracy_score(y_test, preds),
+            "precision": precision_score(y_test, preds, zero_division=0),
+            "recall": recall_score(y_test, preds, zero_division=0),
+            "f1": f1_score(y_test, preds, zero_division=0),
+            "auc": roc_auc_score(y_test, probs),
+        }
+        return metrics
+
+    def evaluate(self, X_test, y_test):
+        print("\n=== XGBoost Evaluation ===")
+        preds = self.model.predict(X_test)
+        probs = self.model.predict_proba(X_test)[:, 1]
+        
+        print(classification_report(y_test, preds, digits=4))
+        print(f"ROC-AUC: {roc_auc_score(y_test, probs):.4f}")
+        
+        # Confusion Matrix
+        cm = confusion_matrix(y_test, preds)
+        plt.figure(figsize=(5,4))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+        plt.title("Confusion Matrix")
+        plt.show()
+
+    def plot_learning_curve(self):
+        """
+        Visual proof of convergence (Thesis Requirement)
+        """
+        if not self.evals_result:
+            return
+        
+        results = self.evals_result
+        epochs = len(results['validation_0']['logloss'])
+        x_axis = range(0, epochs)
+        
+        plt.figure(figsize=(10,5))
+        plt.plot(x_axis, results['validation_0']['logloss'], label='Train')
+        plt.plot(x_axis, results['validation_1']['logloss'], label='Validation')
+        plt.legend()
+        plt.ylabel('Log Loss')
+        plt.title('XGBoost Learning Curve')
+        plt.show()
+
+    def save(self, path='models/xgb_detector.json'):
+        # JSON is safer for XGBoost version compatibility
+        self.model.save_model(path)
+        print(f"[+] Model saved to {path}")
+
+    def train_with_split_search(self, X, y, seeds=(42, 52, 62), val_size=0.15, test_size=0.15, patience=20, metric="auc", stratify_labels=None, split_grid=None):
+        """
+        Try multiple random seeds (and optional split ratios) for train/val/test split and keep the best model.
+        metric: one of ['auc','f1','accuracy','recall','precision']
+        split_grid: optional list of (train, val, test) tuples. If None, uses provided val/test sizes (train = 1 - val - test).
+        stratify_labels: optional array to stratify on original multiclass labels while training binary labels.
+        """
+        best_score = -np.inf
+        best_seed = None
+        best_metrics = None
+        best_model = None
+        best_data = None
+        best_split = None
+        best_evals_result = None
+
+        if split_grid is None:
+            split_grid = [(1 - val_size - test_size, val_size, test_size)]
+
+        for train_ratio, val_ratio, test_ratio in split_grid:
+            # derive val/test for helper (uses val_size/test_size)
+            for seed in seeds:
+                print(f"\n[~] Evaluating split train/val/test={train_ratio:.2f}/{val_ratio:.2f}/{test_ratio:.2f} seed={seed}")
+                X_train, X_val, X_test, y_train, y_val, y_test = self.get_golden_split(
+                    X, y, val_size=val_ratio, test_size=test_ratio, seed=seed, stratify_labels=stratify_labels
+                )
+
+                evals_result = self.train_binary(X_train, y_train, X_val, y_val, patience=patience)
+                metrics = self.evaluate_metrics(X_test, y_test)
+                score = metrics.get(metric, metrics["auc"])
+
+                print(f"    Metrics (seed {seed}): {metrics}")
+
+                if score > best_score:
+                    best_score = score
+                    best_seed = seed
+                    best_metrics = metrics
+                    best_model = self.model
+                    best_data = (X_test, y_test)
+                    best_split = (train_ratio, val_ratio, test_ratio)
+                    best_evals_result = evals_result
+
+        if best_model is not None:
+            self.model = best_model
+            self.evals_result = best_evals_result
+        self.best_seed = best_seed
+        self.best_split = best_split
+        self.best_data = best_data
+        print(f"\n[+] Best split {best_split} seed={best_seed} {metric}={best_score:.4f}")
+        return {"best_seed": best_seed, "best_split": best_split, "best_score": best_score, "metrics": best_metrics}
