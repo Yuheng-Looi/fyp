@@ -46,7 +46,9 @@ def train_and_generate_ctgan(
     generate_samples: int = 5000,
     epochs: int = 300,
     batch_size: int = 500,
-    cuda: bool = True
+    cuda: bool = True,
+    min_quality: float = 0.7,
+    max_retries: int = 3
 ) -> Tuple[pd.DataFrame, float]:
     """
     Train CTGAN on a specific class and generate synthetic samples.
@@ -91,33 +93,52 @@ def train_and_generate_ctgan(
     if "Dst Port" in real_data_no_label.columns:
         metadata.update_column(column_name="Dst Port", sdtype="categorical")
     
-    try:
-        # Train CTGAN
-        synthesizer = CTGANSynthesizer(
-            metadata,
-            epochs=epochs,
-            batch_size=batch_size,
-            cuda=cuda,
-            verbose=False
-        )
-        synthesizer.fit(real_data_no_label)
-        
-        # Generate synthetic samples
-        synthetic = synthesizer.sample(generate_samples)
-        
-        # Evaluate quality
-        quality_report = evaluate_quality(real_data_no_label, synthetic, metadata)
-        quality_score = quality_report.get_score()
-        
-        # Add Label column back
-        synthetic["Label"] = label_value
-        
-        print(f"  ✅ Generated {len(synthetic)} samples with quality: {quality_score:.4f}")
-        return synthetic, quality_score
-        
-    except Exception as e:
-        print(f"  ⚠ Error generating for {label_value}: {e}")
-        return pd.DataFrame(), 0.0
+    best_synthetic = pd.DataFrame()
+    best_quality = 0.0
+    
+    for attempt in range(1, max_retries + 1):
+        try:
+            # Increase epochs slightly on each retry to give the model more capacity
+            attempt_epochs = int(epochs * (1 + 0.2 * (attempt - 1)))
+            print(f"  Attempt {attempt}/{max_retries} - epochs: {attempt_epochs}")
+            
+            synthesizer = CTGANSynthesizer(
+                metadata,
+                epochs=attempt_epochs,
+                batch_size=batch_size,
+                cuda=cuda,
+                verbose=False
+            )
+            synthesizer.fit(real_data_no_label)
+            
+            synthetic = synthesizer.sample(generate_samples)
+            quality_report = evaluate_quality(real_data_no_label, synthetic, metadata)
+            quality_score = quality_report.get_score()
+            
+            # Track best
+            if quality_score > best_quality:
+                best_quality = quality_score
+                best_synthetic = synthetic.copy()
+            
+            # Add Label column back for current attempt
+            synthetic["Label"] = label_value
+            
+            print(f"  ✅ Attempt {attempt}: quality={quality_score:.4f}")
+            
+            if quality_score >= min_quality:
+                print(f"  ✅ Accepted (meets min quality {min_quality})")
+                return synthetic, quality_score
+            else:
+                print(f"  ⚠ Below threshold ({quality_score:.4f} < {min_quality}); will retry")
+        except Exception as e:
+            print(f"  ⚠ Error on attempt {attempt} for {label_value}: {e}")
+            continue
+    
+    # If we get here, we did not meet the threshold; return best attempt
+    if not best_synthetic.empty:
+        best_synthetic["Label"] = label_value
+    print(f"  ⚠ Did not reach min quality {min_quality}; best={best_quality:.4f}")
+    return best_synthetic, best_quality
 
 
 def filter_synthetic_samples(

@@ -134,36 +134,47 @@ def prepare_label_encoder(df, label_col="Label", save_path="encoders/label_encod
     Ensures consistent mapping across entire FYP pipeline.
     """
 
+    # Normalize label strings to avoid duplicates like "DDoS " vs "DDoS"
+    df = df.copy()
+    df[label_col] = (
+        df[label_col]
+        .astype(str)
+        .str.strip()
+        .str.replace(r"\s+", " ", regex=True)
+    )
+
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-    # If encoder already exists → load it (consistent mapping)
+    need_refit = True
+    le = None
+
     if os.path.exists(save_path):
         with open(save_path, "rb") as f:
             le = pickle.load(f)
         print("Loaded existing label encoder from:", save_path)
 
-        # Check if dataframe contains unseen labels (shouldn't happen)
-        unique_df_labels = set(df[label_col].unique())
-        unknown = unique_df_labels - set(le.classes_)
-        if unknown:
-            print("⚠ Warning: New/unseen labels detected:", unknown)
-        y = le.transform(df[label_col])
+        # Compare cleaned labels with stored classes; refit if mismatch
+        current_labels = sorted(set(df[label_col].unique()))
+        stored_labels = sorted(le.classes_.tolist())
+        if current_labels == stored_labels:
+            need_refit = False
+        else:
+            print("⚠ Mismatch in label set after cleaning. Recreating encoder to remove duplicates (e.g., trailing spaces).")
+
+    if need_refit:
+        from sklearn.preprocessing import LabelEncoder
+        le = LabelEncoder()
+        y = le.fit_transform(df[label_col])
+        with open(save_path, "wb") as f:
+            pickle.dump(le, f)
+        print("Saved NEW label encoder to:", save_path)
+        print("\n🧭 Label mapping:")
+        for cls, idx in zip(le.classes_, le.transform(le.classes_)):
+            print(f"{cls} → {idx}")
         return y, le
 
-    # Else create new encoder
-    from sklearn.preprocessing import LabelEncoder
-    le = LabelEncoder()
-    y = le.fit_transform(df[label_col])
-
-    # Save encoder forever
-    with open(save_path, "wb") as f:
-        pickle.dump(le, f)
-
-    print("Saved NEW label encoder to:", save_path)
-    print("\n🧭 Label mapping:")
-    for cls, idx in zip(le.classes_, le.transform(le.classes_)):
-        print(f"{cls} → {idx}")
-
+    # If no refit needed, just transform
+    y = le.transform(df[label_col])
     return y, le
 
 
