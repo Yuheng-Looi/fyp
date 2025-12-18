@@ -3,15 +3,19 @@ import pandas as pd
 import joblib
 import numpy as np
 import xgboost as xgb
-from fastapi import FastAPI, HTTPException
+import uuid
+import os
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
-from typing import List, Dict, Any, Union  # NOTE: Added Any
+from typing import List, Dict, Any, Union, Optional
 
 from anomaly_utils import SafetyNet
 from xgb_utils import XGBDetector
+from scaler_utils import TriChannelScaler
 
 app = FastAPI(title="IDS Inference Engine")
 model_store = {}
+scaler_store = {}
 
 # This list must match training features (15 features from cleaned_data15.csv)
 EXPECTED_COLUMNS = [
@@ -26,59 +30,136 @@ def load_artifacts():
     print("[-] Loading artifacts...")
     try:
         # SafetyNet (joblib pickle)
-        sn = joblib.load('models/safety_net_v1.pkl')
-        model_store['safety_net'] = sn
+        if os.path.exists('models/safety_net_v1.pkl'):
+            sn = joblib.load('models/safety_net_v1.pkl')
+            model_store['safety_net'] = sn
+        else:
+            print("[!] SafetyNet model not found.")
 
         # XGBoost (JSON)
-        xgb_model = xgb.XGBClassifier()
-        xgb_model.load_model('models/xgb_binary_v1.json')
-        xgb_det = XGBDetector()
-        xgb_det.model = xgb_model
-        model_store['xgb'] = xgb_det
+        if os.path.exists('models/xgb_binary_v1.json'):
+            xgb_model = xgb.XGBClassifier()
+            xgb_model.load_model('models/xgb_binary_v1.json')
+            xgb_det = XGBDetector()
+            xgb_det.model = xgb_model
+            model_store['xgb'] = xgb_det
+        else:
+            print("[!] XGBoost model not found.")
         
-        print("[+] All models loaded successfully!")
-    except Exception as e:
-        print(f"[!] Error loading models: {e}")
+        # Default Scaler
+        if os.path.exists('scalers/trichannel_scaler.pkl'):
+            default_scaler = joblib.load('scalers/trichannel_scaler.pkl')
+            scaler_store['default'] = default_scaler
+        else:
+            print("[!] Default TriChannelScaler not found.")
 
-# --- FIX IS HERE ---
+        print("[+] Artifact loading complete.")
+    except Exception as e:
+        print(f"[!] Error loading artifacts: {e}")
+
 class NetworkFlow(BaseModel):
-    # Change Dict[str, float] to Dict[str, Any]
-    # This allows 'src': '10.0.0.1' (str) AND 'flow_duration': 0.5 (float)
     features: Dict[str, Any]
+    scaler_id: str = "default"
+
+@app.post("/refit_scaler")
+async def refit_scaler(file: UploadFile = File(...)):
+    try:
+        # Read CSV file
+        df = pd.read_csv(file.file)
+        
+        # Validate columns
+        missing_cols = [col for col in EXPECTED_COLUMNS if col not in df.columns]
+        if missing_cols:
+            raise HTTPException(status_code=400, detail=f"Missing columns in CSV: {missing_cols}")
+            
+        # Use only expected columns
+        df_train = df[EXPECTED_COLUMNS]
+        
+        # Create and fit new scaler
+        # We assume the uploaded file contains BENIGN traffic for calibration
+        # We use a dummy label '0' and tell scaler that benign_label is 0
+        scaler = TriChannelScaler(benign_label=0)
+        dummy_labels = pd.Series([0] * len(df_train))
+        
+        scaler.fit(df_train, dummy_labels)
+        
+        # Generate ID and save
+        scaler_id = str(uuid.uuid4())
+        save_path = f"scalers/scaler_{scaler_id}.pkl"
+        
+        # Ensure directory exists
+        os.makedirs("scalers", exist_ok=True)
+        
+        joblib.dump(scaler, save_path)
+        scaler_store[scaler_id] = scaler
+        
+        return {
+            "message": "Scaler refitted successfully",
+            "scaler_id": scaler_id,
+            "info": "Use this ID in your prediction requests to use this calibrated scaler."
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error refitting scaler: {str(e)}")
 
 @app.post("/predict")
 def predict_traffic(flow: NetworkFlow):
-    if 'xgb' not in model_store:
+    if 'xgb' not in model_store or 'safety_net' not in model_store:
         raise HTTPException(status_code=500, detail="Models not loaded")
 
-    # 1. Convert JSON to DataFrame
+    # 1. Get Scaler
+    scaler_id = flow.scaler_id
+    if scaler_id not in scaler_store:
+        # Try to load from disk if not in memory
+        potential_path = f"scalers/scaler_{scaler_id}.pkl"
+        if os.path.exists(potential_path):
+            try:
+                scaler_store[scaler_id] = joblib.load(potential_path)
+            except:
+                raise HTTPException(status_code=404, detail=f"Scaler ID {scaler_id} not found or corrupted")
+        else:
+            if scaler_id == 'default':
+                 raise HTTPException(status_code=500, detail="Default scaler not available")
+            raise HTTPException(status_code=404, detail=f"Scaler ID {scaler_id} not found")
+            
+    scaler = scaler_store[scaler_id]
+
+    # 2. Convert JSON to DataFrame
     input_data = pd.DataFrame([flow.features])
 
     # Optional: Extract IPs for logging purposes (if available)
     src_ip = flow.features.get('src', 'Unknown')
     dst_ip = flow.features.get('dst', 'Unknown')
     
-    # 2. SAFETY CHECK: Filter Columns
-    # We strip out 'src' and 'dst' here so the model only gets the numbers it expects.
+    # 3. SAFETY CHECK: Filter Columns
     try:
-        model_input = input_data[EXPECTED_COLUMNS]
+        model_input_raw = input_data[EXPECTED_COLUMNS]
     except KeyError as e:
         return {"error": f"Missing feature in request: {e}"}
 
-    # 3. Predictions (no scaler; models were trained on raw feature values)
+    # 4. Transform to Tri-Channel (15 -> 45 features)
+    try:
+        model_input_scaled = scaler.transform(model_input_raw)
+    except Exception as e:
+        return {"error": f"Scaling failed: {str(e)}"}
+
+    # 5. Predictions (on SCALED features)
     sn_model = model_store['safety_net']
-    is_anomaly = sn_model.predict(model_input)[0]
+    # SafetyNet expects DataFrame with 45 cols
+    is_anomaly = sn_model.predict(model_input_scaled)[0]
     
     xgb_model = model_store['xgb']
-    xgb_pred = xgb_model.model.predict(model_input)[0]
-    xgb_prob = float(xgb_model.model.predict_proba(model_input)[0][1])
+    # XGB expects DataFrame with 45 cols
+    xgb_pred = xgb_model.model.predict(model_input_scaled)[0]
+    xgb_prob = float(xgb_model.model.predict_proba(model_input_scaled)[0][1])
 
-    # 5. Result
+    # 6. Result
     result = {
         "verdict": "BENIGN",
         "confidence": 0.0,
-        "source": src_ip, # We can now return the IP in the logs
+        "source": src_ip,
         "destination": dst_ip,
+        "scaler_used": scaler_id,
         "details": {
             "safety_net_flag": int(is_anomaly),
             "xgb_flag": int(xgb_pred),
