@@ -1,27 +1,30 @@
-# anomaly_utils.py
 import numpy as np
 import pandas as pd
 import joblib
 import copy
 from sklearn.ensemble import IsolationForest
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_auc_score
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
 
 class SafetyNet:
     """
     Unsupervised Anomaly Detection using Isolation Forest.
     Role: The 'Safety Net' for zero-day attacks.
+    CRITICAL: Must receive Tri-Channel Scaled Features to be adaptive.
     """
     def __init__(self, scaler_path='scalers/trichannel_scaler.pkl', label_col='Label', features=None):
         self.label_col = label_col
         self.features = features
+        self.scaler = None
         
-        # Load scaler (Optional but recommended for consistency)
-        try:
-            self.scaler = joblib.load(scaler_path)
-        except:
-            print(f"[!] Warning: Scaler not found at {scaler_path}. Ensure input is pre-scaled.")
-            self.scaler = None
+        # We don't force load scaler here to keep class flexible, 
+        # but in pipeline we expect scaled input.
+        if scaler_path:
+            try:
+                self.scaler = joblib.load(scaler_path)
+                print(f"[Info] SafetyNet loaded scaler from {scaler_path}")
+            except:
+                print(f"[Info] Scaler not found at {scaler_path}. Training expects pre-scaled data.")
 
         self.model = IsolationForest(
             n_estimators=100,
@@ -34,12 +37,13 @@ class SafetyNet:
     def fit(self, X_benign_real):
         """
         Train ONLY on Real Benign Data.
+        Input X_benign_real MUST BE PRE-SCALED (45 features) if adaptability is desired.
         """
         # Auto-detect features if not provided
         if self.features is None:
             self.features = [c for c in X_benign_real.columns if c != self.label_col]
 
-        print(f"[-] Safety Net: Training on {len(X_benign_real)} samples...")
+        print(f"[-] Safety Net: Training on {len(X_benign_real)} samples. Feature count: {len(self.features)}")
         
         # Ensure we only use features, no labels
         X_subset = X_benign_real[self.features]
@@ -49,6 +53,7 @@ class SafetyNet:
     def predict(self, X):
         """
         Returns: 1 for Anomaly (Attack), 0 for Normal
+        Input X MUST BE PRE-SCALED.
         """
         X_subset = X[self.features]
         # IsoForest raw: -1 is anomaly, 1 is normal
@@ -59,8 +64,7 @@ class SafetyNet:
     def fit_with_split_search(self, df, seeds=(42, 52, 62), normal_label="Normal", val_size=0.2):
         """
         Finds the best random split that maximizes detection on a VALIDATION set.
-        Note: The Training is still Unsupervised (Benign Only). 
-        The Validation uses Labels to tune the 'seed'.
+        Note: Input 'df' SHOULD BE SCALED (45 features + Label).
         """
         if self.features is None:
             self.features = [c for c in df.columns if c != self.label_col]
@@ -91,7 +95,6 @@ class SafetyNet:
             temp_model.fit(X_train_benign)
 
             # 3. Validate on Mixed Set (Benign + Attack) to check detection power
-            # Raw Isolation Forest prediction (-1, 1) needs conversion
             raw_preds = temp_model.predict(X_val)
             preds = np.where(raw_preds == -1, 1, 0)
 
@@ -99,7 +102,6 @@ class SafetyNet:
             f1 = f1_score(y_val, preds, zero_division=0)
             
             # Score samples for AUC (Higher score = Normal, Lower = Anomaly)
-            # We negate it so Higher = Anomaly for AUC calculation
             raw_scores = temp_model.score_samples(X_val)
             anomaly_scores = -raw_scores
             auc = roc_auc_score(y_val, anomaly_scores)

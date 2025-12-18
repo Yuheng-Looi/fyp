@@ -1,4 +1,3 @@
-# xgb_utils.py
 import xgboost as xgb
 import joblib
 import matplotlib.pyplot as plt
@@ -23,24 +22,16 @@ class XGBDetector:
     def __init__(self, scaler_path='scalers/trichannel_scaler.pkl', label_encoder_path='encoders/label_encoder.pkl'):
         self.model = None
         self.evals_result = {}
-        
-        # We load these primarily to bundle them with the model logic if needed later
         self.scaler_path = scaler_path
         self.le_path = label_encoder_path
 
     def get_golden_split(self, X, y, val_size=0.15, test_size=0.15, seed=42, stratify_labels=None):
-        """
-        Returns Train/Val/Test split using provided ratios. Stratifies on `stratify_labels`
-        if given; otherwise on y.
-        """
         stratify_vec = stratify_labels if stratify_labels is not None else y
-
-        # 1. Split off Test
+        
         X_temp, X_test, y_temp, y_test, strat_temp, strat_test = train_test_split(
             X, y, stratify_vec, test_size=test_size, random_state=seed, stratify=stratify_vec
         )
         
-        # 2. Split remainder into Train/Val
         relative_val = val_size / (1 - test_size)
         X_train, X_val, y_train, y_val, strat_train, strat_val = train_test_split(
             X_temp, y_temp, strat_temp, test_size=relative_val, random_state=seed, stratify=strat_temp
@@ -52,11 +43,11 @@ class XGBDetector:
         print("[-] Initializing XGBoost (GPU: ON, Tree: Hist)...")
         
         self.model = xgb.XGBClassifier(
-            device="cuda",              # Native GPU
-            tree_method="hist",         # Fastest on GPU
+            device="cuda",              
+            tree_method="hist",         
             objective="binary:logistic",
-            n_estimators=400,           # Moderate cap since no early stopping
-            learning_rate=0.1,          # Slightly higher LR without early stop
+            n_estimators=400,           
+            learning_rate=0.1,          
             max_depth=6,
             subsample=0.8,
             colsample_bytree=0.8,
@@ -102,44 +93,17 @@ class XGBDetector:
         print(classification_report(y_test, preds, digits=4))
         print(f"ROC-AUC: {roc_auc_score(y_test, probs):.4f}")
         
-        # Confusion Matrix
         cm = confusion_matrix(y_test, preds)
         plt.figure(figsize=(5,4))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
         plt.title("Confusion Matrix")
         plt.show()
 
-    def plot_learning_curve(self):
-        """
-        Visual proof of convergence (Thesis Requirement)
-        """
-        if not self.evals_result:
-            return
-        
-        results = self.evals_result
-        epochs = len(results['validation_0']['logloss'])
-        x_axis = range(0, epochs)
-        
-        plt.figure(figsize=(10,5))
-        plt.plot(x_axis, results['validation_0']['logloss'], label='Train')
-        plt.plot(x_axis, results['validation_1']['logloss'], label='Validation')
-        plt.legend()
-        plt.ylabel('Log Loss')
-        plt.title('XGBoost Learning Curve')
-        plt.show()
-
     def save(self, path='models/xgb_detector.json'):
-        # JSON is safer for XGBoost version compatibility
         self.model.save_model(path)
         print(f"[+] Model saved to {path}")
 
     def train_with_split_search(self, X, y, seeds=(42, 52, 62), val_size=0.15, test_size=0.15, patience=20, metric="auc", stratify_labels=None, split_grid=None):
-        """
-        Try multiple random seeds (and optional split ratios) for train/val/test split and keep the best model.
-        metric: one of ['auc','f1','accuracy','recall','precision']
-        split_grid: optional list of (train, val, test) tuples. If None, uses provided val/test sizes (train = 1 - val - test).
-        stratify_labels: optional array to stratify on original multiclass labels while training binary labels.
-        """
         best_score = -np.inf
         best_seed = None
         best_metrics = None
@@ -152,9 +116,10 @@ class XGBDetector:
             split_grid = [(1 - val_size - test_size, val_size, test_size)]
 
         for train_ratio, val_ratio, test_ratio in split_grid:
-            # derive val/test for helper (uses val_size/test_size)
             for seed in seeds:
                 print(f"\n[~] Evaluating split train/val/test={train_ratio:.2f}/{val_ratio:.2f}/{test_ratio:.2f} seed={seed}")
+                
+                # Input X here MUST be the SCALED features
                 X_train, X_val, X_test, y_train, y_val, y_test = self.get_golden_split(
                     X, y, val_size=val_ratio, test_size=test_ratio, seed=seed, stratify_labels=stratify_labels
                 )
