@@ -1,0 +1,42 @@
+{
+    "info": {
+        "model_id": "multiclass_src_ip_temporal_sage_h128_l3_70",
+        "task": "multiclass",
+        "strategy": "src_ip_temporal",
+        "arch": "sage",
+        "split": [
+            0.7,
+            0.15,
+            0.15
+        ],
+        "config": {
+            "hidden_dim": 128,
+            "num_layers": 3,
+            "dropout": 0.5
+        },
+        "best_epoch": 45,
+        "val_f1": -1,
+        "test_f1": 0.6035510078352514,
+        "attack_recall": 0.9992739593417231,
+        "fpr": 0.019095869056897894,
+        "macro_f1": 0.6035510078352514,
+        "training_time": 1.4399032592773438
+    },
+    "features": [
+        "Fwd Header Len",
+        "Protocol",
+        "Init Bwd Win Byts",
+        "Tot Fwd Pkts",
+        "Pkt Len Max",
+        "Pkt Len Mean",
+        "Tot Bwd Pkts",
+        "Dst Port",
+        "Bwd Pkt Len Max",
+        "Fwd Pkts/s",
+        "Flow IAT Max",
+        "TotLen Bwd Pkts",
+        "TotLen Fwd Pkts",
+        "Bwd Pkt Len Std",
+        "Bwd Pkt Len Mean"
+    ]
+}
