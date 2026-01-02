@@ -1,0 +1,1706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flow Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .flow-row { height: 60px; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200 min-h-screen font-sans">
+    <div id="app" class="max-w-7xl mx-auto p-4 md:p-6 space-y-4">
+        <!-- Header -->
+        <div class="flex justify-between items-center border-b border-slate-700 pb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-white">Flow Dashboard</h1>
+                <p class="text-slate-400 text-xs">Optimized Virtual List</p>
+            </div>
+            <div class="flex bg-slate-800 p-1 rounded-lg">
+                <button id="tab-upload" onclick="switchTab('upload')" class="px-4 py-1.5 rounded text-sm font-bold transition-all bg-blue-600 text-white shadow">Upload</button>
+                <button id="tab-live" onclick="switchTab('live')" class="px-4 py-1.5 rounded text-sm font-bold transition-all text-slate-400 hover:text-white">Live</button>
+            </div>
+        </div>
+
+        <!-- Upload View -->
+        <div id="view-upload" class="space-y-4">
+            <!-- Controls -->
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex flex-wrap gap-4 items-end">
+                <div class="w-32">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Type</label>
+                    <select id="sourceType" onchange="onSourceTypeChange()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="pcap">PCAP</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">File</label>
+                    <div class="flex gap-2">
+                        <input type="file" id="fileInput" onchange="onFileSelected()" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"/>
+                        <button id="saveUploadBtn" onclick="saveUploadedFile()" class="hidden px-3 py-1 bg-amber-600 hover:bg-amber-500 rounded-lg text-xs font-bold text-white whitespace-nowrap" title="Save to storage">Save</button>
+                    </div>
+                </div>
+                <!-- Analysis Control Buttons -->
+                <div id="btn-group-idle" class="flex gap-2">
+                    <button id="editMappingBtn" onclick="editMapping()" class="hidden px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-bold text-white shadow-lg transition-all">
+                        Edit Mapping
+                    </button>
+                    <button id="analyzeBtn" onclick="startAnalysis()" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-lg font-bold text-white shadow-lg transition-all">
+                        Analyze
+                    </button>
+                </div>
+                <div id="btn-group-running" class="hidden flex gap-2">
+                    <button id="pauseBtn" onclick="pauseAnalysis()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg font-bold text-white shadow-lg transition-all">
+                        Pause
+                    </button>
+                    <button id="stopBtn" onclick="stopAnalysis()" class="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-white shadow-lg transition-all">
+                        Stop
+                    </button>
+                </div>
+                <div id="btn-group-paused" class="hidden flex gap-2">
+                    <button id="continueBtn" onclick="continueAnalysis()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all">
+                        Continue
+                    </button>
+                    <button id="restartBtn" onclick="restartAnalysis()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white shadow-lg transition-all">
+                        Restart
+                    </button>
+                    <button id="clearBtn" onclick="clearOutput()" class="px-4 py-2 bg-slate-600 hover:bg-slate-500 rounded-lg font-bold text-white shadow-lg transition-all">
+                        Clear
+                    </button>
+                </div>
+                <div class="w-48">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Or Stored File</label>
+                    <select id="storedSelect" onchange="loadStored()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="">-- Select --</option>
+                    </select>
+                </div>
+            </div>
+            <div id="status" class="text-xs text-slate-400 px-1"></div>
+
+            <!-- Metrics Panel - changes based on labelled vs unlabelled -->
+            <div id="metrics-panel" class="hidden grid grid-cols-4 gap-4">
+                <!-- For labelled data: Accuracy, Recall, F1, Total -->
+                <!-- For unlabelled data: Benign, Attack, (hidden), Total -->
+                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center relative group cursor-help">
+                    <div id="m-label-1" class="text-[10px] font-bold text-slate-500 uppercase">Accuracy</div>
+                    <div id="m-val-1" class="text-xl font-bold text-emerald-400">--</div>
+                    <div id="tooltip-1" class="absolute hidden group-hover:block left-1/2 -translate-x-1/2 bottom-full mb-2 bg-slate-900 border border-slate-600 rounded-lg p-3 text-xs text-left whitespace-pre-wrap z-50 min-w-[200px] shadow-xl"></div>
+                </div>
+                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center relative group cursor-help">
+                    <div id="m-label-2" class="text-[10px] font-bold text-slate-500 uppercase">Recall</div>
+                    <div id="m-val-2" class="text-xl font-bold text-blue-400">--</div>
+                    <div id="tooltip-2" class="absolute hidden group-hover:block left-1/2 -translate-x-1/2 bottom-full mb-2 bg-slate-900 border border-slate-600 rounded-lg p-3 text-xs text-left whitespace-pre-wrap z-50 min-w-[200px] shadow-xl"></div>
+                </div>
+                <div id="metric-3-container" class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center relative group cursor-help">
+                    <div id="m-label-3" class="text-[10px] font-bold text-slate-500 uppercase">F1 Score</div>
+                    <div id="m-val-3" class="text-xl font-bold text-purple-400">--</div>
+                    <div id="tooltip-3" class="absolute hidden group-hover:block left-1/2 -translate-x-1/2 bottom-full mb-2 bg-slate-900 border border-slate-600 rounded-lg p-3 text-xs text-left whitespace-pre-wrap z-50 min-w-[200px] shadow-xl"></div>
+                </div>
+                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center relative group cursor-help">
+                    <div id="m-label-4" class="text-[10px] font-bold text-slate-500 uppercase">Total</div>
+                    <div id="m-val-4" class="text-xl font-bold text-white">--</div>
+                    <div id="tooltip-4" class="absolute hidden group-hover:block left-1/2 -translate-x-1/2 bottom-full mb-2 bg-slate-900 border border-slate-600 rounded-lg p-3 text-xs text-left whitespace-pre-wrap z-50 min-w-[200px] shadow-xl"></div>
+                </div>
+            </div>
+
+            <!-- Filter & Sort Controls -->
+            <div class="space-y-4">
+                <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase">Filters</label>
+                            <p class="text-xs text-slate-400">Add multiple column filters; rows are combined with AND.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" onclick="addFilterRow()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg text-xs font-bold text-white shadow">+ Add Filter</button>
+                            <button type="button" onclick="resetFilters()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold text-slate-200">Clear</button>
+                        </div>
+                    </div>
+                    <div id="filter-rows" class="space-y-2"></div>
+                </div>
+                <div class="flex flex-wrap gap-3 items-end">
+                    <div class="w-32">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Sort By</label>
+                        <select id="sortColumn" onchange="applySorting()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white outline-none">
+                            <option value="timestamp">Timestamp</option>
+                            <option value="tuple">Flow Tuple</option>
+                            <option value="src_ip">Source IP</option>
+                            <option value="dst_ip">Dest IP</option>
+                            <option value="prediction">Prediction</option>
+                            <option value="label">Truth Label</option>
+                            <option value="veracity">Veracity</option>
+                            <option value="action">Action</option>
+                        </select>
+                    </div>
+                    <div class="w-24">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Order</label>
+                        <select id="sortOrder" onchange="applySorting()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white outline-none">
+                            <option value="asc">↑ Asc</option>
+                            <option value="desc">↓ Desc</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Container -->
+            <div class="flex gap-4" style="height: calc(100vh - 400px); min-height: 300px;">
+                <!-- Virtual Table -->
+                <div class="flex-1 bg-slate-800 rounded-xl border border-slate-700 shadow-xl overflow-hidden flex flex-col">
+                    <!-- Header -->
+                    <div class="flex items-center px-4 py-3 bg-slate-900/50 text-slate-400 text-xs uppercase font-bold border-b border-slate-700 shrink-0">
+                        <div class="w-28 shrink-0">Time</div>
+                        <div class="flex-1 min-w-0 px-2">Flow Tuple</div>
+                        <div class="w-24 shrink-0 text-center">Pred</div>
+                        <div id="col-truth" class="hidden w-36 shrink-0 text-center">Truth</div>
+                        <div id="col-veracity" class="hidden w-20 shrink-0 text-center">Veracity</div>
+                        <div class="w-20 shrink-0 text-right">Action</div>
+                    </div>
+                    <!-- Virtual Scroll Container -->
+                    <div id="virtual-container" class="flex-1 overflow-y-auto relative custom-scrollbar" onscroll="onVirtualScroll()">
+                        <div id="virtual-content" class="relative w-full"></div>
+                    </div>
+                </div>
+
+                <!-- Detail Panel -->
+                <div id="detail-panel" class="hidden w-96 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50 shrink-0">
+                        <h3 class="font-bold text-white">Flow Details</h3>
+                        <button onclick="closeDetail()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+                    </div>
+                    <div id="detail-content" class="p-4 overflow-y-auto flex-1 space-y-6 custom-scrollbar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live View -->
+        <div id="view-live" class="hidden space-y-4">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex flex-col gap-4 md:flex-row md:items-end">
+                <div class="flex-1 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-bold text-slate-400 uppercase">Interface</label>
+                        <button id="ifaceRefreshBtn" type="button" onclick="refreshInterfaces()" class="px-3 py-1 text-[11px] font-bold rounded-lg border border-slate-600 text-slate-300 hover:text-white hover:border-slate-300 transition">Refresh</button>
+                    </div>
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <select id="ifaceSelect" onchange="onInterfaceSelected(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="">-- Select Available --</option>
+                        </select>
+                        <input type="text" id="ifaceInput" placeholder="or type custom e.g. s1-snoop" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none"/>
+                    </div>
+                    <p id="ifaceStatus" class="text-[11px] text-slate-400">Pick a mirrored interface from the list or enter one manually.</p>
+                </div>
+                <div class="flex gap-3 shrink-0">
+                    <button id="liveBtn" onclick="toggleLive()" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all">START</button>
+                    <button onclick="clearLive()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-bold text-slate-300">Clear</button>
+                </div>
+            </div>
+            <div id="live-container" class="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar"></div>
+        </div>
+    </div>
+
+    <!-- CSV Column Mapping Modal -->
+    <div id="mappingModal" class="fixed inset-0 bg-black/80 hidden items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col mx-4">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center shrink-0">
+                <div>
+                    <h3 class="text-xl font-bold text-white">Map CSV Columns</h3>
+                    <p class="text-sm text-slate-400 mt-1">Configure how your CSV columns map to required fields</p>
+                </div>
+                <button onclick="closeMappingModal()" class="text-slate-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto custom-scrollbar flex-1">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Basic Fields -->
+                    <div class="space-y-4">
+                        <h4 class="font-bold text-emerald-400 text-sm uppercase tracking-wider border-b border-slate-700 pb-2">Optional Fields (4)</h4>
+                        <p class="text-xs text-slate-500 mb-2">Timestamp + 3-tuple (Src IP, Dst IP, Src Port). Protocol & Dst Port are in 15 features.</p>
+                        <div class="grid grid-cols-2 gap-3" id="basic-fields-container"></div>
+                        
+                        <!-- Label Options -->
+                        <div class="mt-4 p-3 bg-slate-900/50 rounded-lg border border-slate-700/50">
+                            <div class="flex items-center mb-2">
+                                <input type="checkbox" id="csvHasLabel" onchange="toggleLabelOptions()" class="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-blue-500 bg-slate-800">
+                                <label for="csvHasLabel" class="ml-2 text-sm font-medium text-slate-300 cursor-pointer">CSV Contains Labels?</label>
+                            </div>
+                            <div id="labelOptionsWrapper" class="hidden space-y-2 mt-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Label Column</label>
+                                    <select id="map-label" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white outline-none"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Benign Label Value</label>
+                                    <input type="text" id="benignValue" value="BENIGN" placeholder="e.g. BENIGN or NORMAL" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white outline-none">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Features (15 required) -->
+                    <div class="space-y-4">
+                        <h4 class="font-bold text-blue-400 text-sm uppercase tracking-wider border-b border-slate-700 pb-2">Features (15 Required)</h4>
+                        <div class="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto custom-scrollbar pr-2" id="feature-fields-container"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6 border-t border-slate-700 flex justify-between items-center bg-slate-900/50 rounded-b-xl shrink-0">
+                <div id="mapping-error" class="text-red-400 text-sm"></div>
+                <div class="flex gap-3">
+                    <button onclick="closeMappingModal()" class="px-4 py-2 text-slate-300 hover:text-white font-bold">Cancel</button>
+                    <button onclick="submitMapping()" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold shadow-lg">Confirm & Analyze</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === STATE ===
+        let allFlows = [];
+        let filteredFlows = [];
+        let selectedFlowIndex = -1;
+        let isProcessing = false;
+        let isPaused = false;
+        let currentJobId = null;
+        let currentTotal = 0;
+        let isLive = false;
+        let liveInterval = null;
+        let pendingFormData = null;
+        let csvHeaders = [];
+        let currentFilename = null;
+        let lastUsedFile = null; // Track last file used for restart
+        let lastUsedSourceType = null; // 'upload' or 'stored'
+        let lastStoredValue = null; // Value of stored select
+        let currentMetricsCm = null; // Store confusion matrix for tooltips
+
+        // Virtual scroll constants
+        const ROW_HEIGHT = 60;
+        let visibleStart = 0;
+        let visibleEnd = 0;
+        let hasLabelsInDataset = false;
+        let filterRows = [];
+        let filterRowCounter = 0;
+        let availableInterfaces = [];
+        let isLoadingInterfaces = false;
+
+        // 15 Required Features
+        const FEATURE_KEYS = [
+            'Fwd Header Len', 'Protocol', 'Init Bwd Win Byts', 'Tot Fwd Pkts', 'Pkt Len Max',
+            'Pkt Len Mean', 'Tot Bwd Pkts', 'Dst Port', 'Bwd Pkt Len Max', 'Fwd Pkts/s',
+            'Flow IAT Max', 'TotLen Bwd Pkts', 'TotLen Fwd Pkts', 'Bwd Pkt Len Std',
+            'Bwd Pkt Len Mean'
+        ];
+
+        const FILTERABLE_COLUMNS = [
+            'timestamp', 'tuple', 'src_ip', 'dst_ip', 'src_port', 'dst_port',
+            'protocol', 'prediction', 'label', 'veracity', 'action'
+        ];
+
+        const FILTER_COLUMN_OPTIONS = ['all', ...FILTERABLE_COLUMNS];
+        const FILTER_COLUMN_LABELS = {
+            all: 'All Columns',
+            timestamp: 'Time',
+            tuple: 'Flow Tuple',
+            src_ip: 'Source IP',
+            dst_ip: 'Destination IP',
+            src_port: 'Source Port',
+            dst_port: 'Destination Port',
+            protocol: 'Protocol',
+            prediction: 'Prediction',
+            label: 'Truth Label',
+            veracity: 'Veracity',
+            action: 'Action'
+        };
+
+        // === UTILS ===
+        const formatTime = (ts) => {
+            if (ts === undefined || ts === null) return 'N/A';
+            const date = new Date(ts * 1000);
+            if (Number.isNaN(date.getTime())) return 'N/A';
+            return date.toLocaleString(undefined, {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+        };
+
+        const getFeatureValue = (flow, key) => {
+            if (!flow || !flow.features) return undefined;
+            const val = flow.features[key];
+            return val !== undefined && val !== null ? val : undefined;
+        };
+
+        const getDstPortValue = (flow) => {
+            const featVal = getFeatureValue(flow, 'Dst Port');
+            if (featVal !== undefined) return featVal;
+            if (!flow) return '';
+            return flow.dst_port !== undefined && flow.dst_port !== null ? flow.dst_port : '';
+        };
+
+        const getProtocolValue = (flow) => {
+            const featVal = getFeatureValue(flow, 'Protocol');
+            if (featVal !== undefined) return featVal;
+            if (!flow) return '';
+            return flow.protocol !== undefined && flow.protocol !== null ? flow.protocol : '';
+        };
+
+        const getTupleString = (flow) => {
+            const srcIp = flow?.src_ip || 'N/A';
+            const srcPort = flow?.src_port !== undefined && flow?.src_port !== null ? flow.src_port : 'N/A';
+            const dstIp = flow?.dst_ip || 'N/A';
+            const dstPortRaw = getDstPortValue(flow);
+            const dstPortNum = Number(dstPortRaw);
+            const dstPort = dstPortRaw !== '' && dstPortRaw !== undefined
+                ? (!Number.isNaN(dstPortNum) ? Math.round(dstPortNum) : dstPortRaw)
+                : 'N/A';
+            return `${srcIp}:${srcPort} -> ${dstIp}:${dstPort}`;
+        };
+
+        const getVeracityState = (flow) => {
+            const truthRaw = flow && flow.label !== undefined && flow.label !== null
+                ? flow.label.toString().trim()
+                : '';
+            if (!truthRaw) return { hasLabel: false, text: '', css: '', raw: '' };
+
+            const truthUpper = truthRaw.toUpperCase();
+            const benignSource = flow && flow.benign_label !== undefined && flow.benign_label !== null
+                ? flow.benign_label
+                : 'BENIGN';
+            const benignUpper = benignSource.toString().trim().toUpperCase() || 'BENIGN';
+            const predictionUpper = flow && flow.prediction
+                ? flow.prediction.toString().trim().toUpperCase()
+                : '';
+
+            const truthIsBenign = truthUpper === benignUpper;
+            const predIsBenign = predictionUpper === 'BENIGN';
+            const isCorrect = (predIsBenign && truthIsBenign) || (!predIsBenign && !truthIsBenign);
+            return {
+                hasLabel: true,
+                text: isCorrect ? '✓ Correct' : '✗ Wrong',
+                css: isCorrect ? 'text-emerald-400' : 'text-red-400',
+                raw: isCorrect ? 'correct' : 'wrong'
+            };
+        };
+
+        const getFilterValue = (flow, column) => {
+            if (!flow) return '';
+            switch (column) {
+                case 'timestamp':
+                case 'time':
+                    return flow.timestamp !== undefined && flow.timestamp !== null ? formatTime(flow.timestamp) : '';
+                case 'tuple':
+                    return getTupleString(flow);
+                case 'src_ip':
+                    return flow.src_ip || '';
+                case 'dst_ip':
+                    return flow.dst_ip || '';
+                case 'src_port':
+                    return flow.src_port !== undefined && flow.src_port !== null ? String(flow.src_port) : '';
+                case 'dst_port': {
+                    const val = getDstPortValue(flow);
+                    if (val === undefined || val === '') return '';
+                    const num = Number(val);
+                    return !Number.isNaN(num) ? String(Math.round(num)) : String(val);
+                }
+                case 'protocol': {
+                    const val = getProtocolValue(flow);
+                    if (val === undefined || val === '') return '';
+                    const num = Number(val);
+                    return !Number.isNaN(num) ? String(Math.round(num)) : String(val);
+                }
+                case 'prediction':
+                    return flow.prediction || '';
+                case 'label':
+                    return flow.label || '';
+                case 'veracity':
+                    return getVeracityState(flow).raw;
+                case 'action':
+                    return flow.action || '';
+                default:
+                    return flow[column] !== undefined && flow[column] !== null ? String(flow[column]) : '';
+            }
+        };
+
+        const matchesFilterValue = (flow, column, query, mode) => {
+            const value = getFilterValue(flow, column);
+            if (mode === 'not_contains') {
+                if (!query) return true;
+                if (!value) return true;
+                return !value.toLowerCase().includes(query);
+            }
+            if (!value) return false;
+            const normalized = value.toLowerCase();
+            switch (mode) {
+                case 'equals':
+                    return normalized === query;
+                case 'starts':
+                    return normalized.startsWith(query);
+                default:
+                    return normalized.includes(query);
+            }
+        };
+
+        const getSortValue = (flow, column) => {
+            switch (column) {
+                case 'timestamp':
+                case 'time':
+                    return flow?.timestamp || 0;
+                case 'src_port':
+                    return flow?.src_port !== undefined && flow?.src_port !== null ? Number(flow.src_port) : 0;
+                case 'dst_port': {
+                    const val = getDstPortValue(flow);
+                    return val !== undefined && val !== '' ? Number(val) || 0 : 0;
+                }
+                case 'protocol': {
+                    const val = getProtocolValue(flow);
+                    return val !== undefined && val !== '' ? Number(val) || 0 : 0;
+                }
+                default:
+                    return getFilterValue(flow, column).toLowerCase();
+            }
+        };
+
+        // === TAB SWITCHING ===
+        function switchTab(tab) {
+            document.getElementById('view-upload').classList.toggle('hidden', tab !== 'upload');
+            document.getElementById('view-live').classList.toggle('hidden', tab !== 'live');
+            document.getElementById('tab-upload').className = `px-4 py-1.5 rounded text-sm font-bold transition-all ${tab === 'upload' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`;
+            document.getElementById('tab-live').className = `px-4 py-1.5 rounded text-sm font-bold transition-all ${tab === 'live' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`;
+        }
+
+        // === BUTTON STATE MANAGEMENT ===
+        function updateButtonState(state) {
+            document.getElementById('btn-group-idle').classList.toggle('hidden', state !== 'idle');
+            document.getElementById('btn-group-running').classList.toggle('hidden', state !== 'running');
+            document.getElementById('btn-group-paused').classList.toggle('hidden', state !== 'paused');
+        }
+
+        // === VIRTUAL SCROLL ===
+        function onVirtualScroll() {
+            renderVisibleRows();
+        }
+
+        function renderVisibleRows() {
+            const container = document.getElementById('virtual-container');
+            const content = document.getElementById('virtual-content');
+            if (!container || !content) return;
+
+            const scrollTop = container.scrollTop;
+            const containerHeight = container.clientHeight;
+
+            content.style.height = (filteredFlows.length * ROW_HEIGHT) + 'px';
+
+            const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 5);
+            const endIndex = Math.min(filteredFlows.length, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + 5);
+
+            if (startIndex === visibleStart && endIndex === visibleEnd) return;
+            visibleStart = startIndex;
+            visibleEnd = endIndex;
+
+            let html = '';
+            for (let i = startIndex; i < endIndex; i++) {
+                const flow = filteredFlows[i];
+                if (!flow) continue;
+                
+                const isBenign = flow.prediction === 'BENIGN';
+                const predClass = isBenign ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10';
+                const actionClass = flow.action === "BLOCK" ? "text-red-400" : (flow.action === "RATE LIMIT" ? "text-amber-400" : "text-emerald-400");
+                const selectedClass = i === selectedFlowIndex ? 'bg-slate-700 border-l-4 border-l-blue-500' : '';
+                
+                const veracityState = getVeracityState(flow);
+                const hasLabel = veracityState.hasLabel;
+                const veracity = veracityState.text;
+                const veracityClass = veracityState.css;
+                
+                // Full 5-tuple display: get Dst Port and Protocol from features
+                const srcIp = flow.src_ip || 'N/A';
+                const dstIp = flow.dst_ip || 'N/A';
+                const srcPort = flow.src_port !== undefined && flow.src_port !== null ? flow.src_port : 'N/A';
+                // Dst Port and Protocol come from the 15 features
+                const dstPortRaw = getDstPortValue(flow);
+                const dstPortNum = Number(dstPortRaw);
+                const dstPort = dstPortRaw !== undefined && dstPortRaw !== ''
+                    ? (!Number.isNaN(dstPortNum) ? Math.round(dstPortNum) : dstPortRaw)
+                    : 'N/A';
+                const protocolRaw = getProtocolValue(flow);
+                const protocolNum = Number(protocolRaw);
+                const protocol = protocolRaw !== undefined && protocolRaw !== ''
+                    ? (!Number.isNaN(protocolNum) ? Math.round(protocolNum) : protocolRaw)
+                    : 'N/A';
+
+                // Row display: Timestamp, Flow 5-Tuple, Prediction, [Truth], [Veracity], Action
+                html += `
+                    <div class="flow-row flex items-center px-4 border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer transition-colors ${selectedClass}" 
+                         style="position:absolute; top:${i * ROW_HEIGHT}px; left:0; right:0;"
+                         onclick="selectFlow(${i})">
+                        <div class="w-28 font-mono text-xs text-slate-500 shrink-0">${formatTime(flow.timestamp)}</div>
+                        <div class="flex-1 min-w-0 px-2">
+                            <div class="flex items-center gap-1 text-sm">
+                                <span class="text-white font-bold truncate">${srcIp}:${srcPort}</span>
+                                <span class="text-slate-500 px-1">→</span>
+                                <span class="text-white font-bold truncate">${dstIp}:${dstPort}</span>
+                            </div>
+                            <div class="text-xs text-slate-500">Protocol: ${protocol}</div>
+                        </div>
+                        <div class="w-24 shrink-0 text-center">
+                            <span class="px-2 py-1 rounded text-xs font-bold ${predClass}">${flow.prediction}</span>
+                        </div>
+                        ${hasLabel ? `<div class="w-36 shrink-0 text-center text-xs text-slate-400 truncate" title="${flow.label}">${flow.label}</div>` : (hasLabelsInDataset ? '<div class="w-36"></div>' : '')}
+                        ${hasLabel ? `<div class="w-20 shrink-0 text-center text-xs font-bold ${veracityClass}">${veracity}</div>` : (hasLabelsInDataset ? '<div class="w-20"></div>' : '')}
+                        <div class="w-20 shrink-0 text-right font-bold text-xs ${actionClass}">${flow.action}</div>
+                    </div>
+                `;
+            }
+            content.innerHTML = html;
+        }
+
+        // === FLOW SELECTION & DETAIL ===
+        function selectFlow(index) {
+            selectedFlowIndex = index;
+            renderVisibleRows();
+            showDetail(filteredFlows[index]);
+        }
+
+        function showDetail(flow) {
+            if (!flow) return;
+            
+            const panel = document.getElementById('detail-panel');
+            const content = document.getElementById('detail-content');
+            panel.classList.remove('hidden');
+
+            const knownFields = ['src_ip', 'dst_ip', 'src_port', 'dst_port', 'timestamp', 'protocol', 'prediction', 'action', 'label', 'predict_time', 'latency_ms', 'confidence', 'features'];
+            
+            // Extract 15 features from nested features object
+            const featureEntries = FEATURE_KEYS.map(key => {
+                const val = getFeatureValue(flow, key);
+                return [key, val !== undefined ? val : 'N/A'];
+            });
+            
+            // 5-tuple with N/A fallback - get Dst Port and Protocol from features
+            const srcIp = flow.src_ip || 'N/A';
+            const srcPort = flow.src_port !== undefined && flow.src_port !== null ? flow.src_port : 'N/A';
+            const dstIp = flow.dst_ip || 'N/A';
+            const dstPortRaw = getDstPortValue(flow);
+            const dstPortNum = Number(dstPortRaw);
+            const dstPort = dstPortRaw !== undefined && dstPortRaw !== ''
+                ? (!Number.isNaN(dstPortNum) ? Math.round(dstPortNum) : dstPortRaw)
+                : 'N/A';
+            const protocolRaw = getProtocolValue(flow);
+            const protocolNum = Number(protocolRaw);
+            const protocol = protocolRaw !== undefined && protocolRaw !== ''
+                ? (!Number.isNaN(protocolNum) ? Math.round(protocolNum) : protocolRaw)
+                : 'N/A';
+            
+            // Latency / predict time (server sends latency_ms in milliseconds)
+            const latency = flow.latency_ms !== undefined ? `${flow.latency_ms.toFixed(2)} ms` : 'N/A';
+            
+            // Veracity calculation
+            const veracityState = getVeracityState(flow);
+            const hasLabel = veracityState.hasLabel;
+            let veracityHtml = '';
+            if (hasLabel) {
+                veracityHtml = `<div class="flex justify-between items-center"><span class="text-slate-400">Veracity</span><span class="font-bold ${veracityState.css}">${veracityState.text}</span></div>`;
+            }
+
+            const details = flow.details || {};
+            const gnnVerdict = flow.gnn_verdict || details.gnn_verdict || details.gnn_multiclass || 'N/A';
+            let gnnConfidenceVal = flow.gnn_confidence;
+            if (gnnConfidenceVal === undefined || gnnConfidenceVal === null) {
+                gnnConfidenceVal = details.gnn_confidence;
+            }
+            const gnnConfidenceText = gnnConfidenceVal !== undefined && gnnConfidenceVal !== null
+                ? Number(gnnConfidenceVal).toFixed(3)
+                : 'N/A';
+
+            content.innerHTML = `
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">5-Tuple</h4>
+                    <div class="bg-slate-900 rounded p-3 space-y-2 text-sm">
+                        <div class="flex justify-between"><span class="text-slate-400">Source</span> <span class="text-white font-mono">${srcIp}:${srcPort}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Destination</span> <span class="text-white font-mono">${dstIp}:${dstPort}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Protocol</span> <span class="text-white font-mono">${protocol}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Timestamp</span> <span class="text-white font-mono">${formatTime(flow.timestamp)}</span></div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Analysis</h4>
+                    <div class="bg-slate-900 rounded p-3 space-y-2 text-sm">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Prediction</span> 
+                            <span class="px-2 py-0.5 rounded text-xs font-bold ${flow.prediction === 'BENIGN' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">${flow.prediction}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">Action</span> 
+                            <span class="text-white font-bold">${flow.action}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">GNN Verdict</span>
+                            <span class="text-white font-bold">${gnnVerdict}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-400">GNN Confidence</span>
+                            <span class="text-emerald-300 font-mono">${gnnConfidenceText}</span>
+                        </div>
+                        ${hasLabel ? `<div class="flex justify-between items-center border-t border-slate-800 pt-2 mt-2"><span class="text-slate-400">Truth</span><span class="text-slate-300">${flow.label}</span></div>` : ''}
+                        ${veracityHtml}
+                        <div class="flex justify-between items-center border-t border-slate-800 pt-2 mt-2">
+                            <span class="text-slate-400">Predict Latency</span>
+                            <span class="text-amber-400 font-mono">${latency}</span>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Features (15)</h4>
+                    <div class="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
+                        ${featureEntries.map(([k, v]) => `
+                            <div class="flex justify-between text-xs border-b border-slate-800 pb-1">
+                                <span class="text-slate-400 truncate pr-2" title="${k}">${k}</span>
+                                <span class="text-slate-300 font-mono">${typeof v === 'number' ? v.toFixed(4) : v}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeDetail() {
+            document.getElementById('detail-panel').classList.add('hidden');
+            selectedFlowIndex = -1;
+            renderVisibleRows();
+        }
+
+        // === FILTER & SORT ===
+        function renderFilterRows() {
+            const container = document.getElementById('filter-rows');
+            if (!container) return;
+            if (filterRows.length === 0) {
+                container.innerHTML = '<div class="text-xs text-slate-500">No filters applied.</div>';
+                return;
+            }
+            const modeOptions = [
+                { value: 'contains', label: 'Contains' },
+                { value: 'starts', label: 'Starts With' },
+                { value: 'equals', label: 'Exact Match' },
+                { value: 'not_contains', label: 'Not Contain' }
+            ];
+            container.innerHTML = filterRows.map(row => {
+                const safeValue = (row.value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+                const columnOptions = FILTER_COLUMN_OPTIONS.map(col => `<option value="${col}" ${row.column === col ? 'selected' : ''}>${FILTER_COLUMN_LABELS[col] || col}</option>`).join('');
+                const modeSelect = modeOptions.map(opt => `<option value="${opt.value}" ${row.mode === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('');
+                const removeDisabled = filterRows.length === 1 ? 'opacity-0 pointer-events-none' : '';
+                return `
+                    <div class="flex flex-wrap gap-3 items-end bg-slate-900/40 border border-slate-700/60 rounded-lg p-3" data-filter-id="${row.id}">
+                        <div class="flex-1 min-w-[200px]">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Value</label>
+                            <input type="text" value="${safeValue}" oninput="updateFilterRow('${row.id}', 'value', this.value)" placeholder="Type to filter..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none"/>
+                        </div>
+                        <div class="w-40">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Column</label>
+                            <select class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white outline-none" onchange="updateFilterRow('${row.id}', 'column', this.value)">${columnOptions}</select>
+                        </div>
+                        <div class="w-32">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mode</label>
+                            <select class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white outline-none" onchange="updateFilterRow('${row.id}', 'mode', this.value)">${modeSelect}</select>
+                        </div>
+                        <button type="button" class="px-3 py-2 text-xs font-bold rounded-lg border border-slate-600 text-slate-300 hover:text-white hover:border-slate-400 transition-all ${removeDisabled}" onclick="removeFilterRow('${row.id}')">Remove</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function addFilterRow(isInitial = false) {
+            filterRowCounter += 1;
+            filterRows.push({ id: `filter-${filterRowCounter}`, column: 'all', mode: 'contains', value: '' });
+            renderFilterRows();
+            if (!isInitial) {
+                applyFilter();
+            }
+        }
+
+        function removeFilterRow(id) {
+            if (filterRows.length === 0) {
+                addFilterRow(true);
+                applyFilter();
+                return;
+            }
+            if (filterRows.length === 1) {
+                filterRows[0].value = '';
+                renderFilterRows();
+                applyFilter();
+                return;
+            }
+            filterRows = filterRows.filter(row => row.id !== id);
+            renderFilterRows();
+            applyFilter();
+        }
+
+        function updateFilterRow(id, field, value) {
+            const target = filterRows.find(row => row.id === id);
+            if (!target) return;
+            target[field] = value;
+            applyFilter();
+        }
+
+        function resetFilters() {
+            filterRows = [];
+            addFilterRow(true);
+            applyFilter();
+        }
+
+        function initializeFilterRows() {
+            if (filterRows.length === 0) {
+                addFilterRow(true);
+            } else {
+                renderFilterRows();
+            }
+        }
+
+        function flowPassesFilter(flow, filter) {
+            const query = (filter.value || '').trim().toLowerCase();
+            const targetColumns = filter.column === 'all' ? FILTERABLE_COLUMNS : [filter.column];
+            if (!query) return true;
+            if (filter.mode === 'not_contains') {
+                return targetColumns.every(col => matchesFilterValue(flow, col, query, filter.mode));
+            }
+            return targetColumns.some(col => matchesFilterValue(flow, col, query, filter.mode));
+        }
+
+        function applyFilter() {
+            const activeFilters = filterRows.filter(f => (f.value || '').trim() !== '');
+            if (activeFilters.length === 0) {
+                filteredFlows = [...allFlows];
+            } else {
+                filteredFlows = allFlows.filter(flow => activeFilters.every(filter => flowPassesFilter(flow, filter)));
+            }
+            
+            applySorting(false); // Apply sorting without re-filtering
+        }
+
+        function applySorting(shouldFilter = true) {
+            if (shouldFilter) {
+                // Re-run filter first, then it will call sort with shouldFilter=false
+                applyFilter();
+                return;
+            }
+            
+            const sortCol = document.getElementById('sortColumn').value;
+            const sortOrder = document.getElementById('sortOrder').value;
+            
+            // Create a copy before sorting to avoid issues
+            const toSort = [...filteredFlows];
+            
+            toSort.sort((a, b) => {
+                let valA = getSortValue(a, sortCol);
+                let valB = getSortValue(b, sortCol);
+                
+                if (typeof valA === 'string') valA = valA.toLowerCase();
+                if (typeof valB === 'string') valB = valB.toLowerCase();
+                
+                if (valA < valB) return sortOrder === 'desc' ? 1 : -1;
+                if (valA > valB) return sortOrder === 'desc' ? -1 : 1;
+                return 0;
+            });
+            
+            filteredFlows = toSort;
+            visibleStart = -1;
+            renderVisibleRows();
+        }
+
+        // === CSV MAPPING MODAL ===
+        function onSourceTypeChange() {
+            // Reset file input when changing type
+            document.getElementById('fileInput').value = '';
+            document.getElementById('saveUploadBtn').classList.add('hidden');
+            document.getElementById('editMappingBtn').classList.add('hidden');
+            lastUsedFile = null;
+            lastUsedSourceType = null;
+        }
+
+        async function onFileSelected() {
+            const sourceType = document.getElementById('sourceType').value;
+            const fileInput = document.getElementById('fileInput');
+            
+            // When uploading new file, reset stored select
+            document.getElementById('storedSelect').value = '';
+            
+            if (fileInput.files[0]) {
+                // Track this as last used file
+                lastUsedFile = fileInput.files[0];
+                lastUsedSourceType = 'upload';
+                lastStoredValue = null;
+                
+                // Show save button for uploaded files
+                document.getElementById('saveUploadBtn').classList.remove('hidden');
+                
+                if (sourceType === 'csv') {
+                    // Show edit mapping button
+                    document.getElementById('editMappingBtn').classList.remove('hidden');
+                    await showMappingModalForFile(fileInput.files[0]);
+                } else {
+                    document.getElementById('editMappingBtn').classList.add('hidden');
+                }
+            } else {
+                document.getElementById('saveUploadBtn').classList.add('hidden');
+                document.getElementById('editMappingBtn').classList.add('hidden');
+            }
+        }
+
+        async function editMapping() {
+            const sourceType = document.getElementById('sourceType').value;
+            const fileInput = document.getElementById('fileInput');
+            const storedSel = document.getElementById('storedSelect');
+            
+            if (sourceType === 'csv') {
+                if (fileInput.files[0]) {
+                    await showMappingModalForFile(fileInput.files[0]);
+                } else if (storedSel.value) {
+                    const [type, name] = storedSel.value.split(':');
+                    if (type === 'csv') {
+                        await showMappingModalForStored(name, type);
+                    }
+                }
+            }
+        }
+
+        async function saveUploadedFile() {
+            const fileInput = document.getElementById('fileInput');
+            if (!fileInput.files[0]) {
+                alert('No file to save');
+                return;
+            }
+            
+            const formData = new FormData();
+            const sourceType = document.getElementById('sourceType').value;
+            formData.append(sourceType, fileInput.files[0]);
+            formData.append('save_only', 'true');
+            
+            try {
+                const res = await fetch('/save_file', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    alert('File saved to storage: ' + data.name);
+                    await loadStoredFiles();
+                }
+            } catch (e) {
+                alert('Failed to save file: ' + e.message);
+            }
+        }
+
+        async function showMappingModalForFile(file) {
+            // Read first line to get headers
+            const text = await file.slice(0, 10000).text();
+            const firstLine = text.split('\n')[0];
+            csvHeaders = firstLine.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+            currentFilename = file.name;
+            
+            // Try to load existing metadata
+            let existingMapping = null;
+            try {
+                const res = await fetch(`/get_mapping?filename=${encodeURIComponent(file.name)}`);
+                if (res.ok) {
+                    existingMapping = await res.json();
+                }
+            } catch (e) {}
+            
+            buildMappingModal(csvHeaders, existingMapping);
+            document.getElementById('mappingModal').classList.remove('hidden');
+            document.getElementById('mappingModal').classList.add('flex');
+        }
+
+        async function showMappingModalForStored(filename, filetype) {
+            if (filetype !== 'csv') return false;
+            
+            // Fetch headers from server
+            try {
+                const res = await fetch(`/csv_headers?filename=${encodeURIComponent(filename)}`);
+                if (!res.ok) return false;
+                const data = await res.json();
+                csvHeaders = data.headers;
+                currentFilename = filename;
+                
+                // Try to load existing metadata
+                let existingMapping = null;
+                try {
+                    const mapRes = await fetch(`/get_mapping?filename=${encodeURIComponent(filename)}`);
+                    if (mapRes.ok) {
+                        existingMapping = await mapRes.json();
+                    }
+                } catch (e) {}
+                
+                buildMappingModal(csvHeaders, existingMapping);
+                document.getElementById('mappingModal').classList.remove('hidden');
+                document.getElementById('mappingModal').classList.add('flex');
+                return true;
+            } catch (e) {
+                console.error(e);
+                return false;
+            }
+        }
+
+        function buildMappingModal(headers, existingMapping) {
+            const basicContainer = document.getElementById('basic-fields-container');
+            const featureContainer = document.getElementById('feature-fields-container');
+            
+            basicContainer.innerHTML = '';
+            featureContainer.innerHTML = '';
+            document.getElementById('mapping-error').innerText = '';
+            
+            const createSelect = (id, label, required = true) => {
+                const div = document.createElement('div');
+                div.className = "space-y-1";
+                div.innerHTML = `
+                    <label class="block text-xs font-bold text-slate-500 uppercase">${label} ${required ? '<span class="text-red-400">*</span>' : '(Opt)'}</label>
+                    <select id="map-${id}" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-sm text-white outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="">-- Select --</option>
+                        ${headers.map(h => `<option value="${h}">${h}</option>`).join('')}
+                    </select>
+                `;
+                return div;
+            };
+            
+            // Basic fields - 4 optional: timestamp + 3-tuple (src_ip, dst_ip, src_port)
+            // Protocol and Dst Port are in 15 features so not needed here
+            const basicFields = [
+                { id: 'timestamp', label: 'Timestamp', req: false },
+                { id: 'src_ip', label: 'Source IP', req: false },
+                { id: 'dst_ip', label: 'Dest IP', req: false },
+                { id: 'src_port', label: 'Source Port', req: false }
+            ];
+            
+            basicFields.forEach(f => basicContainer.appendChild(createSelect(f.id, f.label, f.req)));
+            
+            // Label dropdown (used when checkbox is checked)
+            const labelSelect = document.getElementById('map-label');
+            labelSelect.innerHTML = `<option value="">-- Select --</option>${headers.map(h => `<option value="${h}">${h}</option>`).join('')}`;
+            
+            // Features
+            FEATURE_KEYS.forEach(key => {
+                featureContainer.appendChild(createSelect(`feat-${key}`, key, true));
+            });
+            
+            // Auto-map from headers or existing mapping
+            const autoMap = (id, candidates, existingVal) => {
+                const sel = document.getElementById(`map-${id}`);
+                if (!sel) return;
+                
+                // If existing mapping has value, use it
+                if (existingVal && headers.includes(existingVal)) {
+                    sel.value = existingVal;
+                    return;
+                }
+                
+                // Otherwise try to find matching header
+                for (const h of headers) {
+                    if (candidates.some(c => h.toLowerCase() === c.toLowerCase())) {
+                        sel.value = h;
+                        break;
+                    }
+                }
+            };
+            
+            const existingBasic = existingMapping || {};
+            const existingFeats = existingMapping?.features || {};
+            
+            // Auto-fill basics (only if existingMapping found for this exact file)
+            // 4 optional fields: timestamp + 3-tuple (src_ip, dst_ip, src_port)
+            if (existingMapping) {
+                autoMap('timestamp', [], existingBasic.timestamp);
+                autoMap('src_ip', [], existingBasic.src_ip);
+                autoMap('dst_ip', [], existingBasic.dst_ip);
+                autoMap('src_port', [], existingBasic.src_port);
+            }
+            
+            // Auto-fill label
+            if (existingBasic.label) {
+                document.getElementById('csvHasLabel').checked = true;
+                toggleLabelOptions();
+                const labelSel = document.getElementById('map-label');
+                if (headers.includes(existingBasic.label)) {
+                    labelSel.value = existingBasic.label;
+                }
+                if (existingBasic.benign_label) {
+                    document.getElementById('benignValue').value = existingBasic.benign_label;
+                }
+            }
+            
+            // Auto-fill features - ONLY from existing mapping for this exact file
+            // No auto-detection by column name to prevent wrong mappings
+            if (existingMapping && existingFeats) {
+                FEATURE_KEYS.forEach(key => {
+                    const sel = document.getElementById(`map-feat-${key}`);
+                    if (!sel) return;
+                    
+                    // Only use existing mapping
+                    if (existingFeats[key] && headers.includes(existingFeats[key])) {
+                        sel.value = existingFeats[key];
+                    }
+                });
+            }
+        }
+
+        function toggleLabelOptions() {
+            const wrapper = document.getElementById('labelOptionsWrapper');
+            wrapper.classList.toggle('hidden', !document.getElementById('csvHasLabel').checked);
+        }
+
+        function closeMappingModal() {
+            document.getElementById('mappingModal').classList.add('hidden');
+            document.getElementById('mappingModal').classList.remove('flex');
+        }
+
+        function validateMapping() {
+            const missing = [];
+            
+            // 5-tuple fields are all optional now - no validation needed for them
+            
+            // Check all 15 features (these are still required)
+            FEATURE_KEYS.forEach(key => {
+                const val = document.getElementById(`map-feat-${key}`).value;
+                if (!val) {
+                    missing.push(key);
+                }
+            });
+            
+            return missing;
+        }
+
+        async function submitMapping() {
+            const missing = validateMapping();
+            
+            if (missing.length > 0) {
+                document.getElementById('mapping-error').innerText = `Please choose the mapping for: ${missing.join(', ')}`;
+                return;
+            }
+            
+            // Build mapping object
+            const mapping = {
+                features: {}
+            };
+            
+            // Collect basics (4 optional: timestamp + 3-tuple)
+            // dst_port, protocol are in 15 features
+            ['timestamp', 'src_ip', 'dst_ip', 'src_port'].forEach(id => {
+                const val = document.getElementById(`map-${id}`).value;
+                if (val) mapping[id] = val;
+            });
+            
+            // Collect label info
+            if (document.getElementById('csvHasLabel').checked) {
+                const labelCol = document.getElementById('map-label').value;
+                if (labelCol) {
+                    mapping.label = labelCol;
+                    mapping.benign_label = document.getElementById('benignValue').value || 'BENIGN';
+                }
+            }
+            
+            // Collect features
+            FEATURE_KEYS.forEach(key => {
+                const val = document.getElementById(`map-feat-${key}`).value;
+                if (val) mapping.features[key] = val;
+            });
+            
+            // Save mapping to server
+            try {
+                await fetch('/save_mapping', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filename: currentFilename,
+                        mapping: mapping
+                    })
+                });
+            } catch (e) {
+                console.error('Failed to save mapping:', e);
+            }
+            
+            closeMappingModal();
+            
+            // Now proceed with analysis
+            if (pendingFormData) {
+                pendingFormData.append('mapping', JSON.stringify(mapping));
+                await runAnalysis(pendingFormData);
+                pendingFormData = null;
+            }
+        }
+
+        // === ANALYSIS ===
+        async function startAnalysis() {
+            const sourceType = document.getElementById('sourceType').value;
+            const fileInput = document.getElementById('fileInput');
+            const storedSel = document.getElementById('storedSelect');
+
+            // Check if we have a file from upload or stored
+            if (!fileInput.files[0] && !storedSel.value) {
+                // Try to use last used source
+                if (lastUsedSourceType === 'stored' && lastStoredValue) {
+                    storedSel.value = lastStoredValue;
+                    await loadStored();
+                    return;
+                }
+                alert('Please select a file');
+                return;
+            }
+
+            // Prioritize uploaded file if present
+            if (fileInput.files[0]) {
+                lastUsedFile = fileInput.files[0];
+                lastUsedSourceType = 'upload';
+                lastStoredValue = null;
+                
+                const formData = new FormData();
+                if (sourceType === 'pcap') {
+                    formData.append('pcap', fileInput.files[0]);
+                    await runAnalysis(formData);
+                } else {
+                    formData.append('csv', fileInput.files[0]);
+                    pendingFormData = formData;
+                    await showMappingModalForFile(fileInput.files[0]);
+                }
+            } else if (storedSel.value) {
+                await loadStored();
+            }
+        }
+
+        async function loadStored() {
+            const sel = document.getElementById('storedSelect');
+            if (!sel.value) return;
+
+            // When selecting stored file, clear uploaded file input
+            document.getElementById('fileInput').value = '';
+            document.getElementById('saveUploadBtn').classList.add('hidden');
+            
+            const [type, name] = sel.value.split(':');
+            
+            // Track as last used
+            lastUsedSourceType = 'stored';
+            lastStoredValue = sel.value;
+            lastUsedFile = null;
+            
+            // Show edit mapping button for CSV
+            if (type === 'csv') {
+                document.getElementById('editMappingBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('editMappingBtn').classList.add('hidden');
+            }
+            
+            if (type === 'csv') {
+                pendingFormData = new FormData();
+                pendingFormData.append('filename', name);
+                pendingFormData.append('filetype', type);
+                pendingFormData.append('use_stored', 'true');
+                await showMappingModalForStored(name, type);
+            } else {
+                const formData = new FormData();
+                formData.append('filename', name);
+                formData.append('filetype', type);
+                formData.append('use_stored', 'true');
+                await runAnalysis(formData);
+            }
+        }
+
+        async function runAnalysis(formData) {
+            updateButtonState('running');
+            isProcessing = true;
+            isPaused = false;
+            hasLabelsInDataset = false;
+            document.getElementById('status').innerText = 'Uploading...';
+            
+            // Hide label columns initially
+            document.getElementById('col-truth').classList.add('hidden');
+            document.getElementById('col-veracity').classList.add('hidden');
+
+            allFlows = [];
+            filteredFlows = [];
+            selectedFlowIndex = -1;
+            document.getElementById('metrics-panel').classList.add('hidden');
+            closeDetail();
+            renderVisibleRows();
+
+            try {
+                const res = await fetch('/process_pcap', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (data.error) throw new Error(data.error);
+
+                if (data.status === 'mapping_needed') {
+                    // This shouldn't happen anymore since we show modal first
+                    alert('CSV mapping required.');
+                    updateButtonState('idle');
+                    isProcessing = false;
+                    document.getElementById('status').innerText = '';
+                    return;
+                }
+
+                currentJobId = data.job_id;
+                currentTotal = data.total;
+                await pollResults(currentJobId, currentTotal);
+            } catch (e) {
+                alert('Error: ' + e.message);
+                updateButtonState('idle');
+                isProcessing = false;
+            }
+        }
+
+        async function pollResults(jobId, total) {
+            while (isProcessing && !isPaused) {
+                try {
+                    const res = await fetch(`/offline/next?job=${jobId}`);
+                    if (!res.ok) break;
+                    const data = await res.json();
+
+                    if (data.status === 'error') {
+                        document.getElementById('status').innerText = 'Error processing';
+                        break;
+                    }
+
+                    if (data.results && data.results.length > 0) {
+                        allFlows = allFlows.concat(data.results);
+                        
+                        // Check if any result has a label - show Truth/Veracity columns
+                        if (!hasLabelsInDataset) {
+                            const hasAnyLabel = data.results.some(r => r.label !== undefined && r.label !== null && r.label !== '');
+                            if (hasAnyLabel) {
+                                hasLabelsInDataset = true;
+                                document.getElementById('col-truth').classList.remove('hidden');
+                                document.getElementById('col-veracity').classList.remove('hidden');
+                            }
+                        }
+                        
+                        applyFilter();
+                    }
+
+                    if (data.metrics) {
+                        updateMetrics(data.metrics);
+                    }
+
+                    document.getElementById('status').innerText = `Processing... ${data.progress} / ${total}`;
+
+                    if (data.status === 'done') {
+                        document.getElementById('status').innerText = `Complete. ${total} flows processed.`;
+                        isProcessing = false;
+                        updateButtonState('idle');
+                        break;
+                    }
+
+                    if (data.status === 'paused') {
+                        isPaused = true;
+                        updateButtonState('paused');
+                        document.getElementById('status').innerText = `Paused at ${data.progress} / ${total}`;
+                        break;
+                    }
+
+                    await new Promise(r => setTimeout(r, 100));
+                } catch (e) {
+                    console.error(e);
+                    break;
+                }
+            }
+        }
+
+        async function pauseAnalysis() {
+            if (!currentJobId) return;
+            await fetch('/offline/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ job: currentJobId, action: 'pause' })
+            });
+            isPaused = true;
+            updateButtonState('paused');
+            document.getElementById('status').innerText += ' (Paused)';
+        }
+
+        async function continueAnalysis() {
+            if (!currentJobId) return;
+            await fetch('/offline/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ job: currentJobId, action: 'resume' })
+            });
+            isPaused = false;
+            updateButtonState('running');
+            await pollResults(currentJobId, currentTotal);
+        }
+
+        async function stopAnalysis() {
+            if (!currentJobId) return;
+            await fetch('/offline/control', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ job: currentJobId, action: 'stop' })
+            });
+            isProcessing = false;
+            isPaused = false;
+            updateButtonState('idle');
+            document.getElementById('status').innerText += ' (Stopped)';
+            currentJobId = null;
+        }
+
+        async function restartAnalysis() {
+            // Stop current job if any
+            if (currentJobId) {
+                await fetch('/offline/control', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job: currentJobId, action: 'stop' })
+                });
+            }
+            
+            // Clear output but preserve source tracking
+            clearOutput();
+            
+            // Re-trigger based on last used source
+            if (lastUsedSourceType === 'upload' && lastUsedFile) {
+                // Re-create form data for uploaded file
+                const sourceType = document.getElementById('sourceType').value;
+                const formData = new FormData();
+                if (sourceType === 'pcap') {
+                    formData.append('pcap', lastUsedFile);
+                    await runAnalysis(formData);
+                } else {
+                    formData.append('csv', lastUsedFile);
+                    pendingFormData = formData;
+                    await showMappingModalForFile(lastUsedFile);
+                }
+            } else if (lastUsedSourceType === 'stored' && lastStoredValue) {
+                const storedSel = document.getElementById('storedSelect');
+                storedSel.value = lastStoredValue;
+                await loadStored();
+            } else {
+                // Fallback to current UI state
+                const fileInput = document.getElementById('fileInput');
+                const storedSel = document.getElementById('storedSelect');
+                
+                if (fileInput.files[0]) {
+                    await startAnalysis();
+                } else if (storedSel.value) {
+                    await loadStored();
+                } else {
+                    alert('No file available to restart. Please select a file.');
+                }
+            }
+        }
+
+        function clearOutput() {
+            allFlows = [];
+            filteredFlows = [];
+            selectedFlowIndex = -1;
+            isProcessing = false;
+            isPaused = false;
+            hasLabelsInDataset = false;
+            currentJobId = null;
+            document.getElementById('metrics-panel').classList.add('hidden');
+            document.getElementById('col-truth').classList.add('hidden');
+            document.getElementById('col-veracity').classList.add('hidden');
+            document.getElementById('status').innerText = '';
+            closeDetail();
+            renderVisibleRows();
+            updateButtonState('idle');
+        }
+
+        function updateMetrics(metrics) {
+            if (!metrics) return;
+            
+            document.getElementById('metrics-panel').classList.remove('hidden');
+            
+            if (metrics.labelled) {
+                // Labelled data - show accuracy, recall, F1
+                const [tn, fp, fn, tp] = metrics.cm;
+                const total = tn + fp + fn + tp;
+                currentMetricsCm = { tn, fp, fn, tp, total };
+                
+                document.getElementById('m-label-1').innerText = 'Accuracy';
+                document.getElementById('m-val-1').innerText = (metrics.accuracy * 100).toFixed(1) + '%';
+                document.getElementById('m-val-1').className = 'text-xl font-bold text-emerald-400';
+                
+                document.getElementById('m-label-2').innerText = 'Recall';
+                document.getElementById('m-val-2').innerText = (metrics.recall * 100).toFixed(1) + '%';
+                document.getElementById('m-val-2').className = 'text-xl font-bold text-blue-400';
+                
+                document.getElementById('metric-3-container').classList.remove('hidden');
+                document.getElementById('m-label-3').innerText = 'F1 Score';
+                document.getElementById('m-val-3').innerText = (metrics.f1 * 100).toFixed(1) + '%';
+                document.getElementById('m-val-3').className = 'text-xl font-bold text-purple-400';
+                
+                document.getElementById('m-label-4').innerText = 'Total';
+                document.getElementById('m-val-4').innerText = total;
+                
+                // Update tooltips with calculation details
+                document.getElementById('tooltip-1').innerHTML = `
+<span class="text-slate-400">TP:</span> <span class="text-white">${tp}</span>  <span class="text-slate-400">TN:</span> <span class="text-white">${tn}</span>
+<span class="text-slate-400">FP:</span> <span class="text-white">${fp}</span>  <span class="text-slate-400">FN:</span> <span class="text-white">${fn}</span>
+
+<span class="text-emerald-400">Accuracy = (TP + TN) / Total</span>
+         = (${tp} + ${tn}) / ${total}
+         = <span class="text-white font-bold">${(metrics.accuracy * 100).toFixed(2)}%</span>`;
+                
+                document.getElementById('tooltip-2').innerHTML = `
+<span class="text-slate-400">TP:</span> <span class="text-white">${tp}</span>
+<span class="text-slate-400">FN:</span> <span class="text-white">${fn}</span>
+
+<span class="text-blue-400">Recall = TP / (TP + FN)</span>
+       = ${tp} / (${tp} + ${fn})
+       = ${tp} / ${tp + fn}
+       = <span class="text-white font-bold">${(metrics.recall * 100).toFixed(2)}%</span>`;
+                
+                const precision = (tp + fp) > 0 ? tp / (tp + fp) : 0;
+                document.getElementById('tooltip-3').innerHTML = `
+<span class="text-slate-400">TP:</span> <span class="text-white">${tp}</span>  <span class="text-slate-400">FP:</span> <span class="text-white">${fp}</span>  <span class="text-slate-400">FN:</span> <span class="text-white">${fn}</span>
+
+<span class="text-purple-400">Precision = TP / (TP + FP)</span>
+          = ${tp} / ${tp + fp} = ${(precision * 100).toFixed(2)}%
+
+<span class="text-purple-400">F1 = 2 × (P × R) / (P + R)</span>
+   = <span class="text-white font-bold">${(metrics.f1 * 100).toFixed(2)}%</span>`;
+                
+                document.getElementById('tooltip-4').innerHTML = `
+<span class="text-slate-400">True Positive (TP):</span> <span class="text-white">${tp}</span>
+<span class="text-slate-400">True Negative (TN):</span> <span class="text-white">${tn}</span>
+<span class="text-slate-400">False Positive (FP):</span> <span class="text-white">${fp}</span>
+<span class="text-slate-400">False Negative (FN):</span> <span class="text-white">${fn}</span>
+
+<span class="text-white">Total = ${total}</span>`;
+            } else {
+                // Unlabelled data - show prediction counts
+                const benign = metrics.pred_benign || 0;
+                const attack = metrics.pred_attack || 0;
+                const total = metrics.total || (benign + attack);
+                
+                document.getElementById('m-label-1').innerText = 'Benign';
+                document.getElementById('m-val-1').innerText = benign;
+                document.getElementById('m-val-1').className = 'text-xl font-bold text-emerald-400';
+                
+                document.getElementById('m-label-2').innerText = 'Attack';
+                document.getElementById('m-val-2').innerText = attack;
+                document.getElementById('m-val-2').className = 'text-xl font-bold text-red-400';
+                
+                // Hide F1 for unlabelled data
+                document.getElementById('metric-3-container').classList.add('hidden');
+                
+                document.getElementById('m-label-4').innerText = 'Total';
+                document.getElementById('m-val-4').innerText = total;
+                
+                // Update tooltips
+                document.getElementById('tooltip-1').innerHTML = `
+<span class="text-emerald-400">Predicted Benign:</span> <span class="text-white font-bold">${benign}</span>
+
+No ground truth labels available.
+These are model predictions only.`;
+                
+                document.getElementById('tooltip-2').innerHTML = `
+<span class="text-red-400">Predicted Attack:</span> <span class="text-white font-bold">${attack}</span>
+
+No ground truth labels available.
+These are model predictions only.`;
+                
+                document.getElementById('tooltip-4').innerHTML = `
+<span class="text-slate-400">Predicted Benign:</span> <span class="text-white">${benign}</span>
+<span class="text-slate-400">Predicted Attack:</span> <span class="text-white">${attack}</span>
+
+<span class="text-white">Total = ${total}</span>
+
+<span class="text-amber-400">⚠ No labels - accuracy metrics unavailable</span>`;
+            }
+        }
+
+        // === STORED FILES ===
+        async function loadStoredFiles() {
+            try {
+                const res = await fetch('/stored_files');
+                const data = await res.json();
+                const sel = document.getElementById('storedSelect');
+                sel.innerHTML = '<option value="">-- Select --</option>';
+                
+                if (data.pcaps.length > 0) {
+                    const group = document.createElement('optgroup');
+                    group.label = 'PCAPs';
+                    data.pcaps.forEach(f => {
+                        const opt = document.createElement('option');
+                        opt.value = `pcap:${f.name}`;
+                        opt.text = f.name;
+                        group.appendChild(opt);
+                    });
+                    sel.appendChild(group);
+                }
+                
+                if (data.csvs.length > 0) {
+                    const group = document.createElement('optgroup');
+                    group.label = 'CSVs';
+                    data.csvs.forEach(f => {
+                        const opt = document.createElement('option');
+                        opt.value = `csv:${f.name}`;
+                        opt.text = f.name;
+                        group.appendChild(opt);
+                    });
+                    sel.appendChild(group);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // === LIVE MONITOR ===
+        async function loadInterfaces(autoSelectPreferred = true) {
+            const refreshBtn = document.getElementById('ifaceRefreshBtn');
+            const statusEl = document.getElementById('ifaceStatus');
+            if (isLoadingInterfaces) return;
+            isLoadingInterfaces = true;
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.innerText = 'Refreshing...';
+            }
+            if (statusEl) {
+                statusEl.innerText = 'Discovering host interfaces...';
+            }
+
+            try {
+                const res = await fetch('/interfaces');
+                if (!res.ok) throw new Error('Failed to load interfaces');
+                const data = await res.json();
+                availableInterfaces = data.interfaces || [];
+
+                const selectEl = document.getElementById('ifaceSelect');
+                const inputEl = document.getElementById('ifaceInput');
+                if (selectEl) {
+                    selectEl.innerHTML = '<option value="">-- Select Available --</option>' +
+                        availableInterfaces.map((iface) => {
+                            const state = iface.state || 'UNKNOWN';
+                            const ipText = (iface.ipv4 && iface.ipv4.length > 0) ? ` · ${iface.ipv4.join(', ')}` : '';
+                            return `<option value="${iface.name}">${iface.name} (${state})${ipText}</option>`;
+                        }).join('');
+                }
+
+                if (statusEl) {
+                    if (availableInterfaces.length === 0) {
+                        statusEl.innerText = 'No interfaces reported. Enter a custom name manually.';
+                    } else {
+                        statusEl.innerText = `Found ${availableInterfaces.length} interface${availableInterfaces.length === 1 ? '' : 's'}. Select one or type your own.`;
+                    }
+                }
+
+                const existingManual = inputEl ? inputEl.value.trim() : '';
+                if (selectEl) {
+                    if (existingManual) {
+                        selectEl.value = existingManual;
+                    } else if (availableInterfaces.length > 0 && autoSelectPreferred) {
+                        const preferred = availableInterfaces.find(i => i.name === 's1-snoop') || availableInterfaces[0];
+                        selectEl.value = preferred.name;
+                        if (inputEl) inputEl.value = preferred.name;
+                    } else {
+                        selectEl.value = '';
+                    }
+                }
+            } catch (err) {
+                if (statusEl) statusEl.innerText = 'Failed to load interfaces. Enter a custom name.';
+            } finally {
+                if (refreshBtn) {
+                    refreshBtn.disabled = false;
+                    refreshBtn.innerText = 'Refresh';
+                }
+                isLoadingInterfaces = false;
+            }
+        }
+
+        async function refreshInterfaces() {
+            const inputEl = document.getElementById('ifaceInput');
+            const shouldAutoSelect = !(inputEl && inputEl.value.trim());
+            await loadInterfaces(shouldAutoSelect);
+        }
+
+        function onInterfaceSelected(value) {
+            const inputEl = document.getElementById('ifaceInput');
+            if (inputEl) {
+                inputEl.value = value || '';
+            }
+        }
+
+        function resolveInterfaceName() {
+            const inputEl = document.getElementById('ifaceInput');
+            const manual = inputEl ? inputEl.value.trim() : '';
+            if (manual) return manual;
+            const selectEl = document.getElementById('ifaceSelect');
+            return selectEl ? (selectEl.value || '').trim() : '';
+        }
+
+        function toggleLive() {
+            const btn = document.getElementById('liveBtn');
+            const iface = resolveInterfaceName();
+            const statusEl = document.getElementById('ifaceStatus');
+
+            if (isLive) {
+                fetch('/stop_iface', { method: 'POST' });
+                clearInterval(liveInterval);
+                isLive = false;
+                btn.innerText = 'START';
+                btn.className = 'px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all';
+                if (statusEl) statusEl.innerText = 'Live capture stopped.';
+            } else {
+                if (!iface) {
+                    alert('Enter interface name');
+                    return;
+                }
+                fetch('/start_iface', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ iface })
+                });
+                isLive = true;
+                btn.innerText = 'STOP';
+                btn.className = 'px-6 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-white shadow-lg transition-all';
+                if (statusEl) statusEl.innerText = `Streaming live flows from ${iface}`;
+
+                liveInterval = setInterval(async () => {
+                    try {
+                        const res = await fetch('/flows');
+                        const data = await res.json();
+                        if (data.flows && data.flows.length > 0) {
+                            const container = document.getElementById('live-container');
+                            data.flows.slice(-10).forEach(flow => {
+                                const color = flow.action === 'BLOCK' ? 'border-red-500/50 bg-red-500/10 text-red-300' : 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300';
+                                const div = document.createElement('div');
+                                div.className = `p-3 rounded border font-mono text-xs flex justify-between items-center ${color}`;
+                                div.innerHTML = `
+                                    <div class="flex gap-4">
+                                        <span class="text-slate-400">[${formatTime(flow.timestamp)}]</span>
+                                        <span class="font-bold">${flow.src_ip}:${flow.src_port} → ${flow.dst_ip}:${flow.dst_port}</span>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <span class="text-blue-400">Proto: ${flow.protocol}</span>
+                                        <span class="font-bold">${flow.prediction}</span>
+                                        <span>>> ${flow.action}</span>
+                                    </div>
+                                `;
+                                container.insertBefore(div, container.firstChild);
+                                if (container.children.length > 50) container.removeChild(container.lastChild);
+                            });
+                        }
+                    } catch (e) {}
+                }, 2000);
+            }
+        }
+
+        function clearLive() {
+            document.getElementById('live-container').innerHTML = '';
+        }
+
+        // === INIT ===
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeFilterRows();
+            loadStoredFiles();
+            loadInterfaces(true);
+            renderVisibleRows();
+        });
+    </script>
+</body>
+</html>

@@ -7,3 +7,6 @@ __pycache__/
 *.png
 *.pdf
 checkpoints/
+venv/
+uploads/
+ryu/
