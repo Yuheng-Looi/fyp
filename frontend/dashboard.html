@@ -26,7 +26,6 @@
             <div class="flex bg-slate-800 p-1 rounded-lg">
                 <button id="tab-upload" onclick="switchTab('upload')" class="px-4 py-1.5 rounded text-sm font-bold transition-all bg-blue-600 text-white shadow">Upload</button>
                 <button id="tab-live" onclick="switchTab('live')" class="px-4 py-1.5 rounded text-sm font-bold transition-all text-slate-400 hover:text-white">Live</button>
-                <button id="tab-drift" onclick="switchTab('drift')" class="px-4 py-1.5 rounded text-sm font-bold transition-all text-slate-400 hover:text-white">Drift</button>
             </div>
         </div>
 
@@ -84,6 +83,20 @@
                 </div>
             </div>
             <div id="status" class="text-xs text-slate-400 px-1"></div>
+
+            <!-- Drift Analysis (Upload) -->
+            <div id="drift-section-upload" class="hidden bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg mt-4">
+                <div class="flex justify-between items-center cursor-pointer mb-4" onclick="document.getElementById('drift-content-upload').classList.toggle('hidden')">
+                     <div class="flex items-center gap-2">
+                         <h2 class="text-sm font-bold text-white">📊 Feature Drift Analysis</h2>
+                         <span class="text-xs text-slate-500">(Training Baseline vs. Current Upload)</span>
+                     </div>
+                     <span class="text-xs text-blue-400 hover:text-blue-300">Toggle View</span>
+                </div>
+                <div id="drift-content-upload" class="hidden">
+                     <div id="drift-grid-upload" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
 
             <!-- Metrics Panel - changes based on labelled vs unlabelled -->
             <div id="metrics-panel" class="hidden grid grid-cols-4 gap-4">
@@ -201,30 +214,32 @@
                     <button onclick="clearLive()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-bold text-slate-300">Clear</button>
                 </div>
             </div>
+            
+            <!-- Drift Analysis (Live) -->
+            <div id="drift-section-live" class="hidden bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg mb-4">
+                <div class="flex justify-between items-center cursor-pointer mb-2" onclick="document.getElementById('drift-content-live').classList.toggle('hidden')">
+                     <div class="flex items-center gap-2">
+                         <h2 class="text-sm font-bold text-white">📊 Live Feature Drift</h2>
+                         <span class="text-xs text-slate-500">(Training vs. Last 1000 Flows)</span>
+                     </div>
+                     <span class="text-xs text-blue-400 hover:text-blue-300">Toggle View</span>
+                </div>
+                <div id="drift-content-live" class="hidden">
+                     <div class="flex items-center gap-3 mb-4">
+                         <span id="drift-status-live" class="text-xs text-slate-400">Comparing real-time window vs training baseline</span>
+                         <button onclick="updateDriftAnalysis('live')" class="px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 rounded text-xs transition">
+                            Refresh Charts
+                         </button>
+                     </div>
+                     <div id="drift-grid-live" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+            </div>
+
             <div id="live-container" class="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar"></div>
         </div>
 
         <!-- Drift View -->
-        <div id="view-drift" class="hidden space-y-4">
-             <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex justify-between items-center">
-                 <div>
-                    <h2 class="text-lg font-bold text-white">Feature Drift Analysis</h2>
-                    <p class="text-xs text-slate-400">Comparing Real-time Traffic (Median & IQR) vs Training Baseline</p>
-                 </div>
-                 <div class="flex items-center gap-3">
-                     <span id="drift-status" class="text-xs text-slate-400"></span>
-                     <button onclick="updateDriftAnalysis()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white shadow transition-all">
-                        Analyze Current Data
-                     </button>
-                 </div>
-             </div>
-             
-             <!-- Charts Grid -->
-             <div id="drift-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                 <!-- Charts will be injected here -->
-                 <div class="col-span-full text-center text-slate-500 py-10">Click "Analyze Current Data" to calculate drift statistics.</div>
-             </div>
-        </div>
+        <!-- Removed Drift View as requested -->
     </div>
 
     <!-- CSV Column Mapping Modal -->
@@ -1197,6 +1212,7 @@
 
         // === DRIFT ANALYSIS ===
         let trainingStats = null;
+        let liveFlows = [];
 
         async function fetchScalerStats() {
             if (trainingStats) return trainingStats;
@@ -1215,8 +1231,14 @@
         function calculateFeatureStats(flows, featureKey) {
             const values = [];
             for(const f of flows) {
-                const val = getFeatureValue(f, featureKey);
-                // Ensure value is numeric
+                // Handle both flat structure (CSV) and nested structure (Live/PCAP)
+                let val = undefined;
+                if (f.features && f.features[featureKey] !== undefined) {
+                    val = f.features[featureKey];
+                } else if (f[featureKey] !== undefined) {
+                    val = f[featureKey];
+                }
+
                 if (val !== undefined && val !== null && !isNaN(parseFloat(val))) {
                     values.push(parseFloat(val));
                 }
@@ -1240,42 +1262,45 @@
             };
         }
 
-        async function updateDriftAnalysis() {
-            const grid = document.getElementById('drift-grid');
-            const status = document.getElementById('drift-status');
+        async function updateDriftAnalysis(mode = 'upload') {
+            const isLive = mode === 'live';
+            const gridId = isLive ? 'drift-grid-live' : 'drift-grid-upload';
+            const statusId = isLive ? 'drift-status-live' : 'drift-upload-status';
             
-            status.innerText = "Fetching baseline...";
+            const grid = document.getElementById(gridId);
+            const status = document.getElementById(statusId);
+            
+            if (!grid) return;
+            if (status) status.innerText = "Fetching baseline...";
+            
             const baseline = await fetchScalerStats();
             
-            status.innerText = "Calculating current stats...";
-            // Use a small timeout to allow UI to update
+            if (status) status.innerText = "Calculating current stats...";
             await new Promise(r => setTimeout(r, 10));
             
             if (!baseline) {
                 grid.innerHTML = '<div class="col-span-full text-center text-red-500">Failed to load training baseline. Is the backend running?</div>';
-                status.innerText = "Error";
+                if (status) status.innerText = "Error";
                 return;
             }
             
-            // Use all flows (allData equivalent)
-            const targetFlows = allFlows; 
+            const targetFlows = isLive ? liveFlows : allFlows; 
             
             if (targetFlows.length === 0) {
-                 grid.innerHTML = '<div class="col-span-full text-center text-slate-500">No data available to analyze. Upload a PCAP or start Live capture.</div>';
-                 status.innerText = "No Data";
+                 grid.innerHTML = '<div class="col-span-full text-center text-slate-500">No data available to analyze. ' + (isLive ? 'Start Live capture.' : 'Upload a file.') + '</div>';
+                 if (status) status.innerText = "No Data";
                  return;
             }
 
             grid.innerHTML = '';
             
-            // Generate Card + Pivot for each feature
             FEATURE_KEYS.forEach((key) => {
-                const safeKey = key.replace(/[^a-zA-Z0-9]/g, '_');
+                const safeKey = key.replace(/[^a-zA-Z0-9]/g, '_') + (isLive ? '_live' : '_up');
                 const div = document.createElement('div');
                 div.className = "bg-slate-800 p-4 rounded-xl border border-slate-700 shadow flex flex-col";
                 div.innerHTML = `
                     <h3 class="text-xs font-bold text-slate-400 uppercase mb-2 h-8">${key}</h3>
-                    <div class="flex-1 relative min-h-[200px]">
+                    <div class="flex-1 relative min-h-[150px]">
                         <canvas id="chart-${safeKey}"></canvas>
                     </div>
                     <div id="stats-${safeKey}" class="mt-3 text-xs text-slate-400 flex justify-between">
@@ -1284,14 +1309,11 @@
                 `;
                 grid.appendChild(div);
                 
-                // Calculate Stats
                 const current = calculateFeatureStats(targetFlows, key);
                 const train = baseline[key] || { median: 0, iqr: 0 };
                 
-                // Render Chart
                 renderDriftChart(safeKey, key, train, current);
                 
-                // Update Text Metrics
                 const shift = train.median !== 0 
                     ? ((current.median - train.median) / train.median * 100).toFixed(1)
                     : (current.median === 0 ? "0.0" : "N/A");
@@ -1305,7 +1327,7 @@
                 `;
             });
             
-            status.innerText = `Analyzed ${targetFlows.length} flows.`;
+            if (status) status.innerText = `Analyzed ${targetFlows.length} flows.`;
         }
         
         function renderDriftChart(safeKey, label, train, current) {
@@ -1509,6 +1531,14 @@
                         document.getElementById('status').innerText = `Complete. ${total} flows processed.`;
                         isProcessing = false;
                         updateButtonState('idle');
+                        
+                        // Show drift section & auto-analyze
+                        const driftSec = document.getElementById('drift-section-upload');
+                        if (driftSec) {
+                            driftSec.classList.remove('hidden');
+                            // Small delay to ensure UI renders
+                            setTimeout(() => updateDriftAnalysis('upload'), 100);
+                        }
                         break;
                     }
 
@@ -1874,6 +1904,10 @@ These are model predictions only.`;
                     body: JSON.stringify({ iface })
                 });
                 isLive = true;
+                // Show drift section
+                const driftSec = document.getElementById('drift-section-live');
+                if (driftSec) driftSec.classList.remove('hidden');
+                
                 btn.innerText = 'STOP';
                 btn.className = 'px-6 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-white shadow-lg transition-all';
                 if (statusEl) statusEl.innerText = `Streaming live flows from ${iface}`;
@@ -1883,6 +1917,10 @@ These are model predictions only.`;
                         const res = await fetch('/flows');
                         const data = await res.json();
                         if (data.flows && data.flows.length > 0) {
+                            // Accumulate flows for drift analysis
+                            liveFlows = liveFlows.concat(data.flows);
+                            if (liveFlows.length > 1000) liveFlows = liveFlows.slice(-1000);
+                            
                             const container = document.getElementById('live-container');
                             data.flows.slice(-10).forEach(flow => {
                                 const color = flow.action === 'BLOCK' ? 'border-red-500/50 bg-red-500/10 text-red-300' : 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300';

@@ -101,7 +101,10 @@ class Flow:
             self.len_bwd.append(ip_len)
             self.bwd_pkt_len_max = max(self.bwd_pkt_len_max, ip_len)
             if self.init_bwd_win is None and pkt.haslayer(TCP):
-                self.init_bwd_win = getattr(pkt[TCP], 'window', 0)
+                try:
+                    self.init_bwd_win = int(pkt[TCP].window)
+                except Exception:
+                    pass
 
     def is_expired(self, now: float, timeout: float) -> bool:
         return (now - self.last_time) > timeout
