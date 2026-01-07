@@ -2,6 +2,7 @@ import sys
 import os
 import csv
 import json
+import time
 import requests
 import traceback
 from datetime import datetime
@@ -22,7 +23,7 @@ except ImportError as e:
         'Bwd Pkt Len Mean'
     ]
 
-csv_filename = "DrDoS_DNS_data_1_per.csv"
+csv_filename = "Friday-16-02-2018_TrafficForML_CICFlowMeter.csv"
 csv_path = f"uploads/csv/{csv_filename}"
 abs_path = os.path.abspath(csv_path)
 metadata_dir = os.path.join(os.path.dirname(abs_path), "../metadata")
@@ -167,28 +168,53 @@ if os.path.exists(metadata_path):
 if not loaded:
     print("--- Interactive Column Mapping ---")
 
+    # Helper to find column by list of names
+    def find_col(candidates):
+        for cand in candidates:
+            # Case insensitive match attempts
+            for col in available_columns:
+                if col['name'].strip() == cand:
+                    return col
+                if col['name'].strip().lower() == cand.lower():
+                    return col
+        return None
+
     # 1. Timestamp
-    mappings['timestamp'] = ask_user("Timestamp (optional)", required=False)
+    ts_col = find_col(['Timestamp', 'timestamp', 'Flow Start', 'StartTime'])
+    if ts_col:
+        mappings['timestamp'] = ts_col['index']
+        print(f"Auto-mapped timestamp to {ts_col['name']}")
+    else:
+        mappings['timestamp'] = ask_user("Timestamp (optional)", required=False)
 
     # 2. 5-tuple
     five_tuple_fields = [
-        ('src_ip', 'Source IP'),
-        ('dst_ip', 'Destination IP'),
-        ('src_port', 'Source Port'),
-        ('dst_port', 'Destination Port'),
-        ('protocol', 'Protocol')
+        ('src_ip', ['Src IP', 'Source IP', 'SrcAddr', 'src_ip', 'Source']),
+        ('dst_ip', ['Dst IP', 'Destination IP', 'DstAddr', 'dst_ip', 'Destination']),
+        ('src_port', ['Src Port', 'Source Port', 'Sport', 'src_port']),
+        ('dst_port', ['Dst Port', 'Destination Port', 'Dport', 'dst_port']),
+        ('protocol', ['Protocol', 'Proto', 'protocol'])
     ]
 
-    for key, label in five_tuple_fields:
-        mappings[key] = ask_user(label, required=True)
+    for key, candidates in five_tuple_fields:
+        found = find_col(candidates)
+        if found:
+            mappings[key] = found['index']
+            print(f"Auto-mapped {key} to {found['name']}")
+        else:
+            mappings[key] = ask_user(f"Column for {key}", required=True)
         
     # 3. Label
-    mappings['label'] = ask_user("Label (optional)", required=False)
+    lbl_col = find_col(['Label', 'label', 'Class'])
+    if lbl_col:
+        mappings['label'] = lbl_col['index']
+        print(f"Auto-mapped label to {lbl_col['name']}")
+    else:
+        mappings['label'] = ask_user("Label (optional)", required=False)
     
     # 4. Benign Label
-    b_label = input("Enter Benign Label (default: BENIGN): ").strip()
-    if b_label:
-        benign_label = b_label
+    print("Using default Benign Label: BENIGN")
+    benign_label = 'BENIGN'
 
     # 5. Features
     print("\n--- Mapping Features ---")
@@ -203,6 +229,13 @@ if not loaded:
             print(f"Automatically mapped feature '{feature}' to column index {mappings['dst_port']}")
             continue
             
+        # Try direct name match
+        found = find_col([feature])
+        if found:
+            feature_mappings[feature] = found['index']
+            print(f"Auto-mapped feature '{feature}'")
+            continue
+
         # Ask user
         idx = ask_user(f"Feature: {feature}", required=True)
         feature_mappings[feature] = idx
@@ -255,10 +288,24 @@ def load_and_predict(path, mappings, feature_mappings, limit=5, benign_label='BE
                 print(f"    Original Label: {original_label}")
                 
                 try:
+                    start_time = time.time()
                     resp = requests.post(PREDICT_URL, json={'features': features}, timeout=5)
+                    total_time = (time.time() - start_time) * 1000  # ms
+
                     if resp.status_code == 200:
                         res = resp.json()
-                        print(f"    Prediction: {res.get('verdict')} (conf: {res.get('confidence')})")
+                        print(f"    Prediction: {res.get('verdict')} (Action: {res.get('action')})")
+                        
+                        # Model Details
+                        iso = res.get('isolation_forest', {})
+                        xgb = res.get('xgb', {})
+                        gnn = res.get('gnn', {})
+                        
+                        print(f"    [Isolation Forest] Anomaly: {iso.get('flag')} (Score: {iso.get('confidence')}, Delay: {iso.get('delay')})")
+                        print(f"    [XGBoost]          Attack:  {xgb.get('flag')} (Conf: {xgb.get('confidence')}, Delay: {xgb.get('delay')})")
+                        print(f"    [GNN]              Class:   {gnn.get('flag')} (Conf: {gnn.get('confidence')}, Delay: {gnn.get('delay')})")
+                        
+                        print(f"    Total Time: {total_time:.2f} ms")
                     else:
                         print(f"    Failed: {resp.status_code} {resp.text}")
                 except Exception as e:

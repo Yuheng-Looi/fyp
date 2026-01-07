@@ -722,14 +722,24 @@ def offline_next():
             start_ts = time.time()
             pred = predict_one(entry.get('features'), entry.get('src_ip'), entry.get('dst_ip'))
             latency = time.time() - start_ts
+            
             verdict = pred.get('verdict', 'UNKNOWN')
-            action = 'BLOCK' if verdict not in ['BENIGN', 'UNKNOWN', 'UNAVAILABLE'] else 'ALLOW'
+            action = pred.get('action')
+            if not action:
+                action = 'BLOCK' if verdict not in ['BENIGN', 'UNKNOWN', 'UNAVAILABLE'] else 'ALLOW'
 
-            details = pred.get('details', {}) if isinstance(pred.get('details'), dict) else {}
-            gnn_verdict = pred.get('gnn_verdict') or details.get('gnn_multiclass')
-            gnn_conf = pred.get('gnn_confidence')
-            if gnn_conf is None:
-                gnn_conf = details.get('gnn_confidence')
+            iso_forest = pred.get('isolation_forest', {})
+            xgb_model = pred.get('xgb', {})
+            gnn_model = pred.get('gnn', {})
+
+            gnn_verdict = gnn_model.get('flag')
+            gnn_conf = gnn_model.get('confidence')
+
+            details = {
+                'isolation_forest': iso_forest,
+                'xgb': xgb_model,
+                'gnn': gnn_model
+            }
             
             result = {
                 'timestamp': entry.get('timestamp', time.time()),
@@ -740,7 +750,7 @@ def offline_next():
                 'protocol': entry.get('protocol', 0),
                 'prediction': verdict,
                 'action': action,
-                'confidence': pred.get('confidence', details.get('xgb_probability', 0.0)) or 0.0,
+                'confidence': xgb_model.get('confidence', 0.0),
                 'gnn_verdict': gnn_verdict,
                 'gnn_confidence': gnn_conf,
                 'details': details,
@@ -845,13 +855,25 @@ def start_iface():
                 feats = flow.compute_features()
                 src, dst, sport, dport, proto = flow.key
                 pred = predict_one({kk: feats[kk] for kk in FEATURE_KEYS}, src, dst)
+                
                 verdict = pred.get('verdict', 'UNKNOWN')
-                action = 'BLOCK' if verdict not in ['BENIGN', 'UNKNOWN', 'UNAVAILABLE'] else 'ALLOW'
-                details = pred.get('details', {}) if isinstance(pred.get('details'), dict) else {}
-                gnn_verdict = pred.get('gnn_verdict') or details.get('gnn_multiclass')
-                gnn_conf = pred.get('gnn_confidence')
-                if gnn_conf is None:
-                    gnn_conf = details.get('gnn_confidence')
+                action = pred.get('action')
+                if not action:
+                    action = 'BLOCK' if verdict not in ['BENIGN', 'UNKNOWN', 'UNAVAILABLE'] else 'ALLOW'
+
+                iso_forest = pred.get('isolation_forest', {})
+                xgb_model = pred.get('xgb', {})
+                gnn_model = pred.get('gnn', {})
+
+                gnn_verdict = gnn_model.get('flag')
+                gnn_conf = gnn_model.get('confidence')
+
+                details = {
+                    'isolation_forest': iso_forest,
+                    'xgb': xgb_model,
+                    'gnn': gnn_model
+                }
+
                 record = {
                     'timestamp': flow.last_time,
                     'src_ip': src,
@@ -861,7 +883,7 @@ def start_iface():
                     'protocol': proto,
                     'prediction': verdict,
                     'action': action,
-                    'confidence': pred.get('confidence', details.get('xgb_probability', 0.0)) or 0.0,
+                    'confidence': xgb_model.get('confidence', 0.0),
                     'gnn_verdict': gnn_verdict,
                     'gnn_confidence': gnn_conf,
                     'details': details

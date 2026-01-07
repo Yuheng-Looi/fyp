@@ -613,14 +613,25 @@
             }
 
             const details = flow.details || {};
-            const gnnVerdict = flow.gnn_verdict || details.gnn_verdict || details.gnn_multiclass || 'N/A';
-            let gnnConfidenceVal = flow.gnn_confidence;
-            if (gnnConfidenceVal === undefined || gnnConfidenceVal === null) {
-                gnnConfidenceVal = details.gnn_confidence;
-            }
-            const gnnConfidenceText = gnnConfidenceVal !== undefined && gnnConfidenceVal !== null
-                ? Number(gnnConfidenceVal).toFixed(3)
-                : 'N/A';
+            
+            // GNN
+            const gnn = details.gnn || {};
+            const gnnVerdict = gnn.flag || flow.gnn_verdict || details.gnn_verdict || 'N/A';
+            const gnnConfVal = gnn.confidence !== undefined ? gnn.confidence : flow.gnn_confidence;
+            const gnnConf = gnnConfVal !== undefined && gnnConfVal !== null ? Number(gnnConfVal).toFixed(3) : 'N/A';
+            const gnnDelay = gnn.delay || 'N/A';
+
+            // Isolation Forest
+            const iso = details.isolation_forest || {};
+            const isoFlag = iso.flag !== undefined ? iso.flag : 'N/A';
+            const isoConf = iso.confidence !== undefined ? Number(iso.confidence).toFixed(3) : 'N/A';
+            const isoDelay = iso.delay || 'N/A';
+
+            // XGBoost
+            const xgb = details.xgb || {};
+            const xgbFlag = xgb.flag !== undefined ? xgb.flag : 'N/A';
+            const xgbConf = xgb.confidence !== undefined ? Number(xgb.confidence).toFixed(3) : 'N/A';
+            const xgbDelay = xgb.delay || 'N/A';
 
             content.innerHTML = `
                 <div>
@@ -633,35 +644,58 @@
                     </div>
                 </div>
                 <div>
-                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Analysis</h4>
-                    <div class="bg-slate-900 rounded p-3 space-y-2 text-sm">
-                        <div class="flex justify-between items-center">
-                            <span class="text-slate-400">Prediction</span> 
-                            <span class="px-2 py-0.5 rounded text-xs font-bold ${flow.prediction === 'BENIGN' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">${flow.prediction}</span>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Analysis Results</h4>
+                    <div class="bg-slate-900 rounded p-3 space-y-3 text-sm">
+                        <!-- Summary -->
+                        <div class="border-b border-slate-700 pb-2 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Final Prediction</span> 
+                                <span class="px-2 py-0.5 rounded text-xs font-bold ${flow.prediction === 'BENIGN' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">${flow.prediction}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Action</span> 
+                                <span class="text-white font-bold">${flow.action}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Total Latency</span>
+                                <span class="text-amber-400 font-mono">${latency}</span>
+                            </div>
+                            ${hasLabel ? `<div class="flex justify-between items-center"><span class="text-slate-400">Truth</span><span class="text-slate-300 font-bold">${flow.label}</span></div>` : ''}
+                            ${veracityHtml}
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-slate-400">Action</span> 
-                            <span class="text-white font-bold">${flow.action}</span>
+
+                        <!-- Individual Models -->
+                        <div class="space-y-2">
+                            <div class="text-xs font-bold text-slate-500 uppercase">Isolation Forest (Anomaly)</div>
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                                <div class="text-slate-400">Flag</div><div class="text-right text-white font-mono">${isoFlag}</div>
+                                <div class="text-slate-400">Confidence</div><div class="text-right text-emerald-300 font-mono">${isoConf}</div>
+                                <div class="text-slate-400">Time</div><div class="text-right text-amber-400 font-mono">${isoDelay}</div>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-slate-400">GNN Verdict</span>
-                            <span class="text-white font-bold">${gnnVerdict}</span>
+
+                        <div class="space-y-2 pt-2 border-t border-slate-700">
+                            <div class="text-xs font-bold text-slate-500 uppercase">XGBoost (Attack Detect)</div>
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                                <div class="text-slate-400">Flag</div><div class="text-right text-white font-mono">${xgbFlag}</div>
+                                <div class="text-slate-400">Confidence</div><div class="text-right text-emerald-300 font-mono">${xgbConf}</div>
+                                <div class="text-slate-400">Time</div><div class="text-right text-amber-400 font-mono">${xgbDelay}</div>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-slate-400">GNN Confidence</span>
-                            <span class="text-emerald-300 font-mono">${gnnConfidenceText}</span>
-                        </div>
-                        ${hasLabel ? `<div class="flex justify-between items-center border-t border-slate-800 pt-2 mt-2"><span class="text-slate-400">Truth</span><span class="text-slate-300">${flow.label}</span></div>` : ''}
-                        ${veracityHtml}
-                        <div class="flex justify-between items-center border-t border-slate-800 pt-2 mt-2">
-                            <span class="text-slate-400">Predict Latency</span>
-                            <span class="text-amber-400 font-mono">${latency}</span>
+
+                        <div class="space-y-2 pt-2 border-t border-slate-700">
+                            <div class="text-xs font-bold text-slate-500 uppercase">GNN (Multiclass)</div>
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                                <div class="text-slate-400">Verdict</div><div class="text-right text-white font-mono truncate" title="${gnnVerdict}">${gnnVerdict}</div>
+                                <div class="text-slate-400">Confidence</div><div class="text-right text-emerald-300 font-mono">${gnnConf}</div>
+                                <div class="text-slate-400">Time</div><div class="text-right text-amber-400 font-mono">${gnnDelay}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div>
                     <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Features (15)</h4>
-                    <div class="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
+                    <div class="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
                         ${featureEntries.map(([k, v]) => `
                             <div class="flex justify-between text-xs border-b border-slate-800 pb-1">
                                 <span class="text-slate-400 truncate pr-2" title="${k}">${k}</span>
