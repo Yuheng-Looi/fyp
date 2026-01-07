@@ -453,8 +453,6 @@ async def analyze_pcap(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
 @app.get("/scalers")
 def list_scalers():
     # List all .pkl files in scalers/ starting with scaler_
@@ -614,3 +612,5 @@ async def retrain_model_endpoint(
         traceback.print_exc()
         raise HTTPException(500, f"Retraining failed: {str(e)}")
 
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
