@@ -22,8 +22,6 @@ Content-Type: application/json
     "TotLen Fwd Pkts": 48.0,
     "Bwd Pkt Len Std": 10.28,
     "Bwd Pkt Len Mean": 4.6,
-    "src": "192.168.1.105",
-    "dst": "10.0.0.5"
   },
   "scaler_id": "default"
 }
@@ -31,27 +29,43 @@ Content-Type: application/json
 2. Response Payload (Output)
 ----------------------------
 {
-  "verdict": "KNOWN_ATTACK",
-  "confidence": 0.998,
-  "source": "192.168.1.105",
-  "destination": "10.0.0.5",
-  "scaler_used": "default",
-  "gnn_verdict": "U2R",
-  "details": {
-    "safety_net_flag": 1,
-    "xgb_flag": 1,
-    "xgb_probability": 0.998,
-    "gnn_multiclass": "U2R",
-    "gnn_confidence": 0.854
-  }
+  "isolation_forest": {
+    "flag": 1,
+    "confidence": 0.5,
+    "delay": "0.1ms"
+  },
+  "xgb": {
+    "flag": 1,
+    "confidence": 0.854,
+    "delay": "0.1ms"
+  },
+  "gnn": {
+    "flag": "U2R",
+    "confidence": 0.1,
+    "delay": "0.1ms"
+  },
+  "verdict": "ZERO_DAY_SUSPICION",
+  "action": "block"
 }
 
 Field Descriptions:
-- verdict: Final decision (BENIGN, KNOWN_ATTACK, ZERO_DAY_SUSPICION)
-- confidence: Confidence score of the primary detector (XGBoost)
-- gnn_verdict: The specific attack class predicted by the GNN (e.g., DoS, DDoS, PortScan, Normal)
-- details:
-  - safety_net_flag: 1 if anomaly detected by Isolation Forest, 0 otherwise
-  - xgb_flag: 1 if attack detected by XGBoost, 0 otherwise
-  - gnn_multiclass: Same as gnn_verdict
-  - gnn_confidence: Confidence score of the GNN prediction
+- isolation_forest:
+  - flag: 1 for anomaly, 0 for normal
+  - confidence: Anomaly score
+  - delay: time taken for isolation forest model to return the result
+- xgb:
+  - flag: 1 if attack, 0 if normal
+  - confidence: Probability score of the prediction
+  - delay: time taken for xgb model to return the result
+- gnn:
+  - flag: Specific attack class (e.g., U2R, DoS, Probe)
+  - confidence: Probability score of the classification
+  - delay: time taken for gnn model to return the result
+- verdict: Final aggregated decision (BENIGN, KNOWN_ATTACK, ZERO_DAY_SUSPICION)
+- action: Recommended mitigation action
+
+Example Mitigation Actions:
+- "block": Immediately drop packets from source IP.
+- "monitor": Log traffic but allow flow to continue.
+- "alert": Send notification to dashboard/admin but take no automated network action.
+- "quarantine": Move host/flow to a restricted VLAN.

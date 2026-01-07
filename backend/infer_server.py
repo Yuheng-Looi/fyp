@@ -8,6 +8,7 @@ import os
 import json
 import torch
 import pickle
+import time
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import List, Dict, Any, Union, Optional
@@ -215,18 +216,29 @@ def predict_traffic(flow: NetworkFlow):
         return {"error": f"Scaling failed: {str(e)}"}
 
     # 5. Predictions (on SCALED features)
+    
+    # --- SafetyNet (Isolation Forest) ---
+    sn_start = time.time()
     sn_model = model_store['safety_net']
     # SafetyNet expects DataFrame with 45 cols
-    is_anomaly = sn_model.predict(model_input_scaled)[0]
-    
+    is_anomaly = int(sn_model.predict(model_input_scaled)[0])
+    sn_end = time.time()
+    sn_delay = f"{(sn_end - sn_start) * 1000:.2f}ms"
+
+    # --- XGBoost ---
+    xgb_start = time.time()
     xgb_model = model_store['xgb']
     # XGB expects DataFrame with 45 cols
-    xgb_pred = xgb_model.model.predict(model_input_scaled)[0]
+    xgb_pred = int(xgb_model.model.predict(model_input_scaled)[0])
     xgb_prob = float(xgb_model.model.predict_proba(model_input_scaled)[0][1])
+    xgb_end = time.time()
+    xgb_delay = f"{(xgb_end - xgb_start) * 1000:.2f}ms"
 
-    # GNN Prediction (Multiclass)
+    # --- GNN Prediction (Multiclass) ---
+    gnn_start = time.time()
     gnn_verdict = "N/A"
     gnn_conf = 0.0
+    
     if 'gnn_multiclass' in model_store and 'gnn_scaler' in scaler_store:
         try:
             # Scale 15 features using GNN scaler
@@ -234,10 +246,6 @@ def predict_traffic(flow: NetworkFlow):
             x_tensor = torch.tensor(gnn_input_np, dtype=torch.float)
             
             # Create dummy edge_index (self-loop or empty)
-            # For single node, empty edge_index is fine, or self-loop
-            # GNNs usually need edges to aggregate. If no edges, it acts like MLP (if self-loops added)
-            # GraphSAGE/GAT might fail if no edges?
-            # Let's add self-loop: node 0 -> node 0
             edge_index = torch.tensor([[0], [0]], dtype=torch.long)
             
             with torch.no_grad():
@@ -252,30 +260,41 @@ def predict_traffic(flow: NetworkFlow):
                     gnn_verdict = str(pred_idx)
         except Exception as e:
             print(f"[!] GNN Prediction failed: {e}")
+    
+    gnn_end = time.time()
+    gnn_delay = f"{(gnn_end - gnn_start) * 1000:.2f}ms"
 
-    # 6. Result
-    result = {
-        "verdict": "BENIGN",
-        "confidence": 0.0,
-        "source": src_ip,
-        "destination": dst_ip,
-        "scaler_used": scaler_id,
-        "gnn_verdict": gnn_verdict,
-        "details": {
-            "safety_net_flag": int(is_anomaly),
-            "xgb_flag": int(xgb_pred),
-            "xgb_probability": xgb_prob,
-            "gnn_multiclass": gnn_verdict,
-            "gnn_confidence": gnn_conf
-        }
-    }
+    # 6. Determine Final Verdict and Action
+    final_verdict = "BENIGN"
+    action = "allow"
 
     if xgb_pred == 1:
-        result["verdict"] = "KNOWN_ATTACK"
-        result["confidence"] = xgb_prob
+        final_verdict = "KNOWN_ATTACK"
+        action = "block"
     elif is_anomaly == 1:
-        result["verdict"] = "ZERO_DAY_SUSPICION"
-        result["confidence"] = 0.5 
+        final_verdict = "ZERO_DAY_SUSPICION"
+        action = "block"
+
+    # 7. Construct Response
+    result = {
+        "isolation_forest": {
+            "flag": is_anomaly,
+            # "confidence": removed as per request (not available in standard IsolationForest)
+            "delay": sn_delay
+        },
+        "xgb": {
+            "flag": xgb_pred,
+            "confidence": xgb_prob,
+            "delay": xgb_delay
+        },
+        "gnn": {
+            "flag": gnn_verdict,
+            "confidence": gnn_conf,
+            "delay": gnn_delay
+        },
+        "verdict": final_verdict,
+        "action": action
+    }
     
     return result
 
