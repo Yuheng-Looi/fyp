@@ -1008,6 +1008,24 @@ def save_file():
 def serve_dashboard():
     return send_from_directory('.', 'dashboard.html')
 
+@app.route('/api/scaler_stats')
+def proxy_scaler_stats():
+    # PREDICT_URL is like "http://.../predict"
+    # We want "http://.../scaler_stats"
+    if '/' in PREDICT_URL:
+        base_url = PREDICT_URL.rsplit('/', 1)[0]
+    else:
+        base_url = PREDICT_URL 
+        
+    try:
+        # Pass the SCALER_ID env var if set
+        url = f"{base_url}/scaler_stats?scaler_id={SCALER_ID}"
+        print(f"Fetching stats from: {url}")
+        resp = requests.get(url, timeout=5)
+        return jsonify(resp.json())
+    except Exception as e:
+        print(f"Error fetching scaler stats: {e}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

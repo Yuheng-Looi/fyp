@@ -26,6 +26,7 @@
             <div class="flex bg-slate-800 p-1 rounded-lg">
                 <button id="tab-upload" onclick="switchTab('upload')" class="px-4 py-1.5 rounded text-sm font-bold transition-all bg-blue-600 text-white shadow">Upload</button>
                 <button id="tab-live" onclick="switchTab('live')" class="px-4 py-1.5 rounded text-sm font-bold transition-all text-slate-400 hover:text-white">Live</button>
+                <button id="tab-drift" onclick="switchTab('drift')" class="px-4 py-1.5 rounded text-sm font-bold transition-all text-slate-400 hover:text-white">Drift</button>
             </div>
         </div>
 
@@ -201,6 +202,28 @@
                 </div>
             </div>
             <div id="live-container" class="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar"></div>
+        </div>
+
+        <!-- Drift View -->
+        <div id="view-drift" class="hidden space-y-4">
+             <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex justify-between items-center">
+                 <div>
+                    <h2 class="text-lg font-bold text-white">Feature Drift Analysis</h2>
+                    <p class="text-xs text-slate-400">Comparing Real-time Traffic (Median & IQR) vs Training Baseline</p>
+                 </div>
+                 <div class="flex items-center gap-3">
+                     <span id="drift-status" class="text-xs text-slate-400"></span>
+                     <button onclick="updateDriftAnalysis()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold text-white shadow transition-all">
+                        Analyze Current Data
+                     </button>
+                 </div>
+             </div>
+             
+             <!-- Charts Grid -->
+             <div id="drift-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                 <!-- Charts will be injected here -->
+                 <div class="col-span-full text-center text-slate-500 py-10">Click "Analyze Current Data" to calculate drift statistics.</div>
+             </div>
         </div>
     </div>
 
@@ -474,8 +497,11 @@
         function switchTab(tab) {
             document.getElementById('view-upload').classList.toggle('hidden', tab !== 'upload');
             document.getElementById('view-live').classList.toggle('hidden', tab !== 'live');
+            document.getElementById('view-drift').classList.toggle('hidden', tab !== 'drift');
+            
             document.getElementById('tab-upload').className = `px-4 py-1.5 rounded text-sm font-bold transition-all ${tab === 'upload' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`;
             document.getElementById('tab-live').className = `px-4 py-1.5 rounded text-sm font-bold transition-all ${tab === 'live' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`;
+            document.getElementById('tab-drift').className = `px-4 py-1.5 rounded text-sm font-bold transition-all ${tab === 'drift' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`;
         }
 
         // === BUTTON STATE MANAGEMENT ===
@@ -1167,6 +1193,164 @@
                 await runAnalysis(pendingFormData);
                 pendingFormData = null;
             }
+        }
+
+        // === DRIFT ANALYSIS ===
+        let trainingStats = null;
+
+        async function fetchScalerStats() {
+            if (trainingStats) return trainingStats;
+            try {
+                const res = await fetch('/api/scaler_stats');
+                if (res.ok) {
+                    trainingStats = await res.json();
+                    return trainingStats;
+                }
+            } catch (e) {
+                console.error("Failed to fetch scaler stats", e);
+            }
+            return null;
+        }
+
+        function calculateFeatureStats(flows, featureKey) {
+            const values = [];
+            for(const f of flows) {
+                const val = getFeatureValue(f, featureKey);
+                // Ensure value is numeric
+                if (val !== undefined && val !== null && !isNaN(parseFloat(val))) {
+                    values.push(parseFloat(val));
+                }
+            }
+            
+            if (values.length === 0) return { median: 0, iqr: 0, p25: 0, p75: 0 };
+            
+            values.sort((a, b) => a - b);
+            
+            const mid = Math.floor(values.length / 2);
+            const median = values.length % 2 !== 0 ? values[mid] : (values[mid - 1] + values[mid]) / 2;
+            
+            const p25 = values[Math.floor(values.length * 0.25)];
+            const p75 = values[Math.floor(values.length * 0.75)];
+            
+            return {
+                median,
+                iqr: p75 - p25,
+                p25,
+                p75
+            };
+        }
+
+        async function updateDriftAnalysis() {
+            const grid = document.getElementById('drift-grid');
+            const status = document.getElementById('drift-status');
+            
+            status.innerText = "Fetching baseline...";
+            const baseline = await fetchScalerStats();
+            
+            status.innerText = "Calculating current stats...";
+            // Use a small timeout to allow UI to update
+            await new Promise(r => setTimeout(r, 10));
+            
+            if (!baseline) {
+                grid.innerHTML = '<div class="col-span-full text-center text-red-500">Failed to load training baseline. Is the backend running?</div>';
+                status.innerText = "Error";
+                return;
+            }
+            
+            // Use all flows (allData equivalent)
+            const targetFlows = allFlows; 
+            
+            if (targetFlows.length === 0) {
+                 grid.innerHTML = '<div class="col-span-full text-center text-slate-500">No data available to analyze. Upload a PCAP or start Live capture.</div>';
+                 status.innerText = "No Data";
+                 return;
+            }
+
+            grid.innerHTML = '';
+            
+            // Generate Card + Pivot for each feature
+            FEATURE_KEYS.forEach((key) => {
+                const safeKey = key.replace(/[^a-zA-Z0-9]/g, '_');
+                const div = document.createElement('div');
+                div.className = "bg-slate-800 p-4 rounded-xl border border-slate-700 shadow flex flex-col";
+                div.innerHTML = `
+                    <h3 class="text-xs font-bold text-slate-400 uppercase mb-2 h-8">${key}</h3>
+                    <div class="flex-1 relative min-h-[200px]">
+                        <canvas id="chart-${safeKey}"></canvas>
+                    </div>
+                    <div id="stats-${safeKey}" class="mt-3 text-xs text-slate-400 flex justify-between">
+                        <span>Loading...</span>
+                    </div>
+                `;
+                grid.appendChild(div);
+                
+                // Calculate Stats
+                const current = calculateFeatureStats(targetFlows, key);
+                const train = baseline[key] || { median: 0, iqr: 0 };
+                
+                // Render Chart
+                renderDriftChart(safeKey, key, train, current);
+                
+                // Update Text Metrics
+                const shift = train.median !== 0 
+                    ? ((current.median - train.median) / train.median * 100).toFixed(1)
+                    : (current.median === 0 ? "0.0" : "N/A");
+                
+                const shiftColor = Math.abs(Number(shift === "N/A" ? 0 : shift)) > 20 ? "text-amber-400" : "text-slate-300";
+                
+                document.getElementById(`stats-${safeKey}`).innerHTML = `
+                    <div>Train: ${train.median.toFixed(2)}</div>
+                    <div>Real: ${current.median.toFixed(2)}</div>
+                    <div class="${shiftColor} font-bold">Δ ${shift}%</div>
+                `;
+            });
+            
+            status.innerText = `Analyzed ${targetFlows.length} flows.`;
+        }
+        
+        function renderDriftChart(safeKey, label, train, current) {
+             const ctx = document.getElementById(`chart-${safeKey}`).getContext('2d');
+             
+             new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Train (Base)', 'Real-time'],
+                    datasets: [{
+                        label: 'Median Value',
+                        data: [train.median, current.median],
+                        backgroundColor: [
+                            'rgba(59, 130, 246, 0.5)', // Blue
+                            'rgba(16, 185, 129, 0.5)'  // Emerald
+                        ],
+                        borderColor: [
+                            'rgb(59, 130, 246)',
+                            'rgb(16, 185, 129)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                afterLabel: function(context) {
+                                    if (context.dataIndex === 0) return `IQR: ${train.iqr ? train.iqr.toFixed(2) : 'N/A'}`;
+                                    if (context.dataIndex === 1) return `IQR: ${current.iqr ? current.iqr.toFixed(2) : '0'}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        }
+                    }
+                }
+             });
         }
 
         // === ANALYSIS ===
