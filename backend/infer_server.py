@@ -139,6 +139,9 @@ async def refit_scaler(file: UploadFile = File(...), name: Optional[str] = Form(
     try:
         # Read CSV file
         df = pd.read_csv(file.file)
+
+        # Apply Column Mapping (Fix for column mismatch)
+        df.rename(columns=COLUMN_MAPPING, inplace=True)
         
         # Validate columns
         missing_cols = [col for col in EXPECTED_COLUMNS if col not in df.columns]
@@ -500,6 +503,12 @@ async def retrain_model_endpoint(
     try:
         # Load CSV
         df = pd.read_csv(file.file)
+<<<<<<< HEAD
+=======
+
+        # Apply Column Mapping (Fix for column mismatch)
+        df.rename(columns=COLUMN_MAPPING, inplace=True)
+>>>>>>> 1277a31 (update infer_server)
         
         # Check Label Col
         # Clean label col name logic? (strip info)
@@ -611,6 +620,7 @@ async def retrain_model_endpoint(
         import traceback
         traceback.print_exc()
         raise HTTPException(500, f"Retraining failed: {str(e)}")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
