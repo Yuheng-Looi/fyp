@@ -285,6 +285,20 @@ def load_and_predict(path, mappings, feature_mappings, limit=5, benign_label='BE
                 
                 # Print and Predict
                 print(f"\n[{count+1}] {ts_val} | {src_ip}:{src_port} -> {dst_ip}:{dst_port} proto={proto}")
+
+                # DEBUG INSPECTION
+                debug_cols = ['TotLen Fwd Pkts', 'Bwd Pkt Len Std', 'Bwd Pkt Len Mean', 
+                              'TotLen Bwd Pkts', 'Bwd Pkt Len Max', 'Pkt Len Mean', 'Pkt Len Max']
+                print("    --- Debug Parsed Values ---")
+                for dc in debug_cols:
+                    # Get raw value if possible
+                    raw_val = "N/A"
+                    if dc in feature_mappings:
+                         idx = feature_mappings[dc]
+                         if idx < len(row):
+                             raw_val = row[idx]
+                    print(f"    {dc}: {features.get(dc, 'MISSING')} (Raw: '{raw_val}')")
+                
                 print(f"    Original Label: {original_label}")
                 
                 try:

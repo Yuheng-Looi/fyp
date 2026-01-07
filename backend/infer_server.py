@@ -56,16 +56,16 @@ def load_artifacts():
     print("[-] Loading artifacts...")
     try:
         # SafetyNet (joblib pickle)
-        if os.path.exists('models/safety_net_v1.pkl'):
-            sn = joblib.load('models/safety_net_v1.pkl')
+        if os.path.exists('models/safetynet/safety_net_v1.pkl'):
+            sn = joblib.load('models/safetynet/safety_net_v1.pkl')
             model_store['safety_net'] = sn
         else:
             print("[!] SafetyNet model not found.")
 
         # XGBoost (JSON)
-        if os.path.exists('models/xgb_binary_v1.json'):
+        if os.path.exists('models/xgb/xgb_binary_v1.json'):
             xgb_model = xgb.XGBClassifier()
-            xgb_model.load_model('models/xgb_binary_v1.json')
+            xgb_model.load_model('models/xgb/xgb_binary_v1.json')
             xgb_det = XGBDetector()
             xgb_det.model = xgb_model
             model_store['xgb'] = xgb_det
@@ -297,6 +297,28 @@ def predict_traffic(flow: NetworkFlow):
     }
     
     return result
+
+@app.get("/scaler_stats")
+def get_scaler_stats(scaler_id: str = "default"):
+    """
+    Returns the training statistics (median, IQR) for the specified scaler.
+    Useful for frontend drift visualization.
+    """
+    if scaler_id not in scaler_store:
+        # Try to load if missing
+        potential_path = f"scalers/scaler_{scaler_id}.pkl" if scaler_id != 'default' else "scalers/trichannel_scaler.pkl"
+        if os.path.exists(potential_path):
+             scaler_store[scaler_id] = joblib.load(potential_path)
+        else:
+             raise HTTPException(status_code=404, detail="Scaler not found")
+    
+    scaler = scaler_store[scaler_id]
+    
+    # Check if it has stats_ (TriChannelScaler)
+    if not hasattr(scaler, 'stats_'):
+        return {"error": "Scaler does not have stats_ attribute (not TriChannelScaler?)"}
+        
+    return scaler.stats_
 
 @app.post("/analyze_pcap")
 async def analyze_pcap(
