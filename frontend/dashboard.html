@@ -26,6 +26,8 @@
             <div class="flex bg-slate-800 p-1 rounded-lg">
                 <button id="tab-upload" onclick="switchTab('upload')" class="px-4 py-1.5 rounded text-sm font-bold transition-all bg-blue-600 text-white shadow">Upload</button>
                 <button id="tab-live" onclick="switchTab('live')" class="px-4 py-1.5 rounded text-sm font-bold transition-all text-slate-400 hover:text-white">Live</button>
+                <button id="tab-analysis" onclick="switchTab('analysis')" class="px-4 py-1.5 rounded text-sm font-bold transition-all text-slate-400 hover:text-white">Analysis</button>
+                <button id="tab-models" onclick="switchTab('models')" class="px-4 py-1.5 rounded text-sm font-bold transition-all text-slate-400 hover:text-white">Retrain & Rescale</button>
             </div>
         </div>
 
@@ -84,19 +86,7 @@
             </div>
             <div id="status" class="text-xs text-slate-400 px-1"></div>
 
-            <!-- Drift Analysis (Upload) -->
-            <div id="drift-section-upload" class="hidden bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg mt-4">
-                <div class="flex justify-between items-center cursor-pointer mb-4" onclick="document.getElementById('drift-content-upload').classList.toggle('hidden')">
-                     <div class="flex items-center gap-2">
-                         <h2 class="text-sm font-bold text-white">📊 Feature Drift Analysis</h2>
-                         <span class="text-xs text-slate-500">(Training Baseline vs. Current Upload)</span>
-                     </div>
-                     <span class="text-xs text-blue-400 hover:text-blue-300">Toggle View</span>
-                </div>
-                <div id="drift-content-upload" class="hidden">
-                     <div id="drift-grid-upload" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-                </div>
-            </div>
+            <!-- Drift Analysis removed -->
 
             <!-- Metrics Panel - changes based on labelled vs unlabelled -->
             <div id="metrics-panel" class="hidden grid grid-cols-4 gap-4">
@@ -123,6 +113,8 @@
                     <div id="tooltip-4" class="absolute hidden group-hover:block left-1/2 -translate-x-1/2 bottom-full mb-2 bg-slate-900 border border-slate-600 rounded-lg p-3 text-xs text-left whitespace-pre-wrap z-50 min-w-[200px] shadow-xl"></div>
                 </div>
             </div>
+
+            <!-- Shifting Panels removed -->
 
             <!-- Filter & Sort Controls -->
             <div class="space-y-4">
@@ -215,31 +207,160 @@
                 </div>
             </div>
             
-            <!-- Drift Analysis (Live) -->
-            <div id="drift-section-live" class="hidden bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg mb-4">
-                <div class="flex justify-between items-center cursor-pointer mb-2" onclick="document.getElementById('drift-content-live').classList.toggle('hidden')">
-                     <div class="flex items-center gap-2">
-                         <h2 class="text-sm font-bold text-white">📊 Live Feature Drift</h2>
-                         <span class="text-xs text-slate-500">(Training vs. Last 1000 Flows)</span>
-                     </div>
-                     <span class="text-xs text-blue-400 hover:text-blue-300">Toggle View</span>
-                </div>
-                <div id="drift-content-live" class="hidden">
-                     <div class="flex items-center gap-3 mb-4">
-                         <span id="drift-status-live" class="text-xs text-slate-400">Comparing real-time window vs training baseline</span>
-                         <button onclick="updateDriftAnalysis('live')" class="px-3 py-1 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 rounded text-xs transition">
-                            Refresh Charts
-                         </button>
-                     </div>
-                     <div id="drift-grid-live" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-                </div>
-            </div>
+            <!-- Drift Analysis (Live) removed -->
 
             <div id="live-container" class="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar"></div>
         </div>
 
+        <!-- Rescale vs Retrain Analysis View -->
+        <div id="view-analysis" class="hidden space-y-4">
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
+                <div class="flex flex-col gap-4">
+                    <div>
+                         <h2 class="text-xl font-bold text-white mb-1">Rescale vs Retrain Analysis</h2>
+                         <p class="text-sm text-slate-400">Evaluate environment shift to decide next steps.</p>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-4 items-end bg-slate-900/50 p-3 rounded-lg border border-slate-700">
+                        <div class="flex-1 min-w-[300px]">
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Upload CSV (15 Features)</label>
+                            <input type="file" id="rescaleInput" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-500 cursor-pointer"/>
+                        </div>
+                        <div class="w-48">
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Or Stored File</label>
+                            <select id="storedRescaleSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                        <button onclick="startRescaleAnalysis()" class="px-6 py-2 bg-purple-600 hover:bg-purple-500 rounded-lg font-bold text-white shadow-lg transition-all">
+                            Analyze
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Results -->
+            <div id="rescale-results" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-4">
+                 <!-- Left: Chart -->
+                 <div class="lg:col-span-2 bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex flex-col h-[500px]">
+                      <h3 class="font-bold text-slate-300 mb-2">Feature Alignment (Median vs IQR Ratio)</h3>
+                      <div class="flex-1 relative">
+                          <canvas id="rescaleChart"></canvas>
+                      </div>
+                 </div>
+                 
+                 <!-- Right: Recommendation & Table -->
+                 <div class="space-y-4 flex flex-col h-[500px]">
+                      <!-- Recommendation Box -->
+                      <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg text-center shrink-0">
+                           <div class="text-xs font-bold text-slate-500 uppercase mb-2">Suggested Action</div>
+                           <div id="rescale-action" class="text-3xl font-bold text-white mb-2">--</div>
+                           <div id="rescale-score" class="text-sm text-slate-400">Consistency Score: --</div>
+                      </div>
+                      
+                      <!-- Table -->
+                      <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg flex-1 overflow-hidden flex flex-col">
+                           <div class="px-4 py-2 bg-slate-900/50 border-b border-slate-700 font-bold text-xs text-slate-400 uppercase flex">
+                               <div class="flex-1">Feature</div>
+                               <div class="w-16 text-center">Status</div>
+                           </div>
+                           <div id="rescale-table" class="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1"></div>
+                      </div>
+                 </div>
+            </div>
+        </div>
+
         <!-- Drift View -->
         <!-- Removed Drift View as requested -->
+    </div>
+
+    </div>
+
+    <!-- MODELS VIEW -->
+    <div id="view-models" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Rescale Section -->
+            <div class="bg-slate-800 rounded-lg p-5 border border-slate-700">
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2">Rescale (Refit Scaler)</h3>
+                
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Available Scalers</label>
+                    <div id="scaler-list" class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar bg-slate-900 p-2 rounded text-sm text-slate-300">
+                        <div class="animate-pulse">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="space-y-4 pt-4 border-t border-slate-700/50">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">New Scaler Name</label>
+                        <input type="text" id="newScalerName" placeholder="e.g. office_network_v2" 
+                               class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Upload Reference CSV</label>
+                        <input type="file" id="scalerFile" accept=".csv"
+                               class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"/>
+                        <p class="text-xs text-slate-500 mt-1">File must contain representative BENIGN traffic.</p>
+                    </div>
+                    <button onclick="submitRescale()" id="btn-rescale"
+                            class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded transition-colors shadow-lg shadow-blue-900/20">
+                        Create New Scaler
+                    </button>
+                </div>
+            </div>
+
+            <!-- Retrain Section -->
+            <div class="bg-slate-800 rounded-lg p-5 border border-slate-700">
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2">Retrain Models</h3>
+                
+                <div class="mb-5">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Target Model Type</label>
+                    <div class="flex gap-2">
+                        <button onclick="selectModelType('xgb')" id="type-xgb" class="flex-1 py-1.5 rounded bg-blue-600 text-white text-xs font-bold ring-2 ring-blue-500">XGBoost</button>
+                        <button onclick="selectModelType('isolation_forest')" id="type-isolation_forest" class="flex-1 py-1.5 rounded bg-slate-700 text-slate-400 text-xs font-bold hover:bg-slate-600">SafetyNet</button>
+                        <button onclick="selectModelType('gnn')" id="type-gnn" class="flex-1 py-1.5 rounded bg-slate-700 text-slate-400 text-xs font-bold hover:bg-slate-600">GNN</button>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Available Models</label>
+                    <div id="model-list" class="space-y-1 max-h-40 overflow-y-auto custom-scrollbar bg-slate-900 p-2 rounded text-sm text-slate-300">
+                        <div class="text-slate-500">Select type to view models</div>
+                    </div>
+                </div>
+
+                <div class="space-y-4 pt-4 border-t border-slate-700/50">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">New Model Name</label>
+                            <input type="text" id="newModelName" placeholder="e.g. retrained_v1" 
+                                   class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Benign Label Value</label>
+                            <input type="text" id="retrainBenignLabel" value="BENIGN" 
+                                   class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Label Column Name</label>
+                        <input type="text" id="retrainLabelCol" value="Label" 
+                               class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Upload Labelled Dataset</label>
+                        <input type="file" id="retrainFile" accept=".csv"
+                               class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer"/>
+                    </div>
+                    <button onclick="submitRetrain()" id="btn-retrain"
+                            class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded transition-colors shadow-lg shadow-emerald-900/20">
+                        Start Retraining
+                    </button>
+                    <div id="retrain-status" class="text-xs text-center text-slate-400 hidden"></div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- CSV Column Mapping Modal -->
@@ -248,7 +369,7 @@
             <div class="p-6 border-b border-slate-700 flex justify-between items-center shrink-0">
                 <div>
                     <h3 class="text-xl font-bold text-white">Map CSV Columns</h3>
-                    <p class="text-sm text-slate-400 mt-1">Configure how your CSV columns map to required fields</p>
+                    <p id="mapping-modal-subtitle" class="text-sm text-slate-400 mt-1">Configure how your CSV columns map to required fields</p>
                 </div>
                 <button onclick="closeMappingModal()" class="text-slate-400 hover:text-white text-2xl">&times;</button>
             </div>
@@ -310,6 +431,7 @@
         let isLive = false;
         let liveInterval = null;
         let pendingFormData = null;
+        let pendingCallback = null;
         let csvHeaders = [];
         let currentFilename = null;
         let lastUsedFile = null; // Track last file used for restart
@@ -512,11 +634,13 @@
         function switchTab(tab) {
             document.getElementById('view-upload').classList.toggle('hidden', tab !== 'upload');
             document.getElementById('view-live').classList.toggle('hidden', tab !== 'live');
-            document.getElementById('view-drift').classList.toggle('hidden', tab !== 'drift');
+            document.getElementById('view-analysis').classList.toggle('hidden', tab !== 'analysis');
+            document.getElementById('view-models').classList.toggle('hidden', tab !== 'models');
             
             document.getElementById('tab-upload').className = `px-4 py-1.5 rounded text-sm font-bold transition-all ${tab === 'upload' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`;
             document.getElementById('tab-live').className = `px-4 py-1.5 rounded text-sm font-bold transition-all ${tab === 'live' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`;
-            document.getElementById('tab-drift').className = `px-4 py-1.5 rounded text-sm font-bold transition-all ${tab === 'drift' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`;
+            document.getElementById('tab-analysis').className = `px-4 py-1.5 rounded text-sm font-bold transition-all ${tab === 'analysis' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`;
+            document.getElementById('tab-models').className = `px-4 py-1.5 rounded text-sm font-bold transition-all ${tab === 'models' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`;
         }
 
         // === BUTTON STATE MANAGEMENT ===
@@ -990,6 +1114,11 @@
             } catch (e) {}
             
             buildMappingModal(csvHeaders, existingMapping);
+            
+            // Update modal title with filename
+            const subtitle = document.querySelector('#mappingModal p.text-slate-400');
+            if(subtitle) subtitle.innerText = `Configure how your ${file.name} columns map to required fields`;
+
             document.getElementById('mappingModal').classList.remove('hidden');
             document.getElementById('mappingModal').classList.add('flex');
         }
@@ -999,9 +1128,14 @@
             
             // Fetch headers from server
             try {
+                console.log(`Fetching headers for ${filename}`);
                 const res = await fetch(`/csv_headers?filename=${encodeURIComponent(filename)}`);
-                if (!res.ok) return false;
+                if (!res.ok) {
+                    console.error("Failed to fetch csv_headers", res.status, res.statusText);
+                    return false;
+                }
                 const data = await res.json();
+                console.log("Headers received:", data);
                 csvHeaders = data.headers;
                 currentFilename = filename;
                 
@@ -1011,15 +1145,21 @@
                     const mapRes = await fetch(`/get_mapping?filename=${encodeURIComponent(filename)}`);
                     if (mapRes.ok) {
                         existingMapping = await mapRes.json();
+                        console.log("Existing mapping found:", existingMapping);
                     }
                 } catch (e) {}
                 
                 buildMappingModal(csvHeaders, existingMapping);
+                
+                // Update modal title with filename
+                const subtitle = document.querySelector('#mappingModal p.text-slate-400');
+                if(subtitle) subtitle.innerText = `Configure how your ${filename} columns map to required fields`;
+
                 document.getElementById('mappingModal').classList.remove('hidden');
                 document.getElementById('mappingModal').classList.add('flex');
                 return true;
             } catch (e) {
-                console.error(e);
+                console.error("Exception in showMappingModalForStored:", e);
                 return false;
             }
         }
@@ -1203,11 +1343,177 @@
             closeMappingModal();
             
             // Now proceed with analysis
-            if (pendingFormData) {
+            if (pendingCallback) {
+                await pendingCallback(mapping);
+                pendingCallback = null;
+                pendingFormData = null;
+            } else if (pendingFormData) {
+                // Legacy fallback
                 pendingFormData.append('mapping', JSON.stringify(mapping));
                 await runAnalysis(pendingFormData);
                 pendingFormData = null;
             }
+        }
+
+        // === SHIFTING PANELS (TIME-BASED DRIFT) ===
+        // Stores 15 chart instances
+        const shiftingCharts = {};
+        // Store baseline stats
+        let baselineStats = null;
+        
+        // Initialize the 15 charts
+        async function initShiftingCharts() {
+            const grid = document.getElementById('shifting-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            // Fetch baseline if not already
+            if (!baselineStats) {
+                try {
+                   const res = await fetch('/api/scaler_stats');
+                   if (res.ok) baselineStats = await res.json();
+                } catch(e) {}
+            }
+            
+            // For each of 15 features
+            FEATURE_KEYS.forEach((key, index) => {
+                // Create container
+                const div = document.createElement('div');
+                div.className = "bg-slate-900/50 p-2 rounded-lg border border-slate-700/50 flex flex-col h-40";
+                
+                const title = document.createElement('div');
+                title.className = "text-[10px] font-bold text-slate-400 mb-1 truncate";
+                title.title = key;
+                title.innerText = key;
+                div.appendChild(title);
+                
+                const canvasContainer = document.createElement('div');
+                canvasContainer.className = "flex-1 relative min-h-0"; // crucial for chart.js
+                
+                const canvas = document.createElement('canvas');
+                canvas.id = `shift-chart-${index}`;
+                
+                canvasContainer.appendChild(canvas);
+                div.appendChild(canvasContainer);
+                grid.appendChild(div);
+                
+                // Init Chart
+                const ctx = canvas.getContext('2d');
+                
+                // Get baseline median (base line)
+                const baseMedian = baselineStats && baselineStats[key] ? baselineStats[key].median : 0;
+                
+                shiftingCharts[key] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [], // Time labels
+                        datasets: [
+                            {
+                                label: 'Median (Running)',
+                                data: [], // Moving median
+                                borderColor: '#34d399', // emerald-400
+                                borderWidth: 1.5,
+                                tension: 0.3,
+                                pointRadius: 0,
+                                fill: false
+                            },
+                            {
+                                label: 'Baseline',
+                                data: [], // Constant line
+                                borderColor: '#94a3b8', // slate-400
+                                borderDash: [5, 5],
+                                borderWidth: 1,
+                                pointRadius: 0,
+                                fill: false
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { 
+                                enabled: true,
+                                intersect: false,
+                                mode: 'index',
+                                callbacks: {
+                                    label: (ctx) => ctx.raw.toFixed(4)
+                                }
+                            }
+                        },
+                        interaction: {
+                            mode: 'nearest',
+                            axis: 'x',
+                            intersect: false
+                        },
+                        scales: {
+                            x: {
+                                display: false, // hide x-axis labels to save space
+                                grid: { display: false }
+                            },
+                            y: {
+                                display: true,
+                                grid: { color: '#334155' },
+                                ticks: { color: '#64748b', font: { size: 9 }, maxTicksLimit: 5 }
+                            }
+                        }
+                    }
+                });
+            });
+            
+            // Show content immediately once initialized if hidden?
+            // User can toggle.
+            document.getElementById('shifting-content').classList.remove('hidden');
+        }
+        
+        function updateShiftingCharts(batchResults) {
+            if (!batchResults || batchResults.length === 0) return;
+            
+            // Use last timestamp for the label of this batch
+            const lastTs = batchResults[batchResults.length-1].timestamp;
+            const timeLabel = formatTime(lastTs);
+            
+            FEATURE_KEYS.forEach(key => {
+                const chart = shiftingCharts[key];
+                if (!chart) return;
+                
+                // Extract values for this feature in the batch
+                // Data structure: r.features[key] (since we are in dashboard frontend, 'features' might be nested)
+                const values = batchResults.map(r => r.features && r.features[key]); 
+                // Filter undefined
+                const validValues = values.filter(v => v !== undefined && v !== null);
+                
+                if (validValues.length === 0) return;
+                
+                // Compute batch median
+                validValues.sort((a,b) => a-b);
+                const mid = Math.floor(validValues.length/2);
+                const median = validValues.length % 2 !== 0 ? validValues[mid] : (validValues[mid-1]+validValues[mid])/2;
+                
+                // Baseline
+                const baseVal = (baselineStats && baselineStats[key]) ? baselineStats[key].median : 0;
+
+                // Add data
+                chart.data.labels.push(timeLabel);
+                chart.data.datasets[0].data.push(median);
+                chart.data.datasets[1].data.push(baseVal);
+                
+                // Limit history (sliding window) - say 100 points
+                if (chart.data.labels.length > 100) {
+                    chart.data.labels.shift();
+                    chart.data.datasets[0].data.shift();
+                    chart.data.datasets[1].data.shift();
+                }
+                
+                chart.update('none');
+            });
+        }
+
+        function toggleShiftingPanel() {
+            const content = document.getElementById('shifting-content');
+            content.classList.toggle('hidden');
         }
 
         // === DRIFT ANALYSIS ===
@@ -1405,7 +1711,11 @@
                     await runAnalysis(formData);
                 } else {
                     formData.append('csv', fileInput.files[0]);
-                    pendingFormData = formData;
+                    pendingFormData = formData; 
+                    pendingCallback = async (mapping) => {
+                        formData.append('mapping', JSON.stringify(mapping));
+                        await runAnalysis(formData);
+                    };
                     await showMappingModalForFile(fileInput.files[0]);
                 }
             } else if (storedSel.value) {
@@ -1440,6 +1750,10 @@
                 pendingFormData.append('filename', name);
                 pendingFormData.append('filetype', type);
                 pendingFormData.append('use_stored', 'true');
+                pendingCallback = async (mapping) => {
+                    pendingFormData.append('mapping', JSON.stringify(mapping));
+                    await runAnalysis(pendingFormData);
+                };
                 await showMappingModalForStored(name, type);
             } else {
                 const formData = new FormData();
@@ -1531,14 +1845,6 @@
                         document.getElementById('status').innerText = `Complete. ${total} flows processed.`;
                         isProcessing = false;
                         updateButtonState('idle');
-                        
-                        // Show drift section & auto-analyze
-                        const driftSec = document.getElementById('drift-section-upload');
-                        if (driftSec) {
-                            driftSec.classList.remove('hidden');
-                            // Small delay to ensure UI renders
-                            setTimeout(() => updateDriftAnalysis('upload'), 100);
-                        }
                         break;
                     }
 
@@ -1768,7 +2074,10 @@ These are model predictions only.`;
                 const res = await fetch('/stored_files');
                 const data = await res.json();
                 const sel = document.getElementById('storedSelect');
+                const rescaleSel = document.getElementById('storedRescaleSelect');
+                
                 sel.innerHTML = '<option value="">-- Select --</option>';
+                rescaleSel.innerHTML = '<option value="">-- Select --</option>';
                 
                 if (data.pcaps.length > 0) {
                     const group = document.createElement('optgroup');
@@ -1785,13 +2094,23 @@ These are model predictions only.`;
                 if (data.csvs.length > 0) {
                     const group = document.createElement('optgroup');
                     group.label = 'CSVs';
+                    const rescaleGroup = document.createElement('optgroup');
+                    rescaleGroup.label = 'CSVs';
+
                     data.csvs.forEach(f => {
                         const opt = document.createElement('option');
                         opt.value = `csv:${f.name}`;
                         opt.text = f.name;
                         group.appendChild(opt);
+
+                        const opt2 = document.createElement('option');
+                        opt2.value = f.name; // For rescale we just need name usually, but existing logic expects full path or simple name. 
+                        // The server expects filename for stored.
+                        opt2.text = f.name;
+                        rescaleGroup.appendChild(opt2);
                     });
                     sel.appendChild(group);
+                    rescaleSel.appendChild(rescaleGroup);
                 }
             } catch (e) {
                 console.error(e);
@@ -1950,13 +2269,351 @@ These are model predictions only.`;
             document.getElementById('live-container').innerHTML = '';
         }
 
+        // === RESCALE ANALYSIS ===
+        let rescaleChartInstance = null;
+        
+        async function startRescaleAnalysis() {
+            const input = document.getElementById('rescaleInput');
+            const stored = document.getElementById('storedRescaleSelect');
+            
+            if (!input.files[0] && !stored.value) {
+                alert('Please select a file');
+                return;
+            }
+            
+            const formData = new FormData();
+            
+            if (input.files[0]) {
+                 // Upload is active
+                 stored.value = ""; // Clear stored selection to be safe
+                 
+                 formData.append('csv', input.files[0]);
+                 pendingCallback = async (mapping) => {
+                     // Re-append? No, formData is persistent
+                     formData.append('mapping', JSON.stringify(mapping));
+                     await runRescaleAnalysis(formData);
+                 };
+                 await showMappingModalForFile(input.files[0]);
+            } else {
+                 // Stored is active
+                 input.value = ""; // Clear input if possible (though read-only usually for file input)
+                 
+                 const fname = stored.value;
+                 formData.append('filename', fname);
+                 formData.append('use_stored', 'true');
+                 // Also need mapping for stored
+                 pendingCallback = async (mapping) => {
+                     console.log("Executing pendingCallback for Stored file with mapping:", mapping);
+                     try {
+                        formData.append('mapping', JSON.stringify(mapping));
+                        console.log("Calling runRescaleAnalysis...");
+                        await runRescaleAnalysis(formData);
+                     } catch(err) {
+                        console.error("Error inside pendingCallback:", err);
+                        alert("Error during analysis: " + err.message);
+                     }
+                 };
+                 
+                 console.log("Opening mapping modal for stored file:", fname);
+                 const success = await showMappingModalForStored(fname, 'csv');
+                 if (!success) {
+                     alert("Failed to open stored file. Check console/logs.");
+                     pendingCallback = null;
+                 }
+            }
+        }
+        
+        async function runRescaleAnalysis(formData) {
+            console.log("runRescaleAnalysis started");
+            document.getElementById('rescale-results').classList.add('hidden');
+            
+            // Show loading indicator on button? Or just alert/status?
+            // Since we don't have a dedicated status div for this tab easily accessible, let's use global status or alert
+            // But prefer non-blocking if possible.
+            const btn = document.querySelector('#view-analysis button');
+            const originalText = btn.innerText;
+            btn.innerText = "Analyzing...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/analyze_recalibration', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await res.json();
+                console.log("Analysis Result:", data);
+                
+                if (data.error) throw new Error(data.error);
+                
+                renderRescaleResults(data);
+            } catch (e) {
+                console.error("Analysis failed", e);
+                alert('Analysis failed: ' + e.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        }
+        
+        function renderRescaleResults(data) {
+             document.getElementById('rescale-results').classList.remove('hidden');
+             
+             // Update Recommendation
+             const recBox = document.getElementById('rescale-action');
+             const scoreBox = document.getElementById('rescale-score');
+             const rec = data.recommendation;
+             
+             recBox.innerText = rec;
+             scoreBox.innerText = `Consistency Score: ${data.scale_score.toFixed(2)}`;
+             
+             if (rec === 'RESCALE') {
+                 recBox.className = 'text-3xl font-bold text-emerald-400 mb-2';
+             } else if (rec === 'RETRAIN') {
+                 recBox.className = 'text-3xl font-bold text-red-500 mb-2';
+             } else {
+                 recBox.className = 'text-3xl font-bold text-amber-400 mb-2';
+             }
+             
+             // Table
+             const table = document.getElementById('rescale-table');
+             table.innerHTML = data.results.map(r => {
+                 const color = r.status === 'scale_consistent' ? 'text-emerald-400' : 'text-red-400';
+                 const symbol = r.status === 'scale_consistent' ? '✓' : '✗';
+                 
+                 // Show tooltips?
+                 return `
+                    <div class="flex justify-between items-center px-4 py-2 border-b border-slate-800 hover:bg-slate-800/50 text-xs">
+                        <div class="flex-1 truncate" title="${r.feature}">${r.feature}</div>
+                        <div class="w-16 text-center font-bold ${color}">${symbol}</div>
+                    </div>
+                 `;
+             }).join('');
+             
+             // Chart
+             const points = data.results.map(r => ({
+                 x: r.median_ratio,
+                 y: r.iqr_ratio,
+                 feature: r.feature,
+                 status: r.status
+             }));
+             
+             // Find max for scale
+             const maxVal = Math.max(...points.map(p => Math.max(p.x, p.y)));
+             const limit = Math.min(maxVal*1.1, 20); // Clamp viewing area reasonable if outlier
+             
+             if (rescaleChartInstance) rescaleChartInstance.destroy();
+             
+             const ctx = document.getElementById('rescaleChart').getContext('2d');
+             rescaleChartInstance = new Chart(ctx, {
+                 type: 'scatter',
+                 data: {
+                     datasets: [{
+                         label: 'Features',
+                         data: points,
+                         backgroundColor: points.map(p => p.status === 'scale_consistent' ? '#34d399' : '#f87171'), // Emerald vs Red
+                         pointRadius: 6,
+                         pointHoverRadius: 8
+                     },
+                     {
+                         label: 'Ideal Scaling',
+                         data: [{x: 0, y: 0}, {x: limit, y: limit}], 
+                         showLine: true,
+                         borderColor: 'rgba(255, 255, 255, 0.2)',
+                         borderDash: [5, 5],
+                         pointRadius: 0
+                     }]
+                 },
+                 options: {
+                     responsive: true,
+                     maintainAspectRatio: false,
+                     plugins: {
+                         tooltip: {
+                             callbacks: {
+                                 label: (ctx) => {
+                                     const p = ctx.raw;
+                                     if(p.feature)
+                                        return `${p.feature}: M=${p.x.toFixed(2)}, IQR=${p.y.toFixed(2)}`;
+                                     return '';
+                                 }
+                             }
+                         }
+                     },
+                     scales: {
+                         x: {
+                             type: 'linear',
+                             position: 'bottom',
+                             title: { display: true, text: 'Median Ratio (New / Old)', color: '#94a3b8' },
+                             grid: { color: '#334155' },
+                             ticks: { color: '#94a3b8' }
+                         },
+                         y: {
+                             title: { display: true, text: 'IQR Ratio (New / Old)', color: '#94a3b8' },
+                             grid: { color: '#334155' },
+                             ticks: { color: '#94a3b8' }
+                         }
+                     }
+                 }
+             });
+        }
+
         // === INIT ===
         document.addEventListener('DOMContentLoaded', () => {
             initializeFilterRows();
             loadStoredFiles();
             loadInterfaces(true);
             renderVisibleRows();
+
+            // Init Mutually Exclusive Rescale Inputs
+            const rescaleInput = document.getElementById('rescaleInput');
+            const storedRescaleSelect = document.getElementById('storedRescaleSelect');
+            
+            if (rescaleInput && storedRescaleSelect) {
+                rescaleInput.addEventListener('change', () => {
+                   if (rescaleInput.value) storedRescaleSelect.value = "";
+                });
+                storedRescaleSelect.addEventListener('change', () => {
+                   if (storedRescaleSelect.value) rescaleInput.value = "";
+                });
+            }
         });
+
+        // === SCALER & MODEL MANAGEMENT ===
+        
+        async function loadScalers() {
+            const list = document.getElementById('scaler-list');
+            try {
+                const res = await fetch('/api/scalers');
+                if (!res.ok) throw new Error('Failed');
+                const scalers = await res.json();
+                
+                if (scalers.length === 0) list.innerHTML = '<div class="text-slate-500">No scalers found</div>';
+                else list.innerHTML = scalers.map(s => `
+                    <div class="flex justify-between items-center bg-slate-800/50 p-1.5 rounded">
+                        <span class="font-mono text-xs">${s.name}</span>
+                        <span class="text-[10px] text-slate-500 truncate max-w-[100px]">${s.id}</span>
+                    </div>
+                `).join('');
+            } catch(e) {
+                list.innerHTML = '<div class="text-red-400 text-xs">Failed to load scalers</div>';
+            }
+        }
+        
+        let currentModelType = 'xgb';
+        
+        async function selectModelType(type) {
+            currentModelType = type;
+            // Update UI buttons
+            ['xgb', 'isolation_forest', 'gnn'].forEach(t => {
+                const btn = document.getElementById(`type-${t}`);
+                if (t === type) {
+                    btn.classList.remove('bg-slate-700', 'text-slate-400');
+                    btn.classList.add('bg-blue-600', 'text-white', 'ring-2', 'ring-blue-500');
+                } else {
+                    btn.classList.add('bg-slate-700', 'text-slate-400');
+                    btn.classList.remove('bg-blue-600', 'text-white', 'ring-2', 'ring-blue-500');
+                }
+            });
+            await loadModels(type);
+        }
+        
+        async function loadModels(type) {
+            const list = document.getElementById('model-list');
+            list.innerHTML = '<div class="animate-pulse">Loading...</div>';
+            try {
+                const res = await fetch('/api/models');
+                if(!res.ok) throw new Error('Failed');
+                const data = await res.json();
+                const models = data[type] || [];
+                
+                if(models.length === 0) list.innerHTML = '<div class="text-slate-500">No models found</div>';
+                else list.innerHTML = models.map(m => `
+                     <div class="flex justify-between items-center bg-slate-800/50 p-1.5 rounded">
+                        <span class="font-mono text-xs">${m}</span>
+                    </div>
+                `).join('');
+            } catch(e) {
+                list.innerHTML = '<div class="text-red-400 text-xs">Failed to load models</div>';
+            }
+        }
+        
+        async function submitRescale() {
+            const name = document.getElementById('newScalerName').value;
+            const file = document.getElementById('scalerFile').files[0];
+            
+            if(!file) return alert('Please upload a CSV file');
+            
+            const btn = document.getElementById('btn-rescale');
+            btn.innerText = 'Creating...';
+            btn.disabled = true;
+            
+            const fd = new FormData();
+            fd.append('csv', file);
+            if(name) fd.append('scaler_name', name);
+            
+            try {
+                const res = await fetch('/api/rescale', { method: 'POST', body: fd });
+                const data = await res.json();
+                if(!res.ok) throw new Error(data.error || 'Failed');
+                
+                alert('Success: ' + data.message);
+                loadScalers();
+                document.getElementById('newScalerName').value = '';
+                document.getElementById('scalerFile').value = '';
+            } catch(e) {
+                alert('Error: ' + e.message);
+            } finally {
+                btn.innerText = 'Create New Scaler';
+                btn.disabled = false;
+            }
+        }
+        
+        async function submitRetrain() {
+            const file = document.getElementById('retrainFile').files[0];
+            const name = document.getElementById('newModelName').value;
+            const labelCol = document.getElementById('retrainLabelCol').value;
+            const benign = document.getElementById('retrainBenignLabel').value;
+            
+            if(!file || !name) return alert('File and Model Name required');
+            
+            const btn = document.getElementById('btn-retrain');
+            const status = document.getElementById('retrain-status');
+            btn.innerText = 'Retraining... (This may take time)';
+            btn.disabled = true;
+            status.innerHTML = 'Uploading and processing...';
+            status.classList.remove('hidden');
+            
+            const fd = new FormData();
+            fd.append('csv', file);
+            fd.append('model_name', name);
+            fd.append('model_type', currentModelType);
+            fd.append('label_col', labelCol);
+            fd.append('benign_label', benign);
+            
+            try {
+                const res = await fetch('/api/retrain', { method: 'POST', body: fd });
+                const data = await res.json();
+                if(!res.ok) throw new Error(data.error || data.detail || 'Failed');
+                
+                alert('Retraining Complete! Model saved.');
+                loadModels(currentModelType);
+                status.innerHTML = 'Success!';
+            } catch(e) {
+                console.error(e);
+                alert('Retrain Error: ' + e.message);
+                status.innerHTML = 'Failed: ' + e.message;
+            } finally {
+                btn.innerText = 'Start Retraining';
+                btn.disabled = false;
+            }
+        }
+        
+        // Auto Load
+        document.addEventListener('DOMContentLoaded', () => {
+             loadScalers();
+             selectModelType('xgb');
+        });
+
     </script>
 </body>
 </html>

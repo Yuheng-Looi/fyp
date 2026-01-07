@@ -503,12 +503,9 @@ async def retrain_model_endpoint(
     try:
         # Load CSV
         df = pd.read_csv(file.file)
-<<<<<<< HEAD
-=======
 
         # Apply Column Mapping (Fix for column mismatch)
         df.rename(columns=COLUMN_MAPPING, inplace=True)
->>>>>>> 1277a31 (update infer_server)
         
         # Check Label Col
         # Clean label col name logic? (strip info)

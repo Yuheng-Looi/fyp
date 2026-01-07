@@ -12,12 +12,27 @@ import requests
 
 import csv
 import json
+import numpy as np
+import math
+import traceback
 
 from cic_extractor import CICExtractor, FEATURE_KEYS
 
 app = Flask(__name__)
+# Increase max upload size to 500MB to avoid 413 Errors
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
 
-PREDICT_URL = os.environ.get('PREDICT_URL', 'http://10.100.10.15:8000/predict')
+if 'PREDICT_URL' in os.environ:
+    PREDICT_URL = os.environ['PREDICT_URL']
+else:
+    # Default to infer_server.py location
+    # If PREDICT_URL points to /predict, we strip it for the base methods
+    PREDICT_URL = 'http://10.100.10.15:8000/predict'
+
+def get_base_url():
+    if '/predict' in PREDICT_URL:
+        return PREDICT_URL.rsplit('/predict', 1)[0]
+    return PREDICT_URL.rstrip('/')
 SCALER_ID = os.environ.get('SCALER_ID', 'default')
 
 # Persistent upload storage
@@ -434,11 +449,11 @@ def load_pcap_entries(path: str) -> List[Dict]:
     return entries
 
 
-def load_csv_entries(path: str, label_column: Optional[str] = None, limit: Optional[int] = None, metadata: Optional[Dict] = None) -> List[Dict]:
+def load_csv_entries(path: str, label_column: Optional[str] = None, limit: Optional[int] = None, metadata: Optional[Dict] = None, filter_label: Optional[str] = None, target_count: Optional[int] = None) -> List[Dict]:
     entries: List[Dict] = []
-
+    
+    # helper for flow id
     def parse_flow_id(flow_id: str):
-        # Example CIC flow id format: "172.31.69.25-172.31.69.28-54890-80-6"
         try:
             parts = flow_id.split('-')
             if len(parts) >= 5:
@@ -448,8 +463,48 @@ def load_csv_entries(path: str, label_column: Optional[str] = None, limit: Optio
             pass
         return None, None, None, None, None
 
-    with open(path, 'r', encoding='utf-8', errors='ignore') as fh:
-        reader = TrimmedDictReader(fh)
+    # --- OPTIMIZATION: Use grep for sparse labels ---
+    file_handle = None
+    close_handle = True
+    
+    try:
+        # Only use grep optimization if we are filtering for a specific label (like BENIGN) 
+        # and we have a target count (so we know when to stop)
+        if filter_label and target_count and os.name == 'posix':
+            try:
+                # 1. Read Header
+                with open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                    header_line = f.readline()
+                
+                # 2. Grep for lines. 
+                # Use -m to stop after finding enough matches.
+                # We grep for the label string.
+                # We ask for 3x target count to be safe against false matches in other columns.
+                grep_limit = target_count * 3
+                
+                cmd = ['grep', '-m', str(grep_limit), filter_label, path]
+                print(f"[FastLoad] Executing: {' '.join(cmd)}")
+                
+                grep_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, text=True, errors='ignore')
+                stdout, _ = grep_proc.communicate()
+                
+                if stdout:
+                    print(f"[FastLoad] Grep returned {len(stdout)} bytes of data.")
+                    from io import StringIO
+                    # Combine header + grep output
+                    full_content = header_line + stdout
+                    file_handle = StringIO(full_content)
+                    close_handle = False # StringIO doesn't need explicit OS close like file, but good practice.
+                else:
+                     print("[FastLoad] Grep found nothing. Falling back to full scan.")
+            except Exception as e:
+                print(f"[FastLoad] Optimization failed: {e}. Falling back to normal.")
+        
+        # Fallback or normal open
+        if file_handle is None:
+            file_handle = open(path, 'r', encoding='utf-8', errors='ignore')
+
+        reader = TrimmedDictReader(file_handle)
         
         # Trim metadata values if provided
         if metadata:
@@ -543,7 +598,16 @@ def load_csv_entries(path: str, label_column: Optional[str] = None, limit: Optio
                     return None
 
             ts_float = parse_timestamp_value(timestamp)
+            
+            # Label normalization
+            final_label = label_val.upper() if label_val else None
 
+            # Filter Logic
+            if filter_label:
+                # If we are filtering, skip if label doesn't match
+                if not final_label or final_label != filter_label.upper():
+                    continue
+                
             entries.append({
                 'timestamp': ts_float,
                 'src_ip': src_ip or '',
@@ -552,10 +616,23 @@ def load_csv_entries(path: str, label_column: Optional[str] = None, limit: Optio
                 'dst_port': to_int(dst_port) or 0,
                 'protocol': to_int(proto) or 0,
                 'features': feats,
-                'label': label_val.upper() if label_val else None
+                'label': final_label
             })
+            
+            # Stop if target count reached
+            if target_count is not None and len(entries) >= target_count:
+                break
+                
+            # Stop if total scanned limit reached (if limit provided)
+            # Note: limit in this case acts as 'max rows to read', not 'max rows to collect' if filter is on.
+            # But usually 'limit' in this legacy code meant 'max collected'.
+            # If we want 'limit' to be 'max collected', then use the same check.
             if limit is not None and len(entries) >= limit:
                 break
+    finally:
+        if file_handle and close_handle and hasattr(file_handle, 'close'):
+            file_handle.close()
+            
     return entries
 
 # Live capture state
@@ -1003,6 +1080,244 @@ def save_file():
         return jsonify({'error': 'No file provided'}), 400
 
 
+@app.route('/analyze_recalibration', methods=['POST'])
+def analyze_recalibration():
+    # 1. Handle File (Upload or Stored)
+    use_stored = request.form.get('filename') is not None
+    src_path = None
+    saved_name = None
+    
+    if use_stored:
+        fname = request.form.get('filename')
+        # We only support CSV for this
+        if not fname:
+            return jsonify({'error': 'filename required'}), 400
+        candidate = os.path.join(CSV_DIR, os.path.basename(fname))
+        if not os.path.exists(candidate):
+            return jsonify({'error': f'stored file not found: {fname}'}), 404
+        src_path = candidate
+        saved_name = os.path.basename(candidate)
+    else:
+        if 'csv' not in request.files:
+            return jsonify({'error': 'csv file required'}), 400
+        saved = save_upload(request.files['csv'], CSV_DIR)
+        src_path = saved['path']
+        saved_name = saved['name']
+
+    # 2. Handle Mapping
+    mapping_str = request.form.get('mapping')
+    metadata = None
+    if mapping_str:
+        try:
+            metadata = json.loads(mapping_str)
+        except:
+            pass
+    
+    # If no mapping provided, try to load from disk
+    if not metadata:
+        metadata = load_metadata(saved_name)
+
+    if not metadata:
+        return jsonify({'error': 'Column mapping required'}), 400
+
+    # 3. Determine Sample Size & Load CSV
+    try:
+        # Check if labelled data
+        is_labelled = False
+        target_benign_label = None
+        
+        if metadata and metadata.get('label'):
+            is_labelled = True
+            target_benign_label = metadata.get('benign_label', 'BENIGN')
+            
+        if is_labelled:
+            # 3000 Benign samples logic
+            print(f"[Analysis] Labelled data detected. Searching for up to 3000 '{target_benign_label}' samples...")
+            
+            # We pass limit=None (or very large) because we need to scan until we find the targets.
+            # But maybe safety cap is still good? Let's say max 1M rows scan to find 3000 benigns.
+            entries = load_csv_entries(
+                src_path, 
+                metadata=metadata, 
+                filter_label=target_benign_label, 
+                target_count=10000, 
+                limit=1000000 # Safety scan limit
+            )
+            
+            if len(entries) < 3000:
+                print(f"[Analysis] Warning: Only found {len(entries)} benign samples (Target: 3000). Using all available samples.")
+            else:
+                 print(f"[Analysis] Successfully collected 3000 benign samples.")
+                 
+        else:
+            # Unlabelled - 20% Logic
+            # Fast line count
+            total_lines = 0
+            try:
+                # Use wc -l if available (Linux)
+                output = subprocess.check_output(['wc', '-l', src_path], text=True)
+                total_lines = int(output.split()[0])
+            except:
+                # Fallback to python read
+                with open(src_path, 'rb') as f:
+                    total_lines = sum(1 for _ in f)
+            
+            # We need 20%
+            # total_lines includes header, so rough estimate is fine
+            limit = int(total_lines * 0.2)
+            
+            # Hard cap to prevent timeout on massive files (e.g. max 100k samples)
+            # 100k samples is statistically more than enough for IQR/Median
+            max_samples = 100000
+            if limit > max_samples:
+                print(f"[Analysis] Capping sample size at {max_samples} (20% was {limit})")
+                limit = max_samples
+                
+            if limit < 100: limit = 100 # Min samples
+            
+            print(f"[Analysis] Loading ~{limit} samples from {total_lines} total lines (Unlabelled)...")
+            entries = load_csv_entries(src_path, metadata=metadata, limit=limit)
+        
+    except Exception as e:
+         return jsonify({'error': f'Failed to parse CSV: {str(e)}'}), 500
+
+    if not entries:
+         return jsonify({'error': 'No entries found in CSV'}), 400
+
+    print(f"[Analysis] Loaded {len(entries)} samples.")
+
+    # 4. Fetch Baseline Stats
+    baseline = {}
+    try:
+        if '/' in PREDICT_URL:
+            base_url = PREDICT_URL.rsplit('/', 1)[0]
+        else:
+            base_url = PREDICT_URL 
+        
+        url = f"{base_url}/scaler_stats?scaler_id={SCALER_ID}"
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            baseline = resp.json()
+        else:
+            return jsonify({'error': 'Failed to fetch baseline stats from backend'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Failed to connect to backend: {str(e)}'}), 500
+
+    # 5. Compute Stats & Compare
+    results = []
+    consistent_count = 0
+    missing_features = []
+
+    # Optimize: Single pass aggregation
+    print("[Analysis] Aggregating feature values...")
+    feature_buckets = {k: [] for k in FEATURE_KEYS}
+    
+    for e in entries:
+        feats = e.get('features', {})
+        for k in FEATURE_KEYS:
+            v = feats.get(k)
+            if v is not None:
+                feature_buckets[k].append(v)
+    
+    print("[Analysis] Computing statistics...")
+    for i, key in enumerate(FEATURE_KEYS):
+        vals = feature_buckets[key]
+        
+        if not vals:
+            missing_features.append(key)
+            continue
+            
+        arr = np.array(vals, dtype=float)
+        median_new = float(np.median(arr))
+        q75, q25 = np.percentile(arr, [75, 25])
+        iqr_new = float(q75 - q25)
+        if iqr_new <= 1e-9: iqr_new = 1e-6
+        
+        ref = baseline.get(key)
+        if not ref:
+             continue
+             
+        median_ref = float(ref.get('median', 0.0))
+        iqr_ref = float(ref.get('iqr', 1e-6))
+        if iqr_ref <= 1e-9: iqr_ref = 1e-6
+
+        # Ratio Logic
+        # Handle median_ref near 0
+        if abs(median_ref) < 1e-9:
+             # If baseline median is 0, we can't divide.
+             # If new median is also near 0, ratio is 1. Else large.
+             if abs(median_new) < 1e-9:
+                 median_ratio = 1.0
+             else:
+                 median_ratio = 999.0 # Large shift
+        else:
+             median_ratio = median_new / median_ref
+
+        iqr_ratio = iqr_new / iqr_ref
+        
+        # Classification
+        # 0.5 <= (median_ratio / iqr_ratio) <= 2.0
+        if abs(iqr_ratio) < 1e-9:
+            ratio_of_ratios = 0
+        else:
+            ratio_of_ratios = median_ratio / iqr_ratio
+            
+        status = "shape_changed"
+        if 0.5 <= ratio_of_ratios <= 2.0:
+            status = "scale_consistent"
+            consistent_count += 1
+            
+        results.append({
+            'feature': key,
+            'median_ratio': median_ratio,
+            'iqr_ratio': iqr_ratio,
+            'status': status
+        })
+    
+    print("[Analysis] Calculation finished.")
+        
+    if missing_features:
+        return jsonify({'error': f'Missing features in CSV: {missing_features}'}), 400
+        
+    # 6. Global Decision
+    try:
+        total = len(FEATURE_KEYS)
+        scale_score = consistent_count / total if total > 0 else 0
+        
+        if scale_score >= 0.6:
+            recommendation = "RESCALE"
+        elif scale_score >= 0.4:
+            recommendation = "NO ACTION"
+        else:
+            recommendation = "RETRAIN"
+            
+        # Sanitize results for JSON compliance (no NaN/Inf)
+        sanitized_results = []
+        for r in results:
+            m_rat = r['median_ratio']
+            i_rat = r['iqr_ratio']
+            
+            # Check for NaN/Inf
+            if math.isnan(m_rat) or math.isinf(m_rat): m_rat = 0.0
+            if math.isnan(i_rat) or math.isinf(i_rat): i_rat = 0.0
+            
+            sanitized_results.append({
+                'feature': r['feature'],
+                'median_ratio': m_rat,
+                'iqr_ratio': i_rat,
+                'status': r['status']
+            })
+            
+        return jsonify({
+            'results': sanitized_results,
+            'scale_score': float(scale_score), # Ensure float
+            'recommendation': recommendation
+        })
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': f'Server Error during response generation: {str(e)}'}), 500
+
+
 @app.route('/')
 @app.route('/dashboard.html')
 def serve_dashboard():
@@ -1010,14 +1325,8 @@ def serve_dashboard():
 
 @app.route('/api/scaler_stats')
 def proxy_scaler_stats():
-    # PREDICT_URL is like "http://.../predict"
-    # We want "http://.../scaler_stats"
-    if '/' in PREDICT_URL:
-        base_url = PREDICT_URL.rsplit('/', 1)[0]
-    else:
-        base_url = PREDICT_URL 
-        
     try:
+        base_url = get_base_url()
         # Pass the SCALER_ID env var if set
         url = f"{base_url}/scaler_stats?scaler_id={SCALER_ID}"
         print(f"Fetching stats from: {url}")
@@ -1026,6 +1335,84 @@ def proxy_scaler_stats():
     except Exception as e:
         print(f"Error fetching scaler stats: {e}")
         return jsonify({'error': str(e)}), 500
+
+# --- Proxy Endpoints for Retrieve/Rescale ---
+
+@app.route('/api/scalers', methods=['GET'])
+def proxy_list_scalers():
+    try:
+        base = get_base_url()
+        print(f"Proxying list_scalers to: {base}/scalers")
+        resp = requests.get(f"{base}/scalers", timeout=5)
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        print(f"Error in proxy_list_scalers: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/models', methods=['GET'])
+def proxy_list_models():
+    try:
+        base = get_base_url()
+        print(f"Proxying list_models to: {base}/models")
+        resp = requests.get(f"{base}/models", timeout=5)
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        print(f"Error in proxy_list_models: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/rescale', methods=['POST'])
+def proxy_rescale():
+    if 'csv' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['csv']
+    scaler_name = request.form.get('scaler_name')
+    
+    try:
+        base = get_base_url()
+            
+        # Prepare multipart upload
+        files = {'file': (file.filename, file.stream, file.mimetype)}
+        data = {'name': scaler_name} if scaler_name else {}
+        
+        resp = requests.post(f"{base}/refit_scaler", files=files, data=data, timeout=120)
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/retrain', methods=['POST'])
+def proxy_retrain():
+    if 'csv' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+    
+    file = request.files['csv']
+    model_type = request.form.get('model_type')
+    model_name = request.form.get('model_name')
+    label_col = request.form.get('label_col', 'Label')
+    benign_label = request.form.get('benign_label', 'BENIGN')
+    
+    if not model_type or not model_name:
+         return jsonify({'error': 'model_type and model_name required'}), 400
+         
+    try:
+        base = get_base_url()
+            
+        files = {'file': (file.filename, file.stream, file.mimetype)}
+        data = {
+            'model_name': model_name,
+            'label_col': label_col,
+            'benign_label': benign_label
+        }
+        
+        # retrain path
+        resp = requests.post(f"{base}/retrain/{model_type}", files=files, data=data, timeout=300)
+        try:
+            return jsonify(resp.json()), resp.status_code
+        except:
+             return jsonify({'error': 'Invalid JSON from backend', 'text': resp.text}), resp.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
