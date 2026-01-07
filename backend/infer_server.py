@@ -135,13 +135,24 @@ class NetworkFlow(BaseModel):
     scaler_id: str = "default"
 
 @app.post("/refit_scaler")
-async def refit_scaler(file: UploadFile = File(...), name: Optional[str] = Form(None)):
+async def refit_scaler(file: UploadFile = File(...), name: Optional[str] = Form(None), mapping: Optional[str] = Form(None)):
     try:
         # Read CSV file
         df = pd.read_csv(file.file)
 
-        # Apply Column Mapping (Fix for column mismatch)
-        df.rename(columns=COLUMN_MAPPING, inplace=True)
+        # Apply Column Mapping
+        if mapping:
+            try:
+                # Expecting mapping to be the 'features' dict from metadata: { 'Target': 'CSV_Col' }
+                # We need { 'CSV_Col': 'Target' } for rename
+                map_dict = json.loads(mapping)
+                rename_dict = {v: k for k, v in map_dict.items()}
+                df.rename(columns=rename_dict, inplace=True)
+            except Exception as e:
+                print(f"[!] Invalid mapping provided: {e}")
+        else:
+            # Fallback legacy mapping
+            df.rename(columns=COLUMN_MAPPING, inplace=True)
         
         # Validate columns
         missing_cols = [col for col in EXPECTED_COLUMNS if col not in df.columns]
@@ -490,7 +501,8 @@ async def retrain_model_endpoint(
     model_name: str = Form(...),
     file: UploadFile = File(...),
     label_col: str = Form("Label"),
-    benign_label: str = Form("BENIGN")
+    benign_label: str = Form("BENIGN"),
+    mapping: Optional[str] = Form(None)
 ):
     valid_types = ["xgb", "isolation_forest", "gnn"]
     if model_type not in valid_types:
@@ -504,8 +516,16 @@ async def retrain_model_endpoint(
         # Load CSV
         df = pd.read_csv(file.file)
 
-        # Apply Column Mapping (Fix for column mismatch)
-        df.rename(columns=COLUMN_MAPPING, inplace=True)
+        # Apply Column Mapping
+        if mapping:
+            try:
+                map_dict = json.loads(mapping)
+                rename_dict = {v: k for k, v in map_dict.items()}
+                df.rename(columns=rename_dict, inplace=True)
+            except Exception as e:
+                print(f"[!] Invalid mapping provided: {e}")
+        else:
+            df.rename(columns=COLUMN_MAPPING, inplace=True)
         
         # Check Label Col
         # Clean label col name logic? (strip info)
