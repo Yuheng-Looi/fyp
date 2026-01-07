@@ -5,6 +5,7 @@ import numpy as np
 import xgboost as xgb
 import uuid
 import os
+import glob
 import json
 import torch
 import pickle
@@ -134,7 +135,7 @@ class NetworkFlow(BaseModel):
     scaler_id: str = "default"
 
 @app.post("/refit_scaler")
-async def refit_scaler(file: UploadFile = File(...)):
+async def refit_scaler(file: UploadFile = File(...), name: Optional[str] = Form(None)):
     try:
         # Read CSV file
         df = pd.read_csv(file.file)
@@ -156,7 +157,11 @@ async def refit_scaler(file: UploadFile = File(...)):
         scaler.fit(df_train, dummy_labels)
         
         # Generate ID and save
-        scaler_id = str(uuid.uuid4())
+        if name:
+            scaler_id = "".join(x for x in name if x.isalnum() or x in ['_', '-']) # Sanitize
+        else:
+            scaler_id = str(uuid.uuid4())
+            
         save_path = f"scalers/scaler_{scaler_id}.pkl"
         
         # Ensure directory exists
@@ -450,3 +455,162 @@ async def analyze_pcap(
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+@app.get("/scalers")
+def list_scalers():
+    # List all .pkl files in scalers/ starting with scaler_
+    files = glob.glob("scalers/scaler_*.pkl") + glob.glob("scalers/trichannel_scaler.pkl")
+    results = []
+    
+    # Add default separately if exists
+    if os.path.exists("scalers/trichannel_scaler.pkl"):
+        results.append({"id": "default", "name": "Default TriChannel"})
+        
+    for f in files:
+        fname = os.path.basename(f)
+        if fname == "trichannel_scaler.pkl": continue
+        
+        # Format: scaler_{id}.pkl
+        sid = fname.replace("scaler_", "").replace(".pkl", "")
+        results.append({"id": sid, "name": sid})
+        
+    return results
+
+@app.get("/models")
+def list_models_endpoint():
+    return {
+        "xgb": [os.path.basename(f) for f in glob.glob("models/xgb/*.json")],
+        "gnn": [os.path.basename(f) for f in glob.glob("models/gnn/*.pt")],
+        "isolation_forest": [os.path.basename(f) for f in glob.glob("models/safetynet/*.pkl")]
+    }
+
+@app.post("/retrain/{model_type}")
+async def retrain_model_endpoint(
+    model_type: str, 
+    model_name: str = Form(...),
+    file: UploadFile = File(...),
+    label_col: str = Form("Label"),
+    benign_label: str = Form("BENIGN")
+):
+    valid_types = ["xgb", "isolation_forest", "gnn"]
+    if model_type not in valid_types:
+        raise HTTPException(400, f"Invalid model type. Must be one of {valid_types}")
+        
+    sanitized_name = "".join(x for x in model_name if x.isalnum() or x in ['_', '-'])
+    if not sanitized_name:
+        raise HTTPException(400, "Invalid model name")
+        
+    try:
+        # Load CSV
+        df = pd.read_csv(file.file)
+        
+        # Check Label Col
+        # Clean label col name logic? (strip info)
+        # Maybe user provides ' Label '
+        found_label = None
+        for c in df.columns:
+            if c.strip() == label_col.strip():
+                found_label = c
+                break
+        
+        if not found_label:
+            raise HTTPException(400, f"Label column '{label_col}' not found in CSV")
+            
+        # Check Features
+        # We need the 15 features
+        missing = [c for c in EXPECTED_COLUMNS if c not in df.columns]
+        if missing:
+             raise HTTPException(400, f"Missing features: {missing}")
+
+        # Retrain Logic Switch
+        if model_type == "isolation_forest":
+            # 1. Initialize SafetyNet
+            # We use default scaler for training SafetyNet? Or current default?
+            # Ideally we use the active scaler. But SafetyNet requires specific scaling (TriChannel).
+            # We'll use the default TriChannelScaler logic.
+            # Assuming 'scalers/trichannel_scaler.pkl' is the base.
+            
+            sn = SafetyNet(scaler_path='scalers/trichannel_scaler.pkl', label_col=found_label)
+            
+            # 2. Get Benign Only
+            # Normalize labels?
+            df['norm_label'] = df[found_label].astype(str).str.strip().str.upper()
+            benign_norm = benign_label.strip().upper()
+            
+            df_benign = df[df['norm_label'] == benign_norm]
+            if len(df_benign) < 100:
+                raise HTTPException(400, f"Not enough benign samples ({len(df_benign)}) for SafetyNet training")
+                
+            # 3. Scale Data (Important: SafetyNet needs Scaled Data)
+            # We need to scale df_benign using the scaler
+            if not sn.scaler:
+                 raise HTTPException(500, "Base scaler for SafetyNet training not found")
+            
+            # Transform
+            X_benign = df_benign[EXPECTED_COLUMNS]
+            X_benign_scaled = sn.scaler.transform(X_benign) 
+            
+            # SafetyNet expects DataFrame with 45 columns (if TriChannel)
+            # transform returns DataFrame usually if input was DataFrame in sklearn wrappers, 
+            # but TriChannelScaler returns DataFrame.
+            
+            # 4. Fit
+            sn.fit(X_benign_scaled)
+            
+            # 5. Save
+            out_path = f"models/safetynet/{sanitized_name}.pkl"
+            os.makedirs("models/safetynet", exist_ok=True)
+            joblib.dump(sn, out_path)
+            model_store['safety_net'] = sn # Hot swap? Maybe dangerous but okay for demo.
+            
+            return {"status": "success", "model": out_path}
+
+        elif model_type == "xgb":
+            # 1. Initialize XGBDetector
+            xgb_det = XGBDetector()
+            
+            # 2. Split Data
+            X = df[EXPECTED_COLUMNS]
+            y = df[found_label]
+            
+            # Encode Y -> 0 (Benign), 1 (Attack)
+            # Need to match benign_label
+            y_binary = y.apply(lambda x: 0 if str(x).strip().upper() == benign_label.strip().upper() else 1)
+            
+            if y_binary.nunique() < 2:
+                 raise HTTPException(400, "XGBoost requires both Benign and Attack samples.")
+
+            # Scale X
+            # Use default scaler
+            default_scaler = scaler_store.get('default')
+            if not default_scaler:
+                 # Load from disk
+                 default_scaler = joblib.load('scalers/trichannel_scaler.pkl')
+                 
+            X_scaled = default_scaler.transform(X)
+            
+            # Split
+            X_train, X_val, X_test, y_train, y_val, y_test = xgb_det.get_golden_split(X_scaled, y_binary)
+            
+            # 3. Train
+            xgb_det.train_binary(X_train, y_train, X_val, y_val)
+            
+            # 4. Save
+            out_path = f"models/xgb/{sanitized_name}.json"
+            os.makedirs("models/xgb", exist_ok=True)
+            xgb_det.model.save_model(out_path)
+            
+            # Store hot swap
+            xgb_det2 = XGBDetector()
+            xgb_det2.model = xgb_det.model
+            model_store['xgb'] = xgb_det2
+            
+            return {"status": "success", "model": out_path, "metrics": str(xgb_det.evals_result)}
+
+        elif model_type == "gnn":
+            raise HTTPException(501, "GNN Retraining not yet implemented via API due to complexity.")
+            
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(500, f"Retraining failed: {str(e)}")
+
