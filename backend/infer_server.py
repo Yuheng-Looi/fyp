@@ -137,8 +137,8 @@ class NetworkFlow(BaseModel):
 @app.post("/refit_scaler")
 async def refit_scaler(file: UploadFile = File(...), name: Optional[str] = Form(None), mapping: Optional[str] = Form(None)):
     try:
-        # Read CSV file
-        df = pd.read_csv(file.file)
+        # Read CSV file (DrDoS files can be large/mixed types)
+        df = pd.read_csv(file.file, low_memory=False)
 
         # Apply Column Mapping
         if mapping:
@@ -160,7 +160,14 @@ async def refit_scaler(file: UploadFile = File(...), name: Optional[str] = Form(
             raise HTTPException(status_code=400, detail=f"Missing columns in CSV: {missing_cols}")
             
         # Use only expected columns
-        df_train = df[EXPECTED_COLUMNS]
+        df_train = df[EXPECTED_COLUMNS].copy()
+        
+        # Force numeric conversion to handle mixed types (e.g. "Infinity", "NaN", strings)
+        for col in df_train.columns:
+            df_train[col] = pd.to_numeric(df_train[col], errors='coerce')
+            
+        # Fill resulting NaNs with 0
+        df_train = df_train.fillna(0)
         
         # Create and fit new scaler
         # We assume the uploaded file contains BENIGN traffic for calibration
