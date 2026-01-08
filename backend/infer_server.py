@@ -574,6 +574,16 @@ async def retrain_model_endpoint(
         if missing:
              raise HTTPException(400, f"Missing features: {missing}")
 
+        # --- DATA CLEANING START ---
+        # Force numeric conversion for expected feature columns
+        # This handles mixed types, "Infinity", "NaN", and repeated headers
+        for col in EXPECTED_COLUMNS:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+            
+        # Drop rows where any feature became NaN (due to coercion)
+        df.dropna(subset=EXPECTED_COLUMNS, inplace=True)
+        # --- DATA CLEANING END ---
+
         # Retrain Logic Switch
         if model_type == "isolation_forest":
             # 1. Initialize SafetyNet
