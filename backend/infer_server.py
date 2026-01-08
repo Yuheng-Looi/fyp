@@ -133,6 +133,9 @@ def load_artifacts():
 class NetworkFlow(BaseModel):
     features: Dict[str, Any]
     scaler_id: str = "default"
+    xgb_model: Optional[str] = None
+    safetynet_model: Optional[str] = None
+    gnn_model: Optional[str] = None
 
 @app.post("/refit_scaler")
 async def refit_scaler(file: UploadFile = File(...), name: Optional[str] = Form(None), mapping: Optional[str] = Form(None)):
@@ -242,21 +245,69 @@ def predict_traffic(flow: NetworkFlow):
         return {"error": f"Scaling failed: {str(e)}"}
 
     # 5. Predictions (on SCALED features)
-    
+
+    # Helper to load specific model from disk if needed
+    def get_model(store_key, model_id, base_dir, loader_func, ext):
+        # If no specific ID is requested, use the default loaded at startup
+        if not model_id or model_id == 'default':
+            return model_store.get(store_key)
+            
+        # Check if already loaded in a cache (we reuse model_store with keys like 'xgb_v2')
+        cache_key = f"{store_key}_{model_id}"
+        if cache_key in model_store:
+            return model_store[cache_key]
+            
+        # Attempt load
+        path = f"{base_dir}/{model_id}{ext}"
+        if os.path.exists(path):
+            try:
+                mod = loader_func(path)
+                model_store[cache_key] = mod
+                return mod
+            except Exception as e:
+                print(f"Failed to load {model_id}: {e}")
+                return model_store.get(store_key) # Fallback
+        return model_store.get(store_key)
+
     # --- SafetyNet (Isolation Forest) ---
     sn_start = time.time()
-    sn_model = model_store['safety_net']
+    sn_model = get_model('safety_net', flow.safetynet_model, 'models/safetynet', joblib.load, '.pkl')
+    
     # SafetyNet expects DataFrame with 45 cols
-    is_anomaly = int(sn_model.predict(model_input_scaled)[0])
+    is_anomaly = 0
+    if sn_model:
+        try:
+            is_anomaly = int(sn_model.predict(model_input_scaled)[0])
+        except: pass
+
     sn_end = time.time()
     sn_delay = f"{(sn_end - sn_start) * 1000:.2f}ms"
 
     # --- XGBoost ---
     xgb_start = time.time()
-    xgb_model = model_store['xgb']
+    
+    def load_xgb(path):
+        x = xgb.XGBClassifier()
+        x.load_model(path)
+        det = XGBDetector()
+        det.model = x
+        return det
+
+    # Clean model ID (remove extension if passed)
+    xgb_id = flow.xgb_model
+    if xgb_id and xgb_id.endswith('.json'): xgb_id = xgb_id[:-5]
+    
+    xgb_model_obj = get_model('xgb', xgb_id, 'models/xgb', load_xgb, '.json')
+    
     # XGB expects DataFrame with 45 cols
-    xgb_pred = int(xgb_model.model.predict(model_input_scaled)[0])
-    xgb_prob = float(xgb_model.model.predict_proba(model_input_scaled)[0][1])
+    xgb_pred = 0
+    xgb_prob = 0.0
+    if xgb_model_obj:
+        try:
+            xgb_pred = int(xgb_model_obj.model.predict(model_input_scaled)[0])
+            xgb_prob = float(xgb_model_obj.model.predict_proba(model_input_scaled)[0][1])
+        except: pass
+        
     xgb_end = time.time()
     xgb_delay = f"{(xgb_end - xgb_start) * 1000:.2f}ms"
 
