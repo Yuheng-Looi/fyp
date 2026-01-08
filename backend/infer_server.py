@@ -509,7 +509,8 @@ async def retrain_model_endpoint(
     file: UploadFile = File(...),
     label_col: str = Form("Label"),
     benign_label: str = Form("BENIGN"),
-    mapping: Optional[str] = Form(None)
+    mapping: Optional[str] = Form(None),
+    scaler_id: str = Form("default")
 ):
     valid_types = ["xgb", "isolation_forest", "gnn"]
     if model_type not in valid_types:
@@ -519,6 +520,27 @@ async def retrain_model_endpoint(
     if not sanitized_name:
         raise HTTPException(400, "Invalid model name")
         
+    # Helper: Load Scaler
+    def load_specific_scaler(sid):
+        if sid in scaler_store:
+            return scaler_store[sid]
+        
+        # Determine path
+        if sid == 'default':
+            path = 'scalers/trichannel_scaler.pkl'
+        else:
+            path = f'scalers/scaler_{sid}.pkl'
+            
+        if os.path.exists(path):
+            try:
+                sc = joblib.load(path)
+                scaler_store[sid] = sc
+                return sc
+            except:
+                raise HTTPException(500, f"Failed to load scaler {sid}")
+        else:
+             raise HTTPException(404, f"Scaler {sid} not found")
+
     try:
         # Load CSV
         df = pd.read_csv(file.file)
@@ -555,12 +577,22 @@ async def retrain_model_endpoint(
         # Retrain Logic Switch
         if model_type == "isolation_forest":
             # 1. Initialize SafetyNet
-            # We use default scaler for training SafetyNet? Or current default?
-            # Ideally we use the active scaler. But SafetyNet requires specific scaling (TriChannel).
-            # We'll use the default TriChannelScaler logic.
-            # Assuming 'scalers/trichannel_scaler.pkl' is the base.
+            # Use the selected scaler
+            # TriChannelScaler logic is assumed if using default or similar structure.
             
-            sn = SafetyNet(scaler_path='scalers/trichannel_scaler.pkl', label_col=found_label)
+            # Determine scaler path for SafetyNet (which might re-load it, or we pass the object if updated)
+            # SafetyNet class expects scaler_path string usually to load it internally if not provided with object.
+            # Let's check constructor signature from anomaly_utils if we could but assume generic usage:
+            # We will pass the scaler object directly if possible or the path.
+            
+            target_scaler_path = 'scalers/trichannel_scaler.pkl'
+            if scaler_id != 'default':
+                target_scaler_path = f'scalers/scaler_{scaler_id}.pkl'
+            
+            if not os.path.exists(target_scaler_path):
+                 raise HTTPException(404, f"Scaler file not found: {target_scaler_path}")
+            
+            sn = SafetyNet(scaler_path=target_scaler_path, label_col=found_label)
             
             # 2. Get Benign Only
             # Normalize labels?
@@ -573,8 +605,13 @@ async def retrain_model_endpoint(
                 
             # 3. Scale Data (Important: SafetyNet needs Scaled Data)
             # We need to scale df_benign using the scaler
-            if not sn.scaler:
+            # Load scaler object to ensure we have it
+            current_scaler = load_specific_scaler(scaler_id)
+            if not current_scaler:
                  raise HTTPException(500, "Base scaler for SafetyNet training not found")
+            
+            # Start fresh with this scaler in SafetyNet instance
+            sn.scaler = current_scaler
             
             # Transform
             X_benign = df_benign[EXPECTED_COLUMNS]
@@ -611,13 +648,10 @@ async def retrain_model_endpoint(
                  raise HTTPException(400, "XGBoost requires both Benign and Attack samples.")
 
             # Scale X
-            # Use default scaler
-            default_scaler = scaler_store.get('default')
-            if not default_scaler:
-                 # Load from disk
-                 default_scaler = joblib.load('scalers/trichannel_scaler.pkl')
+            # Use selected scaler
+            active_scaler = load_specific_scaler(scaler_id)
                  
-            X_scaled = default_scaler.transform(X)
+            X_scaled = active_scaler.transform(X)
             
             # Split
             X_train, X_val, X_test, y_train, y_val, y_test = xgb_det.get_golden_split(X_scaled, y_binary)
