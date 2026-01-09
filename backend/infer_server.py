@@ -551,12 +551,7 @@ def list_scalers():
         results.append({"id": sid, "name": sid})
 
     return {"scalers": results}
-        
-        # Format: scaler_{id}.pkl
-        sid = fname.replace("scaler_", "").replace(".pkl", "")
-        results.append({"id": sid, "name": sid})
-        
-    return results
+
 
 @app.get("/models")
 def list_models_endpoint():
