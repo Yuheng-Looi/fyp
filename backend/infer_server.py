@@ -527,17 +527,30 @@ async def analyze_pcap(
 
 @app.get("/scalers")
 def list_scalers():
-    # List all .pkl files in scalers/ starting with scaler_
-    files = glob.glob("scalers/scaler_*.pkl") + glob.glob("scalers/trichannel_scaler.pkl")
+    # List all .pkl files in scalers/
+    files = glob.glob("scalers/*.pkl")
     results = []
     
-    # Add default separately if exists
+    # Add default separately if exists or force it
     if os.path.exists("scalers/trichannel_scaler.pkl"):
         results.append({"id": "default", "name": "Default TriChannel"})
         
     for f in files:
         fname = os.path.basename(f)
         if fname == "trichannel_scaler.pkl": continue
+        
+        # Parse ID from filename
+        # Pattern: scaler_{NAME}.pkl
+        sid = fname
+        if sid.endswith(".pkl"):
+            sid = sid[:-4]
+            
+        if sid.startswith("scaler_"):
+            sid = sid[7:] # Remove prefix scaler_
+        
+        results.append({"id": sid, "name": sid})
+
+    return {"scalers": results}
         
         # Format: scaler_{id}.pkl
         sid = fname.replace("scaler_", "").replace(".pkl", "")
@@ -577,11 +590,20 @@ async def retrain_model_endpoint(
             return scaler_store[sid]
         
         # Determine path
-        if sid == 'default':
-            path = 'scalers/trichannel_scaler.pkl'
-        else:
-            path = f'scalers/scaler_{sid}.pkl'
-            
+        # Try direct or legacy depending on how ID was listed
+        # list_scalers returns ID without prefix usually.
+        # But file is saved WITH prefix.
+        
+        path = f'scalers/scaler_{sid}.pkl'
+        
+        if sid == 'default' or not os.path.exists(path):
+             # Try other path if weird setup
+             path2 = f'scalers/{sid}.pkl'
+             if os.path.exists(path2):
+                 path = path2
+             else:
+                 path = 'scalers/trichannel_scaler.pkl'
+             
         if os.path.exists(path):
             try:
                 sc = joblib.load(path)
@@ -647,8 +669,16 @@ async def retrain_model_endpoint(
             # We will pass the scaler object directly if possible or the path.
             
             target_scaler_path = 'scalers/trichannel_scaler.pkl'
+            
             if scaler_id != 'default':
-                target_scaler_path = f'scalers/scaler_{scaler_id}.pkl'
+                # Try direct
+                if os.path.exists(f'scalers/{scaler_id}.pkl'):
+                     target_scaler_path = f'scalers/{scaler_id}.pkl'
+                elif os.path.exists(f'scalers/scaler_{scaler_id}.pkl'):
+                     target_scaler_path = f'scalers/scaler_{scaler_id}.pkl'
+                else:
+                     # Fallback check
+                     pass 
             
             if not os.path.exists(target_scaler_path):
                  raise HTTPException(404, f"Scaler file not found: {target_scaler_path}")
