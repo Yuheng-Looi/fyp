@@ -1,0 +1,8 @@
+This is the frontend folder, use the 'venv' environment to run any python code in this folder. For example,
+1. source venv/bin/activate
+2. python server.py
+
+To AGENT:
+1. This device is only running frontend if you found the current machine IP is 10.100.10.131 & 203.80.21.40.
+2. If you would like to update backend code, please update and commit to git, then ask user to pull the latest backend code and rerun at the GPU machine side (10.100.10.15).
+3. You are free to update any frontend code.

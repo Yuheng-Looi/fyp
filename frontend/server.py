@@ -15,12 +15,13 @@ import json
 import numpy as np
 import math
 import traceback
+import io
 
 from cic_extractor import CICExtractor, FEATURE_KEYS
 
 app = Flask(__name__)
-# Increase max upload size to 500MB to avoid 413 Errors
-app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
+# Increase max upload size to 2GB to avoid 413 Errors / Connection Resets on large datasets
+app.config['MAX_CONTENT_LENGTH'] = 2048 * 1024 * 1024
 
 if 'PREDICT_URL' in os.environ:
     PREDICT_URL = os.environ['PREDICT_URL']
@@ -190,7 +191,7 @@ def parse_timestamp_value(value):
 
 
 class OfflineJob:
-    def __init__(self, job_id: str, source_kind: str, src_path: str, label_column: Optional[str] = None, benign_label: str = 'BENIGN', metadata: Optional[Dict] = None):
+    def __init__(self, job_id: str, source_kind: str, src_path: str, label_column: Optional[str] = None, benign_label: str = 'BENIGN', metadata: Optional[Dict] = None, scaler_id: str = 'default', xgb_model: str = None, safetynet_model: str = None, gnn_model: str = None):
         self.id = job_id
         self.source_kind = source_kind  # 'pcap' or 'csv'
         self.src_path = src_path
@@ -198,6 +199,10 @@ class OfflineJob:
         self.label_column = label_column.strip().upper() if label_column else None
         self.benign_label = (benign_label or 'BENIGN').strip().upper()
         self.has_labels = bool(label_column) or (metadata and 'label' in metadata)
+        self.scaler_id = scaler_id
+        self.xgb_model = xgb_model
+        self.safetynet_model = safetynet_model
+        self.gnn_model = gnn_model
         
         self.lock = threading.Lock()
         self.paused = False
@@ -645,17 +650,27 @@ live_state = {
 state_lock = threading.Lock()
 
 
-def predict_one(features: Dict, src_ip: Optional[str] = None, dst_ip: Optional[str] = None) -> Dict:
+def predict_one(features: Dict, src_ip: Optional[str] = None, dst_ip: Optional[str] = None, scaler_id: str = None, xgb_model: str = None, safetynet_model: str = None, gnn_model: str = None) -> Dict:
     payload_features = dict(features or {})
     if src_ip:
         payload_features.setdefault('src', src_ip)
     if dst_ip:
         payload_features.setdefault('dst', dst_ip)
 
+    # Use provided scaler_id or fall back to global
+    target_scaler = scaler_id if scaler_id else SCALER_ID
+    
     payload = {
         'features': payload_features,
-        'scaler_id': SCALER_ID
+        'scaler_id': target_scaler
     }
+    if xgb_model and xgb_model != 'default':
+        payload['xgb_model'] = xgb_model.replace('.json', '')
+    if safetynet_model and safetynet_model != 'default':
+        payload['safetynet_model'] = safetynet_model.replace('.pkl', '')
+    if gnn_model and gnn_model != 'default':
+        payload['gnn_model'] = gnn_model.replace('.pt', '')
+    
     try:
         resp = requests.post(PREDICT_URL, json=payload, timeout=2)
         if resp.status_code == 200:
@@ -679,6 +694,10 @@ def process_pcap():
 
     label_column = None
     benign_label = request.form.get('benign_label', 'BENIGN')
+    scaler_id = request.form.get('scaler_id', 'default')
+    xgb_model = request.form.get('xgb_model', 'default')
+    safetynet_model = request.form.get('safetynet_model', 'default')
+    gnn_model = request.form.get('gnn_model', 'default')
 
     if source_kind == 'csv':
         if request.form.get('labelled', 'false').lower() == 'true':
@@ -754,7 +773,7 @@ def process_pcap():
 
     job_id = uuid.uuid4().hex
     # Pass src_path instead of entries
-    job = OfflineJob(job_id, source_kind, src_path, label_column, benign_label, metadata)
+    job = OfflineJob(job_id, source_kind, src_path, label_column, benign_label, metadata, scaler_id, xgb_model, safetynet_model, gnn_model)
 
     with offline_jobs_lock:
         offline_jobs[job_id] = job
@@ -797,7 +816,7 @@ def offline_next():
         
         for entry in batch_entries:
             start_ts = time.time()
-            pred = predict_one(entry.get('features'), entry.get('src_ip'), entry.get('dst_ip'))
+            pred = predict_one(entry.get('features'), entry.get('src_ip'), entry.get('dst_ip'), job.scaler_id, job.xgb_model, job.safetynet_model, job.gnn_model)
             latency = time.time() - start_ts
             
             verdict = pred.get('verdict', 'UNKNOWN')
@@ -917,12 +936,23 @@ def live_loop():
 def start_iface():
     data = request.get_json(force=True)
     iface = data.get('iface')
+    scaler_id = data.get('scaler_id', 'default')
+    xgb_model = data.get('xgb_model', 'default')
+    safetynet_model = data.get('safetynet_model', 'default')
+    gnn_model = data.get('gnn_model', 'default')
+
     if not iface:
         return jsonify({'error': 'iface required'}), 400
 
     with state_lock:
         if live_state['running']:
             return jsonify({'status': 'already_running'}), 200
+        
+        live_state['scaler_id'] = scaler_id
+        live_state['xgb_model'] = xgb_model
+        live_state['safetynet_model'] = safetynet_model
+        live_state['gnn_model'] = gnn_model
+
         # Create extractor that appends to live_state flows in flush
         class LiveCIC(CICExtractor):
             def flush_flow(self, key):
@@ -931,7 +961,13 @@ def start_iface():
                     return
                 feats = flow.compute_features()
                 src, dst, sport, dport, proto = flow.key
-                pred = predict_one({kk: feats[kk] for kk in FEATURE_KEYS}, src, dst)
+                
+                sid = live_state.get('scaler_id', 'default')
+                mod_xgb = live_state.get('xgb_model', 'default')
+                mod_sn = live_state.get('safetynet_model', 'default')
+                mod_gnn = live_state.get('gnn_model', 'default')
+                
+                pred = predict_one({kk: feats[kk] for kk in FEATURE_KEYS}, src, dst, sid, mod_xgb, mod_sn, mod_gnn)
                 
                 verdict = pred.get('verdict', 'UNKNOWN')
                 action = pred.get('action')
@@ -1083,6 +1119,7 @@ def save_file():
 @app.route('/analyze_recalibration', methods=['POST'])
 def analyze_recalibration():
     # 1. Handle File (Upload or Stored)
+    scaler_id = request.form.get('scaler_id', 'default')
     use_stored = request.form.get('filename') is not None
     src_path = None
     saved_name = None
@@ -1125,6 +1162,7 @@ def analyze_recalibration():
         # Check if labelled data
         is_labelled = False
         target_benign_label = None
+        target_benign_count = 30000
         
         if metadata and metadata.get('label'):
             is_labelled = True
@@ -1132,7 +1170,7 @@ def analyze_recalibration():
             
         if is_labelled:
             # 3000 Benign samples logic
-            print(f"[Analysis] Labelled data detected. Searching for up to 3000 '{target_benign_label}' samples...")
+            print(f"[Analysis] Labelled data detected. Searching for up to {target_benign_count} '{target_benign_label}' samples...")
             
             # We pass limit=None (or very large) because we need to scan until we find the targets.
             # But maybe safety cap is still good? Let's say max 1M rows scan to find 3000 benigns.
@@ -1140,14 +1178,14 @@ def analyze_recalibration():
                 src_path, 
                 metadata=metadata, 
                 filter_label=target_benign_label, 
-                target_count=10000, 
+                target_count=target_benign_count, 
                 limit=1000000 # Safety scan limit
             )
             
-            if len(entries) < 3000:
-                print(f"[Analysis] Warning: Only found {len(entries)} benign samples (Target: 3000). Using all available samples.")
+            if len(entries) < target_benign_count:
+                print(f"[Analysis] Warning: Only found {len(entries)} benign samples (Target: {target_benign_count}). Using all available samples.")
             else:
-                 print(f"[Analysis] Successfully collected 3000 benign samples.")
+                 print(f"[Analysis] Successfully collected {target_benign_count} benign samples.")
                  
         else:
             # Unlabelled - 20% Logic
@@ -1194,7 +1232,7 @@ def analyze_recalibration():
         else:
             base_url = PREDICT_URL 
         
-        url = f"{base_url}/scaler_stats?scaler_id={SCALER_ID}"
+        url = f"{base_url}/scaler_stats?scaler_id={scaler_id}"
         resp = requests.get(url, timeout=5)
         if resp.status_code == 200:
             baseline = resp.json()
@@ -1206,6 +1244,8 @@ def analyze_recalibration():
     # 5. Compute Stats & Compare
     results = []
     consistent_count = 0
+    valid_features_count = 0
+    shift_magnitudes = []
     missing_features = []
 
     # Optimize: Single pass aggregation
@@ -1223,11 +1263,30 @@ def analyze_recalibration():
     for i, key in enumerate(FEATURE_KEYS):
         vals = feature_buckets[key]
         
+        # 1. Data Sanitization
         if not vals:
             missing_features.append(key)
             continue
             
         arr = np.array(vals, dtype=float)
+        
+        # Remove NaN and Inf
+        arr = arr[np.isfinite(arr)]
+        
+        # Check sample count
+        if len(arr) < 1000:
+            status = "unstable (insufficient clean samples)"
+            results.append({
+                'feature': key,
+                'median_ratio': 1.0,
+                'iqr_ratio': 1.0,
+                'status': status
+            })
+            continue # Exclude from decision metrics
+        
+        valid_features_count += 1
+        
+        # 2. Statistics (Median & IQR)
         median_new = float(np.median(arr))
         q75, q25 = np.percentile(arr, [75, 25])
         iqr_new = float(q75 - q25)
@@ -1241,8 +1300,8 @@ def analyze_recalibration():
         iqr_ref = float(ref.get('iqr', 1e-6))
         if iqr_ref <= 1e-9: iqr_ref = 1e-6
 
-        # Ratio Logic
-        # Handle median_ref near 0
+        # 3. Ratio Computation with Noise Dead-Zone
+        # Median Ratio
         if abs(median_ref) < 1e-9:
              # If baseline median is 0, we can't divide.
              # If new median is also near 0, ratio is 1. Else large.
@@ -1253,14 +1312,22 @@ def analyze_recalibration():
         else:
              median_ratio = median_new / median_ref
 
+        # Apply dead-zone to median_ratio
+        if median_ratio > 1e-9 and abs(math.log(median_ratio)) < 0.05:
+            median_ratio = 1.0
+
+        # IQR Ratio
         iqr_ratio = iqr_new / iqr_ref
         
-        # Classification
-        # 0.5 <= (median_ratio / iqr_ratio) <= 2.0
+        # Apply dead-zone to iqr_ratio
+        if iqr_ratio > 1e-9 and abs(math.log(iqr_ratio)) < 0.05:
+            iqr_ratio = 1.0
+        
+        # 4. Shape Consistency
         if abs(iqr_ratio) < 1e-9:
-            ratio_of_ratios = 0
+             ratio_of_ratios = 0
         else:
-            ratio_of_ratios = median_ratio / iqr_ratio
+             ratio_of_ratios = median_ratio / iqr_ratio
             
         status = "shape_changed"
         if 0.5 <= ratio_of_ratios <= 2.0:
@@ -1273,23 +1340,29 @@ def analyze_recalibration():
             'iqr_ratio': iqr_ratio,
             'status': status
         })
-    
+        
+        # 5. Shift Magnitude
+        if median_ratio > 1e-9:
+            shift_magnitudes.append(abs(math.log(median_ratio)))
+        else:
+            shift_magnitudes.append(5.0) # Penalty for non-positive or zero ratio
+
     print("[Analysis] Calculation finished.")
         
     if missing_features:
         return jsonify({'error': f'Missing features in CSV: {missing_features}'}), 400
         
-    # 6. Global Decision
+    # 6. Global Decision Logic
     try:
-        total = len(FEATURE_KEYS)
-        scale_score = consistent_count / total if total > 0 else 0
+        shape_score = consistent_count / valid_features_count if valid_features_count > 0 else 0
+        avg_shift = float(np.mean(shift_magnitudes)) if shift_magnitudes else 0.0
         
-        if scale_score >= 0.6:
-            recommendation = "RESCALE"
-        elif scale_score >= 0.4:
+        if shape_score < 0.6:
+            recommendation = "RETRAIN"
+        elif avg_shift <= 0.1:
             recommendation = "NO ACTION"
         else:
-            recommendation = "RETRAIN"
+            recommendation = "RESCALE"
             
         # Sanitize results for JSON compliance (no NaN/Inf)
         sanitized_results = []
@@ -1310,8 +1383,11 @@ def analyze_recalibration():
             
         return jsonify({
             'results': sanitized_results,
-            'scale_score': float(scale_score), # Ensure float
-            'recommendation': recommendation
+            'shape_score': float(shape_score),
+            'scale_score': float(shape_score), # For frontend compatibility
+            'avg_shift': float(avg_shift),
+            'recommendation': recommendation,
+            'valid_features': valid_features_count
         })
     except Exception as e:
         traceback.print_exc()
@@ -1327,8 +1403,8 @@ def serve_dashboard():
 def proxy_scaler_stats():
     try:
         base_url = get_base_url()
-        # Pass the SCALER_ID env var if set
-        url = f"{base_url}/scaler_stats?scaler_id={SCALER_ID}"
+        scaler_id = request.args.get('scaler_id', SCALER_ID)
+        url = f"{base_url}/scaler_stats?scaler_id={scaler_id}"
         print(f"Fetching stats from: {url}")
         resp = requests.get(url, timeout=5)
         return jsonify(resp.json())
@@ -1368,16 +1444,100 @@ def proxy_rescale():
     file = request.files['csv']
     scaler_name = request.form.get('scaler_name')
     
+    # Mapping and Label params
+    mapping_file = request.form.get('mapping_source_file')
+    mapping_str = request.form.get('mapping')
+    
+    # Strict boolean parsing
+    is_labelled = str(request.form.get('labelled', '')).lower() == 'true'
+    label_col = request.form.get('label_col')
+    benign_label = request.form.get('benign_label', 'BENIGN')
+    
     try:
-        base = get_base_url()
-            
-        # Prepare multipart upload
-        files = {'file': (file.filename, file.stream, file.mimetype)}
-        data = {'name': scaler_name} if scaler_name else {}
+        # 1. Resolve Mapping (Mandatory)
+        metadata = None
+        if mapping_file:
+             metadata = load_metadata(mapping_file)
+        elif mapping_str:
+             try:
+                 parsed = json.loads(mapping_str)
+                 if isinstance(parsed, dict):
+                    metadata = {'features': parsed} if 'features' not in parsed else parsed
+             except:
+                 pass
+                 
+        if not metadata or 'features' not in metadata:
+            return jsonify({'error': 'Column mapping is required for rescaling'}), 400
+
+        # 2. Save Upload temporarily for processing
+        temp_dir = os.path.join(UPLOAD_DIR, 'temp_rescale')
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_path = os.path.join(temp_dir, f"rescale_{uuid.uuid4().hex}.csv")
+        file.save(temp_path)
         
-        resp = requests.post(f"{base}/refit_scaler", files=files, data=data, timeout=120)
-        return jsonify(resp.json()), resp.status_code
+        try:
+            # 3. Load & Filter Data taking 10k Benign
+            target_count = 10000
+            filter_lbl = benign_label if is_labelled else None
+            
+            # Construct metadata for loader
+            load_meta = metadata.copy()
+            if is_labelled and label_col:
+                load_meta['label'] = label_col
+                
+            print(f"[Rescale] Loading samples from {temp_path}. Labelled={is_labelled}, Filter={filter_lbl}")
+                
+            entries = load_csv_entries(
+                temp_path,
+                metadata=load_meta,
+                filter_label=filter_lbl,
+                target_count=target_count,
+                 # If unlabelled, just take first 10k by setting limit/target
+                limit=target_count if not is_labelled else None 
+            )
+            
+            if not entries:
+                 return jsonify({'error': f'No valid samples found (Labelled={is_labelled}, Label={filter_lbl})'}), 400
+                 
+            # Allow smaller datasets (user request: use all even if < 10000, and ensure we don't error on small valid sets)
+            if len(entries) < 10:
+                 return jsonify({'error': f'Insufficient samples ({len(entries)}) found for rescaling. Need at least 10.'}), 400
+
+            print(f"[Rescale] Collected {len(entries)} valid samples for rescaling.")
+
+            # 4. Generate Clean CSV for Backend
+            # We write ONLY the 15 features, using standard names.
+            output = io.StringIO()
+            writer = csv.DictWriter(output, fieldnames=FEATURE_KEYS)
+            writer.writeheader()
+            
+            for e in entries:
+                writer.writerow(e['features'])
+                
+            output.seek(0)
+            
+            # 5. Send to Backend
+            base = get_base_url()
+            data = {'name': scaler_name} if scaler_name else {}
+            # No mapping needed since columns are standardized
+            
+            # Streaming the StringIO requires encoding? requests handles it usually if file-like
+            # But StringIO is text, files usually expect bytes. 
+            # Flask/Requests might handle text/csv
+            # Safe bet: encode to bytes
+            mem_file = io.BytesIO(output.getvalue().encode('utf-8'))
+            
+            files = {'file': ('rescaled_cleaned.csv', mem_file, 'text/csv')}
+            
+            resp = requests.post(f"{base}/refit_scaler", files=files, data=data, timeout=120)
+            return jsonify(resp.json()), resp.status_code
+
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
     except Exception as e:
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/retrain', methods=['POST'])
@@ -1390,9 +1550,27 @@ def proxy_retrain():
     model_name = request.form.get('model_name')
     label_col = request.form.get('label_col', 'Label')
     benign_label = request.form.get('benign_label', 'BENIGN')
+    scaler_id = request.form.get('scaler_id', 'default')
+    
+    mapping_file = request.form.get('mapping_source_file')
+    mapping_str = request.form.get('mapping')
     
     if not model_type or not model_name:
          return jsonify({'error': 'model_type and model_name required'}), 400
+         
+    # Enforce Mapping (Mandatory as per request)
+    metadata = None
+    if mapping_file:
+         metadata = load_metadata(mapping_file)
+    elif mapping_str:
+         try:
+             parsed = json.loads(mapping_str)
+             if isinstance(parsed, dict):
+                metadata = {'features': parsed} if 'features' not in parsed else parsed
+         except: pass
+         
+    if not metadata or 'features' not in metadata:
+         return jsonify({'error': 'Column mapping is required for retraining'}), 400
          
     try:
         base = get_base_url()
@@ -1401,8 +1579,12 @@ def proxy_retrain():
         data = {
             'model_name': model_name,
             'label_col': label_col,
-            'benign_label': benign_label
+            'benign_label': benign_label,
+            'scaler_id': scaler_id,
+            'mapping': json.dumps(metadata['features']) # Pass explicit mapping
         }
+        
+        # If mapping file provided, load its metadata (Already done above)
         
         # retrain path
         resp = requests.post(f"{base}/retrain/{model_type}", files=files, data=data, timeout=300)
