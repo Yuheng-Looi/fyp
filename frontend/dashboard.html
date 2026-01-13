@@ -211,54 +211,188 @@
 
         <!-- Live View -->
         <div id="view-live" class="hidden space-y-4">
-            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg flex flex-col gap-4 md:flex-row md:items-end">
-                <div class="flex-1 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <label class="block text-xs font-bold text-slate-400 uppercase">Interface</label>
-                        <button id="ifaceRefreshBtn" type="button" onclick="refreshInterfaces()" class="px-3 py-1 text-[11px] font-bold rounded-lg border border-slate-600 text-slate-300 hover:text-white hover:border-slate-300 transition">Refresh</button>
+            <!-- Topology & Traffic Controls -->
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-lg">
+                <div class="flex flex-col gap-4">
+                    <!-- Row 1: Topology Control -->
+                    <div class="flex flex-wrap gap-4 items-center justify-between border-b border-slate-700 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="text-xs font-bold text-slate-400 uppercase w-28">Topology</div>
+                            <div id="topoStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-400">STOPPED</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="topoBtn" onclick="toggleTopology()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all text-sm">
+                                Start Topo
+                            </button>
+                        </div>
                     </div>
-                    <div class="flex flex-col gap-2 sm:flex-row">
-                        <select id="ifaceSelect" onchange="onInterfaceSelected(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
-                            <option value="">-- Select Available --</option>
-                        </select>
-                         <!-- Manual input removed as requested -->
-                         <input type="hidden" id="ifaceInput" />
+
+                    <!-- Row 2: Normal Traffic Control -->
+                    <div class="flex flex-wrap gap-4 items-center justify-between border-b border-slate-700 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="text-xs font-bold text-slate-400 uppercase w-28">Normal Traffic</div>
+                            <div id="trafficStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-400">STOPPED</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="trafficBtn" onclick="toggleTraffic()" disabled class="px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-bold text-white shadow-lg transition-all text-sm">
+                                Start Traffic
+                            </button>
+                        </div>
                     </div>
-                    <p id="ifaceStatus" class="text-[11px] text-slate-400">Pick a mirrored interface from the list.</p>
+
+                    <!-- Row 3: Attack Generation -->
+                    <div class="flex flex-wrap gap-4 items-center justify-between border-b border-slate-700 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="text-xs font-bold text-slate-400 uppercase w-28">Attack</div>
+                            <select id="attackerSelect" disabled class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-red-500 outline-none disabled:opacity-50">
+                                <option value="ns_attacker">Attacker 1 (10.0.0.66)</option>
+                                <option value="ns_attacker2">Attacker 2 (10.0.0.67)</option>
+                                <option value="ns_attacker3">Attacker 3 (10.0.0.68)</option>
+                            </select>
+                            <select id="attackTypeSelect" disabled class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-white focus:ring-2 focus:ring-red-500 outline-none disabled:opacity-50">
+                                <option value="">-- Select Attack --</option>
+                                <option value="syn">SYN Flood (DoS)</option>
+                                <option value="udp">UDP Flood (DoS)</option>
+                                <option value="scan">Port Scan (Probe)</option>
+                                <option value="web">HTTP Flood (Web)</option>
+                                <option value="botnet">C&C Beaconing (Botnet)</option>
+                            </select>
+                            <div id="attackStatusBadge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-400">STOPPED</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button id="attackBtn" onclick="toggleAttack()" disabled class="px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-bold text-white shadow-lg transition-all text-sm">
+                                Start Attack
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Row 4: Capture Interface & Model Selection -->
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div class="flex-1 min-w-[200px] space-y-1">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-bold text-slate-400 uppercase">Interface</label>
+                                <button id="ifaceRefreshBtn" type="button" onclick="refreshInterfaces()" class="px-2 py-0.5 text-[10px] font-bold rounded border border-slate-600 text-slate-400 hover:text-white hover:border-slate-400 transition">Refresh</button>
+                            </div>
+                            <select id="ifaceSelect" onchange="onInterfaceSelected(this.value)" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="">-- Select Interface --</option>
+                            </select>
+                            <input type="hidden" id="ifaceInput" />
+                        </div>
+                        <div class="w-32 space-y-1">
+                             <label class="block text-xs font-bold text-slate-400 uppercase">Scaler</label>
+                             <select id="liveScalerSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="default">Default</option>
+                            </select>
+                        </div>
+                        <div class="w-32 space-y-1">
+                             <label class="block text-xs font-bold text-slate-400 uppercase">XGB Model</label>
+                             <select id="liveModelSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="default">Default</option>
+                            </select>
+                        </div>
+                        <div class="w-32 space-y-1">
+                             <label class="block text-xs font-bold text-slate-400 uppercase">SafetyNet</label>
+                             <select id="liveSafetyNetSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="default">Default</option>
+                            </select>
+                        </div>
+                        <div class="w-32 space-y-1">
+                             <label class="block text-xs font-bold text-slate-400 uppercase">GNN</label>
+                             <select id="liveGNNSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="default">Default</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2 shrink-0">
+                            <button id="liveBtn" onclick="toggleLive()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all text-sm">START</button>
+                            <button onclick="clearLive()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-bold text-slate-300 text-sm">Clear</button>
+                            <button onclick="exportLiveCsv()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg font-bold text-white shadow-lg transition-all text-sm" title="Export logs to CSV">📥 CSV</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="w-40 space-y-1">
-                     <label class="block text-xs font-bold text-slate-400 uppercase">Scaler</label>
-                     <select id="liveScalerSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="default">Default</option>
-                    </select>
+                <p id="ifaceStatus" class="text-[11px] text-slate-400 mt-3">Flow: Start Topo → Start Traffic → Select Interface → Start Capture → Generate Attacks</p>
+            </div>
+
+            <!-- Live Metrics Panel -->
+            <div id="live-metrics-panel" class="hidden grid grid-cols-5 gap-4">
+                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[10px] font-bold text-slate-500 uppercase">Benign</div>
+                    <div id="live-m-benign" class="text-xl font-bold text-emerald-400">0</div>
                 </div>
-                <div class="w-40 space-y-1">
-                     <label class="block text-xs font-bold text-slate-400 uppercase">Model (XGB)</label>
-                     <select id="liveModelSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="default">Default</option>
-                    </select>
+                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[10px] font-bold text-slate-500 uppercase">Attack</div>
+                    <div id="live-m-attack" class="text-xl font-bold text-red-400">0</div>
                 </div>
-                <div class="w-40 space-y-1">
-                     <label class="block text-xs font-bold text-slate-400 uppercase">SafetyNet</label>
-                     <select id="liveSafetyNetSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="default">Default</option>
-                    </select>
+                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[10px] font-bold text-slate-500 uppercase">Total Flows</div>
+                    <div id="live-m-total" class="text-xl font-bold text-white">0</div>
                 </div>
-                <div class="w-40 space-y-1">
-                     <label class="block text-xs font-bold text-slate-400 uppercase">GNN</label>
-                     <select id="liveGNNSelect" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
-                        <option value="default">Default</option>
-                    </select>
+                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[10px] font-bold text-slate-500 uppercase">Avg Latency</div>
+                    <div id="live-m-latency" class="text-xl font-bold text-cyan-400">0ms</div>
                 </div>
-                <div class="flex gap-3 shrink-0">
-                    <button id="liveBtn" onclick="toggleLive()" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all">START</button>
-                    <button onclick="clearLive()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg font-bold text-slate-300">Clear</button>
+                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[10px] font-bold text-slate-500 uppercase">Capture Status</div>
+                    <div id="live-m-status" class="text-xl font-bold text-slate-400">Idle</div>
                 </div>
             </div>
-            
-            <!-- Drift Analysis (Live) removed -->
 
-            <div id="live-container" class="space-y-2 max-h-[600px] overflow-y-auto custom-scrollbar"></div>
+            <!-- Switch Flow Rules Panel (Collapsible) -->
+            <div id="switch-panel" class="hidden bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
+                <div class="flex items-center justify-between px-4 py-3 bg-slate-900/50 cursor-pointer hover:bg-slate-900/70 transition" onclick="toggleSwitchPanel()">
+                    <div class="flex items-center gap-3">
+                        <span class="text-lg">🛡️</span>
+                        <h3 class="font-bold text-white">OVS Switch Flow Rules</h3>
+                        <span id="switch-rules-count" class="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-700 text-slate-400">0 rules</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="event.stopPropagation(); refreshSwitchFlows()" class="px-3 py-1 text-xs font-bold rounded border border-slate-600 text-slate-400 hover:text-white hover:border-slate-400 transition">Refresh</button>
+                        <button onclick="event.stopPropagation(); clearSwitchRules()" class="px-3 py-1 text-xs font-bold rounded border border-red-600 text-red-400 hover:text-red-300 hover:border-red-400 transition">Clear All</button>
+                        <span id="switch-panel-toggle" class="text-slate-400 text-xl transform transition">▼</span>
+                    </div>
+                </div>
+                <div id="switch-panel-content" class="border-t border-slate-700">
+                    <!-- Injected Rules Summary -->
+                    <div class="p-4 border-b border-slate-700 bg-slate-900/30">
+                        <h4 class="text-sm font-bold text-slate-400 uppercase mb-2">Injected Rules (by IDS)</h4>
+                        <div id="injected-rules-list" class="flex flex-wrap gap-2">
+                            <span class="text-sm text-slate-500 italic">No rules injected yet</span>
+                        </div>
+                    </div>
+                    <!-- Raw OVS Flow Dump -->
+                    <div class="p-4">
+                        <h4 class="text-sm font-bold text-slate-400 uppercase mb-2">OVS Flow Table (ovs-ofctl dump-flows)</h4>
+                        <pre id="switch-flows-raw" class="bg-slate-900 p-3 rounded-lg text-xs text-slate-300 font-mono overflow-x-auto max-h-48 custom-scrollbar">No flows loaded. Click Refresh to load.</pre>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Logs Display (similar to offline) -->
+            <div class="flex gap-4" style="height: calc(100vh - 480px); min-height: 300px;">
+                <!-- Virtual Table for Live Flows -->
+                <div class="flex-1 bg-slate-800 rounded-xl border border-slate-700 shadow-xl overflow-hidden flex flex-col">
+                    <!-- Header -->
+                    <div class="flex items-center px-4 py-3 bg-slate-900/50 text-slate-400 text-xs uppercase font-bold border-b border-slate-700 shrink-0">
+                        <div class="w-28 shrink-0">Time</div>
+                        <div class="flex-1 min-w-0 px-2">Flow Tuple</div>
+                        <div class="w-28 shrink-0 text-center">Prediction</div>
+                        <div class="w-28 shrink-0 text-center">Latency</div>
+                        <div class="w-20 shrink-0 text-right pr-2">Action</div>
+                    </div>
+                    <!-- Virtual Scroll Container -->
+                    <div id="live-virtual-container" class="flex-1 overflow-y-auto relative custom-scrollbar" onscroll="onLiveVirtualScroll()">
+                        <div id="live-virtual-content" class="relative w-full"></div>
+                    </div>
+                </div>
+
+                <!-- Detail Panel for Live -->
+                <div id="live-detail-panel" class="hidden w-96 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+                    <div class="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900/50 shrink-0">
+                        <h3 class="font-bold text-white">Flow Details</h3>
+                        <button onclick="closeLiveDetail()" class="text-slate-400 hover:text-white text-xl">&times;</button>
+                    </div>
+                    <div id="live-detail-content" class="p-4 overflow-y-auto flex-1 space-y-6 custom-scrollbar"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Rescale vs Retrain Analysis View -->
@@ -469,6 +603,23 @@
                     <div id="retrain-status" class="text-xs text-center text-slate-400 hidden"></div>
                 </div>
             </div>
+
+            <!-- Retrain Results Panel -->
+            <div id="retrain-results-panel" class="bg-slate-800 rounded-lg p-5 border border-slate-700 hidden">
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2">Training Results</h3>
+                <div id="retrain-results-content" class="space-y-4">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+            
+            <!-- Training History -->
+            <div class="bg-slate-800 rounded-lg p-5 border border-slate-700">
+                <h3 class="text-lg font-bold text-white mb-4 border-b border-slate-700 pb-2">Training History</h3>
+                <div id="train-history-list" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
+                    <div class="text-slate-500 text-sm">No training history yet</div>
+                </div>
+                <button onclick="clearTrainHistory()" class="mt-3 text-xs text-red-400 hover:text-red-300">Clear History</button>
+            </div>
         </div>
     </div>
 
@@ -557,6 +708,17 @@
         let filterRowCounter = 0;
         let availableInterfaces = [];
         let isLoadingInterfaces = false;
+
+        // === NEW: Live Topology/Traffic/Attack State ===
+        let topoRunning = false;
+        let trafficRunning = false;
+        let attackRunning = false;
+        let currentAttackType = null;
+        let liveFlowsData = [];  // Accumulated live flows for display
+        let liveVisibleStart = 0;
+        let liveVisibleEnd = 0;
+        let selectedLiveFlowIndex = -1;
+        let topoStatusInterval = null;
 
         // 15 Required Features
         const FEATURE_KEYS = [
@@ -659,6 +821,24 @@
                 css: isCorrect ? 'text-emerald-400' : 'text-red-400',
                 raw: isCorrect ? 'correct' : 'wrong'
             };
+        };
+
+        // Get CSS class for action type (ALLOW, LOG, RATE_LIMIT, BLOCK, ALERT_ONLY)
+        const getActionClass = (action) => {
+            const actionUpper = (action || '').toUpperCase();
+            switch (actionUpper) {
+                case 'BLOCK':
+                    return 'text-red-400 font-bold';
+                case 'RATE_LIMIT':
+                    return 'text-orange-400 font-bold';
+                case 'LOG':
+                    return 'text-amber-400';
+                case 'ALERT_ONLY':
+                    return 'text-purple-400';
+                case 'ALLOW':
+                default:
+                    return 'text-emerald-400';
+            }
         };
 
         const getFilterValue = (flow, column) => {
@@ -788,7 +968,7 @@
                 
                 const isBenign = flow.prediction === 'BENIGN';
                 const predClass = isBenign ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10';
-                const actionClass = flow.action === "BLOCK" ? "text-red-400" : (flow.action === "RATE LIMIT" ? "text-amber-400" : "text-emerald-400");
+                const actionClass = getActionClass(flow.action);
                 const selectedClass = i === selectedFlowIndex ? 'bg-slate-700 border-l-4 border-l-blue-500' : '';
                 
                 const veracityState = getVeracityState(flow);
@@ -2353,18 +2533,263 @@ These are model predictions only.`;
             return selectEl ? (selectEl.value || '').trim() : '';
         }
 
+        // =============================================================================
+        // TOPOLOGY, TRAFFIC, AND ATTACK CONTROL FUNCTIONS
+        // =============================================================================
+
+        function updateTopoUI() {
+            const topoBtn = document.getElementById('topoBtn');
+            const topoBadge = document.getElementById('topoStatusBadge');
+            const trafficBtn = document.getElementById('trafficBtn');
+            const trafficBadge = document.getElementById('trafficStatusBadge');
+            const attackBtn = document.getElementById('attackBtn');
+            const attackBadge = document.getElementById('attackStatusBadge');
+            const attackSelect = document.getElementById('attackTypeSelect');
+            const attackerSelect = document.getElementById('attackerSelect');
+
+            // Topology button
+            if (topoRunning) {
+                topoBtn.innerText = 'Stop Topo';
+                topoBtn.className = 'px-5 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-white shadow-lg transition-all text-sm';
+                topoBadge.innerText = 'RUNNING';
+                topoBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400';
+                
+                // Enable traffic & attack buttons
+                trafficBtn.disabled = false;
+                attackSelect.disabled = false;
+                if (attackerSelect) attackerSelect.disabled = false;
+            } else {
+                topoBtn.innerText = 'Start Topo';
+                topoBtn.className = 'px-5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all text-sm';
+                topoBadge.innerText = 'STOPPED';
+                topoBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-400';
+                
+                // Disable traffic & attack buttons
+                trafficBtn.disabled = true;
+                attackBtn.disabled = true;
+                attackSelect.disabled = true;
+                if (attackerSelect) attackerSelect.disabled = true;
+            }
+
+            // Traffic button
+            if (trafficRunning) {
+                trafficBtn.innerText = 'Stop Traffic';
+                trafficBtn.className = 'px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-bold text-white shadow-lg transition-all text-sm';
+                trafficBadge.innerText = 'RUNNING';
+                trafficBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-blue-500/20 text-blue-400';
+            } else {
+                trafficBtn.innerText = 'Start Traffic';
+                trafficBtn.className = 'px-5 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-bold text-white shadow-lg transition-all text-sm';
+                trafficBadge.innerText = 'STOPPED';
+                trafficBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-400';
+            }
+
+            // Attack button
+            if (attackRunning) {
+                attackBtn.disabled = false;
+                attackBtn.innerText = 'Stop Attack';
+                attackBtn.className = 'px-5 py-2 bg-amber-600 hover:bg-amber-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-bold text-white shadow-lg transition-all text-sm';
+                attackBadge.innerText = currentAttackType ? currentAttackType.toUpperCase() : 'RUNNING';
+                attackBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-400';
+            } else {
+                attackBtn.innerText = 'Start Attack';
+                attackBtn.className = 'px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed rounded-lg font-bold text-white shadow-lg transition-all text-sm';
+                attackBadge.innerText = 'STOPPED';
+                attackBadge.className = 'px-3 py-1 rounded-full text-xs font-bold bg-slate-700 text-slate-400';
+                
+                // Enable attack button only if attack type is selected and topo is running
+                if (topoRunning && attackSelect.value) {
+                    attackBtn.disabled = false;
+                } else {
+                    attackBtn.disabled = true;
+                }
+            }
+        }
+
+        async function fetchTopoStatus() {
+            try {
+                const res = await fetch('/topo/status');
+                if (res.ok) {
+                    const data = await res.json();
+                    topoRunning = data.topo_running;
+                    trafficRunning = data.traffic_running;
+                    attackRunning = data.attack_running;
+                    currentAttackType = data.attack_type;
+                    updateTopoUI();
+                }
+            } catch (e) {
+                console.error('Failed to fetch topo status:', e);
+            }
+        }
+
+        let switchFlowRefreshInterval = null;
+
+        async function toggleTopology() {
+            const topoBtn = document.getElementById('topoBtn');
+            topoBtn.disabled = true;
+            
+            try {
+                if (topoRunning) {
+                    // Stop topology (will also stop traffic and attacks)
+                    const res = await fetch('/topo/stop', { method: 'POST' });
+                    const data = await res.json();
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        topoRunning = false;
+                        trafficRunning = false;
+                        attackRunning = false;
+                        currentAttackType = null;
+                        
+                        // Also stop capture if running
+                        if (isLive) {
+                            await fetch('/stop_iface', { method: 'POST' });
+                            clearInterval(liveInterval);
+                            isLive = false;
+                            document.getElementById('liveBtn').innerText = 'START';
+                            document.getElementById('liveBtn').className = 'px-5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all text-sm';
+                            document.getElementById('live-m-status').innerText = 'Idle';
+                        }
+                        
+                        // Hide switch panel and stop refresh
+                        document.getElementById('switch-panel').classList.add('hidden');
+                        if (switchFlowRefreshInterval) {
+                            clearInterval(switchFlowRefreshInterval);
+                            switchFlowRefreshInterval = null;
+                        }
+                    }
+                } else {
+                    // Start topology
+                    const res = await fetch('/topo/start', { method: 'POST' });
+                    const data = await res.json();
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        topoRunning = true;
+                        // Refresh interfaces after topology starts (new interfaces may appear)
+                        setTimeout(() => refreshInterfaces(), 1000);
+                        
+                        // Show switch panel and start refresh
+                        document.getElementById('switch-panel').classList.remove('hidden');
+                        await refreshSwitchFlows();
+                        // Refresh switch flows every 3 seconds
+                        switchFlowRefreshInterval = setInterval(refreshSwitchFlows, 3000);
+                    }
+                }
+                updateTopoUI();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                topoBtn.disabled = false;
+            }
+        }
+
+        async function toggleTraffic() {
+            const trafficBtn = document.getElementById('trafficBtn');
+            trafficBtn.disabled = true;
+            
+            try {
+                if (trafficRunning) {
+                    const res = await fetch('/traffic/stop', { method: 'POST' });
+                    const data = await res.json();
+                    trafficRunning = false;
+                } else {
+                    const res = await fetch('/traffic/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ duration: 0 })  // Infinite
+                    });
+                    const data = await res.json();
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        trafficRunning = true;
+                    }
+                }
+                updateTopoUI();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                trafficBtn.disabled = false;
+            }
+        }
+
+        async function toggleAttack() {
+            const attackBtn = document.getElementById('attackBtn');
+            const attackSelect = document.getElementById('attackTypeSelect');
+            const attackerSelect = document.getElementById('attackerSelect');
+            attackBtn.disabled = true;
+            
+            try {
+                if (attackRunning) {
+                    const res = await fetch('/attack/stop', { method: 'POST' });
+                    const data = await res.json();
+                    attackRunning = false;
+                    currentAttackType = null;
+                } else {
+                    const attackType = attackSelect.value;
+                    if (!attackType) {
+                        alert('Please select an attack type first');
+                        attackBtn.disabled = false;
+                        return;
+                    }
+                    
+                    const attackerNs = attackerSelect?.value || 'ns_attacker';
+                    
+                    const res = await fetch('/attack/start', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            attack_type: attackType, 
+                            attacker_ns: attackerNs,
+                            duration: 0 
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        attackRunning = true;
+                        currentAttackType = attackType;
+                        console.log(`Attack started from ${data.attacker_ip}`);
+                    }
+                }
+                updateTopoUI();
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                attackBtn.disabled = false;
+            }
+        }
+
+        // Enable attack button when attack type is selected
+        document.addEventListener('DOMContentLoaded', () => {
+            const attackSelect = document.getElementById('attackTypeSelect');
+            if (attackSelect) {
+                attackSelect.addEventListener('change', () => {
+                    updateTopoUI();
+                });
+            }
+        });
+
+        // =============================================================================
+        // LIVE CAPTURE FUNCTIONS (UPDATED)
+        // =============================================================================
+
         function toggleLive() {
             const btn = document.getElementById('liveBtn');
             const iface = resolveInterfaceName();
             const statusEl = document.getElementById('ifaceStatus');
+            const liveStatus = document.getElementById('live-m-status');
 
             if (isLive) {
                 fetch('/stop_iface', { method: 'POST' });
                 clearInterval(liveInterval);
                 isLive = false;
                 btn.innerText = 'START';
-                btn.className = 'px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all';
+                btn.className = 'px-5 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white shadow-lg transition-all text-sm';
                 if (statusEl) statusEl.innerText = 'Live capture stopped.';
+                if (liveStatus) liveStatus.innerText = 'Stopped';
             } else {
                 if (!iface) {
                     alert('Select an interface');
@@ -2387,50 +2812,422 @@ These are model predictions only.`;
                     })
                 });
                 isLive = true;
-                // Show drift section
-                const driftSec = document.getElementById('drift-section-live');
-                if (driftSec) driftSec.classList.remove('hidden');
                 
                 btn.innerText = 'STOP';
-                btn.className = 'px-6 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-white shadow-lg transition-all';
+                btn.className = 'px-5 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-bold text-white shadow-lg transition-all text-sm';
                 if (statusEl) statusEl.innerText = `Streaming live flows from ${iface}`;
+                if (liveStatus) liveStatus.innerText = 'Running';
+                
+                // Show metrics panel
+                document.getElementById('live-metrics-panel').classList.remove('hidden');
 
                 liveInterval = setInterval(async () => {
                     try {
                         const res = await fetch('/flows');
                         const data = await res.json();
                         if (data.flows && data.flows.length > 0) {
-                            // Accumulate flows for drift analysis
-                            liveFlows = liveFlows.concat(data.flows);
-                            if (liveFlows.length > 1000) liveFlows = liveFlows.slice(-1000);
-                            
-                            const container = document.getElementById('live-container');
-                            data.flows.slice(-10).forEach(flow => {
-                                const color = flow.action === 'BLOCK' ? 'border-red-500/50 bg-red-500/10 text-red-300' : 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300';
-                                const div = document.createElement('div');
-                                div.className = `p-3 rounded border font-mono text-xs flex justify-between items-center ${color}`;
-                                div.innerHTML = `
-                                    <div class="flex gap-4">
-                                        <span class="text-slate-400">[${formatTime(flow.timestamp)}]</span>
-                                        <span class="font-bold">${flow.src_ip}:${flow.src_port} → ${flow.dst_ip}:${flow.dst_port}</span>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <span class="text-blue-400">Proto: ${flow.protocol}</span>
-                                        <span class="font-bold">${flow.prediction}</span>
-                                        <span>>> ${flow.action}</span>
-                                    </div>
-                                `;
-                                container.insertBefore(div, container.firstChild);
-                                if (container.children.length > 50) container.removeChild(container.lastChild);
-                            });
+                            // Accumulate NEW flows only
+                            const newFlows = data.flows.slice(liveFlowsData.length);
+                            if (newFlows.length > 0) {
+                                liveFlowsData = liveFlowsData.concat(newFlows);
+                                
+                                // Cap at 10000 flows
+                                if (liveFlowsData.length > 10000) {
+                                    liveFlowsData = liveFlowsData.slice(-10000);
+                                }
+                                
+                                // Update metrics
+                                updateLiveMetrics();
+                                
+                                // Render virtual scroll
+                                renderLiveVisibleRows();
+                            }
                         }
-                    } catch (e) {}
-                }, 2000);
+                    } catch (e) {
+                        console.error('Error fetching flows:', e);
+                    }
+                }, 1000);
             }
         }
 
+        function updateLiveMetrics() {
+            let benign = 0, attack = 0, totalLatency = 0, latencyCount = 0;
+            for (const flow of liveFlowsData) {
+                if (flow.prediction === 'BENIGN') benign++;
+                else attack++;
+                if (flow.latency_ms !== undefined && flow.latency_ms !== null) {
+                    totalLatency += parseFloat(flow.latency_ms);
+                    latencyCount++;
+                }
+            }
+            document.getElementById('live-m-benign').innerText = benign;
+            document.getElementById('live-m-attack').innerText = attack;
+            document.getElementById('live-m-total').innerText = liveFlowsData.length;
+            const avgLatency = latencyCount > 0 ? (totalLatency / latencyCount).toFixed(1) : 0;
+            document.getElementById('live-m-latency').innerText = avgLatency + 'ms';
+        }
+
+        function onLiveVirtualScroll() {
+            renderLiveVisibleRows();
+        }
+
+        function renderLiveVisibleRows() {
+            const container = document.getElementById('live-virtual-container');
+            const content = document.getElementById('live-virtual-content');
+            if (!container || !content) return;
+
+            // Handle empty data case - clear display
+            if (liveFlowsData.length === 0) {
+                content.style.height = '0px';
+                content.innerHTML = '';
+                liveVisibleStart = 0;
+                liveVisibleEnd = 0;
+                return;
+            }
+
+            const scrollTop = container.scrollTop;
+            const containerHeight = container.clientHeight;
+
+            content.style.height = (liveFlowsData.length * ROW_HEIGHT) + 'px';
+
+            const startIndex = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 5);
+            const endIndex = Math.min(liveFlowsData.length, Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + 5);
+
+            if (startIndex === liveVisibleStart && endIndex === liveVisibleEnd) return;
+            liveVisibleStart = startIndex;
+            liveVisibleEnd = endIndex;
+
+            let html = '';
+            for (let i = startIndex; i < endIndex; i++) {
+                const flow = liveFlowsData[i];
+                if (!flow) continue;
+                
+                const isBenign = flow.prediction === 'BENIGN';
+                const predClass = isBenign ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10';
+                const actionClass = getActionClass(flow.action);
+                const selectedClass = i === selectedLiveFlowIndex ? 'bg-slate-700 border-l-4 border-l-blue-500' : '';
+                
+                const srcIp = flow.src_ip || 'N/A';
+                const dstIp = flow.dst_ip || 'N/A';
+                const srcPort = flow.src_port !== undefined ? flow.src_port : 'N/A';
+                const dstPortRaw = flow.features ? flow.features['Dst Port'] : flow.dst_port;
+                const dstPort = dstPortRaw !== undefined ? Math.round(Number(dstPortRaw)) : 'N/A';
+                const protocolRaw = flow.features ? flow.features['Protocol'] : flow.protocol;
+                const protocol = protocolRaw !== undefined ? Math.round(Number(protocolRaw)) : 'N/A';
+
+                const latencyMs = flow.latency_ms !== undefined ? flow.latency_ms : 'N/A';
+                const latencyClass = latencyMs !== 'N/A' && latencyMs < 50 ? 'text-emerald-400' : (latencyMs !== 'N/A' && latencyMs < 100 ? 'text-amber-400' : 'text-red-400');
+                
+                // Show rule injection indicator
+                const ruleIcon = flow.rule_injected ? '🛡️' : '';
+
+                html += `
+                    <div class="flow-row flex items-center px-4 border-b border-slate-800 hover:bg-slate-800/50 cursor-pointer transition-colors ${selectedClass}" 
+                         style="position:absolute; top:${i * ROW_HEIGHT}px; left:0; right:0;"
+                         onclick="selectLiveFlow(${i})">
+                        <div class="w-28 font-mono text-xs text-slate-500 shrink-0">${formatTime(flow.timestamp)}</div>
+                        <div class="flex-1 min-w-0 px-2">
+                            <div class="flex items-center gap-1 text-sm">
+                                <span class="text-white font-bold truncate">${srcIp}:${srcPort}</span>
+                                <span class="text-slate-500 px-1">→</span>
+                                <span class="text-white font-bold truncate">${dstIp}:${dstPort}</span>
+                            </div>
+                            <div class="text-xs text-slate-500">Protocol: ${protocol}</div>
+                        </div>
+                        <div class="w-28 shrink-0 text-center">
+                            <span class="px-2 py-1 rounded text-xs font-bold ${predClass}">${flow.prediction}</span>
+                        </div>
+                        <div class="w-28 shrink-0 text-center font-mono text-xs ${latencyClass}">${latencyMs !== 'N/A' ? latencyMs + 'ms' : 'N/A'}</div>
+                        <div class="w-20 shrink-0 text-right pr-2 font-bold text-xs ${actionClass}">${ruleIcon} ${flow.action}</div>
+                    </div>
+                `;
+            }
+            content.innerHTML = html;
+        }
+
+        function selectLiveFlow(index) {
+            selectedLiveFlowIndex = index;
+            renderLiveVisibleRows();
+            showLiveDetail(liveFlowsData[index]);
+        }
+
+        function showLiveDetail(flow) {
+            if (!flow) return;
+            
+            const panel = document.getElementById('live-detail-panel');
+            const content = document.getElementById('live-detail-content');
+            panel.classList.remove('hidden');
+
+            const featureEntries = FEATURE_KEYS.map(key => {
+                const val = flow.features ? flow.features[key] : undefined;
+                return [key, val !== undefined ? val : 'N/A'];
+            });
+            
+            const srcIp = flow.src_ip || 'N/A';
+            const srcPort = flow.src_port !== undefined ? flow.src_port : 'N/A';
+            const dstIp = flow.dst_ip || 'N/A';
+            const dstPortRaw = flow.features ? flow.features['Dst Port'] : flow.dst_port;
+            const dstPort = dstPortRaw !== undefined ? Math.round(Number(dstPortRaw)) : 'N/A';
+            const protocolRaw = flow.features ? flow.features['Protocol'] : flow.protocol;
+            const protocol = protocolRaw !== undefined ? Math.round(Number(protocolRaw)) : 'N/A';
+            
+            const details = flow.details || {};
+            const gnn = details.gnn || {};
+            const gnnVerdict = gnn.flag || flow.gnn_verdict || 'N/A';
+            const gnnConfVal = gnn.confidence !== undefined ? gnn.confidence : flow.gnn_confidence;
+            const gnnConf = gnnConfVal !== undefined && gnnConfVal !== null ? Number(gnnConfVal).toFixed(3) : 'N/A';
+            const gnnDelay = gnn.delay || 'N/A';
+            const iso = details.isolation_forest || {};
+            const isoFlag = iso.flag !== undefined ? iso.flag : 'N/A';
+            const isoDelay = iso.delay || 'N/A';
+            const xgb = details.xgb || {};
+            const xgbFlag = xgb.flag !== undefined ? xgb.flag : 'N/A';
+            const xgbConf = xgb.confidence !== undefined ? Number(xgb.confidence).toFixed(3) : 'N/A';
+            const xgbDelay = xgb.delay || 'N/A';
+            const totalLatency = flow.latency_ms !== undefined ? flow.latency_ms + 'ms' : 'N/A';
+
+            content.innerHTML = `
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">5-Tuple</h4>
+                    <div class="bg-slate-900 rounded p-3 space-y-2 text-sm">
+                        <div class="flex justify-between"><span class="text-slate-400">Source</span> <span class="text-white font-mono">${srcIp}:${srcPort}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Destination</span> <span class="text-white font-mono">${dstIp}:${dstPort}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Protocol</span> <span class="text-white font-mono">${protocol}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Timestamp</span> <span class="text-white font-mono">${formatTime(flow.timestamp)}</span></div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Analysis Results</h4>
+                    <div class="bg-slate-900 rounded p-3 space-y-3 text-sm">
+                        <div class="border-b border-slate-700 pb-2 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Final Prediction</span> 
+                                <span class="px-2 py-0.5 rounded text-xs font-bold ${flow.prediction === 'BENIGN' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">${flow.prediction}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Action</span> 
+                                <span class="text-white font-bold">${flow.action}</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-slate-400">Total Latency</span> 
+                                <span class="text-cyan-400 font-mono font-bold">${totalLatency}</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="text-xs font-bold text-slate-500 uppercase">Isolation Forest</div>
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                                <div class="text-slate-400">Flag</div><div class="text-right text-white font-mono">${isoFlag}</div>
+                                <div class="text-slate-400">Latency</div><div class="text-right text-cyan-300 font-mono">${isoDelay}</div>
+                            </div>
+                        </div>
+                        <div class="space-y-2 pt-2 border-t border-slate-700">
+                            <div class="text-xs font-bold text-slate-500 uppercase">XGBoost</div>
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                                <div class="text-slate-400">Flag</div><div class="text-right text-white font-mono">${xgbFlag}</div>
+                                <div class="text-slate-400">Confidence</div><div class="text-right text-emerald-300 font-mono">${xgbConf}</div>
+                                <div class="text-slate-400">Latency</div><div class="text-right text-cyan-300 font-mono">${xgbDelay}</div>
+                            </div>
+                        </div>
+                        <div class="space-y-2 pt-2 border-t border-slate-700">
+                            <div class="text-xs font-bold text-slate-500 uppercase">GNN</div>
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                                <div class="text-slate-400">Verdict</div><div class="text-right text-white font-mono truncate" title="${gnnVerdict}">${gnnVerdict}</div>
+                                <div class="text-slate-400">Confidence</div><div class="text-right text-emerald-300 font-mono">${gnnConf}</div>
+                                <div class="text-slate-400">Latency</div><div class="text-right text-cyan-300 font-mono">${gnnDelay}</div>
+                            </div>
+                        </div>
+                        ${flow.rule_injected ? `
+                        <div class="space-y-2 pt-2 border-t border-slate-700">
+                            <div class="text-xs font-bold text-red-400 uppercase">🛡️ OVS Rule Injected</div>
+                            <div class="grid grid-cols-2 gap-x-2 gap-y-1 text-xs">
+                                <div class="text-slate-400">Status</div><div class="text-right text-white font-mono">${flow.rule_injected.status}</div>
+                                <div class="text-slate-400">Action</div><div class="text-right text-red-400 font-mono font-bold">${flow.rule_injected.action}</div>
+                                ${flow.rule_injected.rules_added ? `<div class="text-slate-400">Rules</div><div class="text-right text-white font-mono">${flow.rule_injected.rules_added.length}</div>` : ''}
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Features (15)</h4>
+                    <div class="space-y-1 max-h-48 overflow-y-auto custom-scrollbar">
+                        ${featureEntries.map(([k, v]) => `
+                            <div class="flex justify-between text-xs border-b border-slate-800 pb-1">
+                                <span class="text-slate-400 truncate pr-2" title="${k}">${k}</span>
+                                <span class="text-slate-300 font-mono">${typeof v === 'number' ? v.toFixed(4) : v}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function closeLiveDetail() {
+            document.getElementById('live-detail-panel').classList.add('hidden');
+            selectedLiveFlowIndex = -1;
+            renderLiveVisibleRows();
+        }
+
         function clearLive() {
-            document.getElementById('live-container').innerHTML = '';
+            liveFlowsData = [];
+            selectedLiveFlowIndex = -1;
+            liveVisibleStart = 0;
+            liveVisibleEnd = 0;
+            
+            // Clear on server too
+            fetch('/flows/clear', { method: 'POST' });
+            
+            renderLiveVisibleRows();
+            
+            // Reset metrics
+            document.getElementById('live-m-benign').innerText = '0';
+            document.getElementById('live-m-attack').innerText = '0';
+            document.getElementById('live-m-total').innerText = '0';
+            document.getElementById('live-m-latency').innerText = '0ms';
+            
+            closeLiveDetail();
+        }
+
+        // === SWITCH FLOW MANAGEMENT ===
+        let switchPanelExpanded = true;
+
+        function toggleSwitchPanel() {
+            switchPanelExpanded = !switchPanelExpanded;
+            const content = document.getElementById('switch-panel-content');
+            const toggle = document.getElementById('switch-panel-toggle');
+            if (switchPanelExpanded) {
+                content.classList.remove('hidden');
+                toggle.textContent = '▼';
+            } else {
+                content.classList.add('hidden');
+                toggle.textContent = '►';
+            }
+        }
+
+        async function refreshSwitchFlows() {
+            try {
+                // Get OVS flows
+                const flowsRes = await fetch('/switch/flows');
+                const flowsData = await flowsRes.json();
+                
+                // Get injected rules
+                const rulesRes = await fetch('/switch/rules');
+                const rulesData = await rulesRes.json();
+                
+                // Update raw flows display
+                const rawEl = document.getElementById('switch-flows-raw');
+                if (flowsData.error) {
+                    rawEl.textContent = 'Error: ' + flowsData.error;
+                } else if (flowsData.raw) {
+                    rawEl.textContent = flowsData.raw || 'No flows';
+                } else {
+                    rawEl.textContent = 'No flows or bridge not running';
+                }
+                
+                // Update injected rules list
+                const rulesListEl = document.getElementById('injected-rules-list');
+                const rules = rulesData.rules || {};
+                const ruleCount = Object.keys(rules).length;
+                document.getElementById('switch-rules-count').textContent = ruleCount + ' rules';
+                
+                if (ruleCount === 0) {
+                    rulesListEl.innerHTML = '<span class="text-sm text-slate-500 italic">No rules injected yet</span>';
+                } else {
+                    let html = '';
+                    for (const [ip, info] of Object.entries(rules)) {
+                        const action = info.action || 'UNKNOWN';
+                        const actionColor = action === 'BLOCK' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
+                                           action === 'RATE_LIMIT' ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' :
+                                           'bg-slate-700 text-slate-300 border-slate-600';
+                        html += `
+                            <div class="flex items-center gap-2 px-3 py-1.5 rounded border ${actionColor}">
+                                <span class="font-mono text-sm">${ip}</span>
+                                <span class="text-xs font-bold">${action}</span>
+                                <button onclick="removeSwitchRule('${ip}')" class="text-slate-400 hover:text-red-400 text-sm ml-1" title="Remove rule">&times;</button>
+                            </div>
+                        `;
+                    }
+                    rulesListEl.innerHTML = html;
+                }
+            } catch (e) {
+                console.error('Failed to refresh switch flows:', e);
+            }
+        }
+
+        async function clearSwitchRules() {
+            if (!confirm('Clear all injected OVS rules?')) return;
+            try {
+                await fetch('/switch/clear', { method: 'POST' });
+                await refreshSwitchFlows();
+            } catch (e) {
+                alert('Failed to clear rules: ' + e.message);
+            }
+        }
+
+        async function removeSwitchRule(srcIp) {
+            try {
+                await fetch('/switch/remove', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ src_ip: srcIp })
+                });
+                await refreshSwitchFlows();
+            } catch (e) {
+                alert('Failed to remove rule: ' + e.message);
+            }
+        }
+
+        async function injectSwitchRule(srcIp, action) {
+            try {
+                await fetch('/switch/inject', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ src_ip: srcIp, action: action })
+                });
+                await refreshSwitchFlows();
+            } catch (e) {
+                alert('Failed to inject rule: ' + e.message);
+            }
+        }
+
+        async function exportLiveCsv() {
+            if (liveFlowsData.length === 0) {
+                alert('No flows to export');
+                return;
+            }
+            
+            const saveChoice = confirm('Save to server storage?\n\nOK = Save to server\nCancel = Download to your computer');
+            
+            try {
+                const res = await fetch('/flows/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ save_to_server: saveChoice })
+                });
+                
+                if (saveChoice) {
+                    const data = await res.json();
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                    } else {
+                        alert(data.message);
+                        loadStoredFiles();  // Refresh file list
+                    }
+                } else {
+                    // Download
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `live_capture_${new Date().toISOString().replace(/[:.]/g, '-')}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                }
+            } catch (e) {
+                alert('Export failed: ' + e.message);
+            }
         }
 
         // === RESCALE ANALYSIS ===
@@ -2716,6 +3513,12 @@ These are model predictions only.`;
             loadStoredFiles();
             loadInterfaces(true);
             renderVisibleRows();
+            
+            // Fetch initial topo status
+            fetchTopoStatus();
+            
+            // Poll topo status periodically
+            topoStatusInterval = setInterval(fetchTopoStatus, 5000);
 
             // Init Mutually Exclusive Rescale Inputs
             const rescaleInput = document.getElementById('rescaleInput');
@@ -2953,6 +3756,168 @@ These are model predictions only.`;
             }
         }
         
+        // Training history storage
+        let trainHistory = JSON.parse(localStorage.getItem('trainHistory') || '[]');
+        
+        function renderTrainHistory() {
+            const container = document.getElementById('train-history-list');
+            if (!container) return;
+            
+            if (trainHistory.length === 0) {
+                container.innerHTML = '<div class="text-slate-500 text-sm">No training history yet</div>';
+                return;
+            }
+            
+            container.innerHTML = trainHistory.map((h, idx) => `
+                <div class="bg-slate-900 rounded p-3 border border-slate-700 cursor-pointer hover:border-slate-500 transition-colors" onclick="showHistoryDetail(${idx})">
+                    <div class="flex justify-between items-center">
+                        <span class="text-white font-bold">${h.model_name}</span>
+                        <span class="text-xs px-2 py-0.5 rounded ${h.model_type === 'xgb' ? 'bg-blue-600' : 'bg-purple-600'} text-white">${h.model_type}</span>
+                    </div>
+                    <div class="text-xs text-slate-400 mt-1">${new Date(h.timestamp).toLocaleString()}</div>
+                    <div class="flex gap-3 mt-2 text-xs">
+                        <span class="text-emerald-400">Acc: ${(h.metrics.accuracy * 100).toFixed(1)}%</span>
+                        <span class="text-cyan-400">F1: ${(h.metrics.f1 * 100).toFixed(1)}%</span>
+                        ${h.metrics.auc ? `<span class="text-amber-400">AUC: ${(h.metrics.auc * 100).toFixed(1)}%</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function showHistoryDetail(idx) {
+            const h = trainHistory[idx];
+            if (!h) return;
+            displayRetrainResults(h);
+        }
+        
+        function clearTrainHistory() {
+            if (confirm('Clear all training history?')) {
+                trainHistory = [];
+                localStorage.setItem('trainHistory', '[]');
+                renderTrainHistory();
+                document.getElementById('retrain-results-panel').classList.add('hidden');
+            }
+        }
+        
+        function displayRetrainResults(data) {
+            const panel = document.getElementById('retrain-results-panel');
+            const content = document.getElementById('retrain-results-content');
+            panel.classList.remove('hidden');
+            
+            const metrics = data.metrics || {};
+            const cm = data.confusion_matrix || {};
+            const split = data.split_info || {};
+            const lc = data.learning_curve || {};
+            
+            // Build confusion matrix visualization
+            const cmHtml = cm.tn !== undefined ? `
+                <div class="grid grid-cols-2 gap-1 w-32 text-center text-xs font-mono">
+                    <div class="bg-emerald-600/30 p-2 rounded" title="True Negative">${cm.tn}</div>
+                    <div class="bg-red-600/30 p-2 rounded" title="False Positive">${cm.fp}</div>
+                    <div class="bg-amber-600/30 p-2 rounded" title="False Negative">${cm.fn}</div>
+                    <div class="bg-blue-600/30 p-2 rounded" title="True Positive">${cm.tp}</div>
+                </div>
+                <div class="text-[10px] text-slate-500 mt-1">TN | FP<br>FN | TP</div>
+            ` : '<div class="text-slate-500 text-sm">N/A</div>';
+            
+            // Build learning curve (only for XGBoost)
+            let lcHtml = '';
+            if (lc.train_logloss && lc.train_logloss.length > 0) {
+                const maxLoss = Math.max(...lc.train_logloss, ...lc.val_logloss);
+                const trainPoints = lc.train_logloss.map((v, i) => `${(i / lc.train_logloss.length) * 100},${100 - (v / maxLoss) * 80}`).join(' ');
+                const valPoints = lc.val_logloss.map((v, i) => `${(i / lc.val_logloss.length) * 100},${100 - (v / maxLoss) * 80}`).join(' ');
+                
+                lcHtml = `
+                    <div class="mt-4">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase mb-2">Learning Curve (Log Loss)</h4>
+                        <svg viewBox="0 0 100 100" class="w-full h-32 bg-slate-900 rounded">
+                            <polyline points="${trainPoints}" fill="none" stroke="#10b981" stroke-width="0.5"/>
+                            <polyline points="${valPoints}" fill="none" stroke="#f59e0b" stroke-width="0.5"/>
+                        </svg>
+                        <div class="flex gap-4 text-xs mt-1">
+                            <span class="text-emerald-400">● Train</span>
+                            <span class="text-amber-400">● Validation</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            content.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <span class="text-white font-bold text-lg">${data.model_name || 'Unknown'}</span>
+                        <span class="ml-2 px-2 py-0.5 rounded text-xs ${data.model_type === 'xgb' ? 'bg-blue-600' : 'bg-purple-600'} text-white">${data.model_type || 'Unknown'}</span>
+                    </div>
+                    <div class="text-xs text-slate-400">${data.timestamp ? new Date(data.timestamp).toLocaleString() : ''}</div>
+                </div>
+                
+                <div class="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Metrics -->
+                    <div class="bg-slate-900 rounded p-4 border border-slate-700">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase mb-3">Performance Metrics</h4>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Accuracy</span>
+                                <span class="text-emerald-400 font-bold">${metrics.accuracy !== undefined ? (metrics.accuracy * 100).toFixed(2) + '%' : 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Precision</span>
+                                <span class="text-blue-400 font-bold">${metrics.precision !== undefined ? (metrics.precision * 100).toFixed(2) + '%' : 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Recall</span>
+                                <span class="text-amber-400 font-bold">${metrics.recall !== undefined ? (metrics.recall * 100).toFixed(2) + '%' : 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">F1 Score</span>
+                                <span class="text-cyan-400 font-bold">${metrics.f1 !== undefined ? (metrics.f1 * 100).toFixed(2) + '%' : 'N/A'}</span>
+                            </div>
+                            ${metrics.auc !== undefined ? `
+                            <div class="flex justify-between border-t border-slate-700 pt-2 mt-2">
+                                <span class="text-slate-400">AUC-ROC</span>
+                                <span class="text-pink-400 font-bold">${(metrics.auc * 100).toFixed(2)}%</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    <!-- Confusion Matrix -->
+                    <div class="bg-slate-900 rounded p-4 border border-slate-700">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase mb-3">Confusion Matrix</h4>
+                        ${cmHtml}
+                    </div>
+                    
+                    <!-- Data Split -->
+                    <div class="bg-slate-900 rounded p-4 border border-slate-700">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase mb-3">Data Split</h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Total Samples</span>
+                                <span class="text-white font-mono">${split.total_samples || 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Benign</span>
+                                <span class="text-emerald-400 font-mono">${split.benign_count || 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">Attack</span>
+                                <span class="text-red-400 font-mono">${split.attack_count || 'N/A'}</span>
+                            </div>
+                            ${split.train_samples ? `
+                            <div class="border-t border-slate-700 pt-2 mt-2 text-xs">
+                                <div class="flex justify-between"><span class="text-slate-500">Train</span><span class="text-slate-300">${split.train_samples}</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Val</span><span class="text-slate-300">${split.val_samples}</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Test</span><span class="text-slate-300">${split.test_samples}</span></div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+                
+                ${lcHtml}
+            `;
+        }
+        
         async function submitRetrain() {
             const file = document.getElementById('retrainFile').files[0];
             const storedVal = document.getElementById('retrainStoredSelect').value;
@@ -2985,7 +3950,17 @@ These are model predictions only.`;
                     const data = await res.json();
                     if(!res.ok) throw new Error(data.error || data.detail || 'Failed');
                     
-                    alert('Retraining Complete! Model saved.');
+                    // Add timestamp and store in history
+                    data.timestamp = Date.now();
+                    trainHistory.unshift(data);
+                    if (trainHistory.length > 20) trainHistory.pop(); // Keep last 20
+                    localStorage.setItem('trainHistory', JSON.stringify(trainHistory));
+                    
+                    // Display results
+                    displayRetrainResults(data);
+                    renderTrainHistory();
+                    
+                    alert('Retraining Complete! Model saved: ' + data.model);
                     loadModels(currentModelType);
                     status.innerHTML = 'Success!';
                     
@@ -3036,6 +4011,8 @@ These are model predictions only.`;
              populateModelDropdowns();
              // Default retrain tab view
              selectModelType('xgb');
+             // Render training history from localStorage
+             renderTrainHistory();
         });
 
     </script>

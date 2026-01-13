@@ -3,6 +3,7 @@ import os
 import uuid
 import threading
 import time
+import signal
 from datetime import datetime
 from typing import List, Dict, Optional
 import subprocess
@@ -18,6 +19,394 @@ import traceback
 import io
 
 from cic_extractor import CICExtractor, FEATURE_KEYS
+
+
+# =============================================================================
+# TOPOLOGY, TRAFFIC, AND ATTACK MANAGEMENT
+# =============================================================================
+
+# Configuration for network topology
+BRIDGE_NAME = "ovs-br0"
+NAMESPACES = {
+    "ns_server":    {"ip": "10.0.0.10/24", "veth": "veth_serv"},
+    "ns_user":      {"ip": "10.0.0.1/24",  "veth": "veth_user"},
+    "ns_attacker":  {"ip": "10.0.0.66/24", "veth": "veth_hack"},
+    "ns_attacker2": {"ip": "10.0.0.67/24", "veth": "veth_hack2"},
+    "ns_attacker3": {"ip": "10.0.0.68/24", "veth": "veth_hack3"},
+    "ns_monitor":   {"ip": "0.0.0.0",      "veth": "veth_mon"} 
+}
+TARGET_IP = "10.0.0.10"  # ns_server
+
+# Action thresholds (should match backend)
+LOG_THRESHOLD = 0.5
+RATE_LIMIT_THRESHOLD = 0.7
+BLOCK_THRESHOLD = 0.85
+
+# Track injected rules per IP for deduplication
+injected_rules = {}  # {src_ip: {'action': action, 'priority': priority}}
+injected_rules_lock = threading.Lock()
+
+# Global state for topology and processes
+topo_state = {
+    'running': False,
+    'http_server_proc': None,
+}
+traffic_state = {
+    'running': False,
+    'process': None,
+    'thread': None,
+}
+attack_state = {
+    'running': False,
+    'attack_type': None,
+    'process': None,
+    'thread': None,
+}
+topo_lock = threading.Lock()
+
+
+def run_cmd(cmd, check=False, sudo=False):
+    """Run shell command and return result"""
+    if sudo:
+        cmd = f"sudo {cmd}"
+    print(f"[CMD] {cmd}")
+    result = subprocess.run(cmd, shell=True, check=check, capture_output=True, text=True)
+    return result
+
+
+def cleanup_topology():
+    """Clean up existing topology"""
+    print("\n[!] Cleaning up existing topology...")
+    # Delete namespaces (skip monitor as it's not a namespace anymore)
+    for ns in NAMESPACES:
+        if ns != "ns_monitor":
+            run_cmd(f"ip netns del {ns} 2>/dev/null", sudo=True)
+    # Delete OVS bridge
+    run_cmd(f"ovs-vsctl del-br {BRIDGE_NAME} 2>/dev/null", sudo=True)
+    # Clean leftover veths
+    for ns_data in NAMESPACES.values():
+        run_cmd(f"ip link delete {ns_data['veth']} 2>/dev/null", sudo=True)
+    # Clean monitor capture interface
+    run_cmd(f"ip link delete {MONITOR_CAPTURE_IFACE} 2>/dev/null", sudo=True)
+    # Clear injected rules tracking
+    with injected_rules_lock:
+        injected_rules.clear()
+
+
+# =============================================================================
+# OVS OPENFLOW RULE INJECTION FOR ACTIONS
+# =============================================================================
+
+def inject_ovs_rule(src_ip, action, dst_ip=None):
+    """
+    Inject OpenFlow rules into OVS bridge based on action type.
+    
+    Actions:
+    - ALLOW: No rule needed (default behavior)
+    - LOG: No blocking rule, just log (handled in app)
+    - RATE_LIMIT: Add meter-based rate limiting (simplified: drop excess)
+    - BLOCK: Drop all traffic from src_ip
+    - ALERT_ONLY: No rule, just alert (handled in app)
+    
+    Returns: dict with status and details
+    """
+    src_ip_clean = src_ip.split('/')[0] if '/' in src_ip else src_ip
+    
+    with injected_rules_lock:
+        existing = injected_rules.get(src_ip_clean)
+        if existing and existing['action'] == action:
+            return {'status': 'exists', 'action': action, 'src_ip': src_ip_clean}
+    
+    result = {'status': 'ok', 'action': action, 'src_ip': src_ip_clean, 'rules_added': []}
+    
+    try:
+        if action == 'BLOCK':
+            # High priority drop rule for traffic FROM this IP
+            rule = f"priority=1000,ip,nw_src={src_ip_clean},actions=drop"
+            cmd_result = run_cmd(f"ovs-ofctl add-flow {BRIDGE_NAME} \"{rule}\"", sudo=True)
+            result['rules_added'].append(rule)
+            
+            # Also block traffic TO this IP (bidirectional)
+            rule2 = f"priority=1000,ip,nw_dst={src_ip_clean},actions=drop"
+            run_cmd(f"ovs-ofctl add-flow {BRIDGE_NAME} \"{rule2}\"", sudo=True)
+            result['rules_added'].append(rule2)
+            
+            print(f"[🛡️ OVS] BLOCKED traffic from/to {src_ip_clean}")
+            
+        elif action == 'RATE_LIMIT':
+            # For rate limiting, we use a lower priority rule that limits packet rate
+            # Simple approach: set a meter or use queue (meter requires OVS 2.0+)
+            # Fallback: Just mark but allow (actual rate limiting is complex in OVS)
+            # For demo: Add a low-priority rule that allows but logs the fact
+            rule = f"priority=500,ip,nw_src={src_ip_clean},actions=normal"
+            run_cmd(f"ovs-ofctl add-flow {BRIDGE_NAME} \"{rule}\"", sudo=True)
+            result['rules_added'].append(rule)
+            result['note'] = 'Rate limiting marked (full implementation requires OVS meters)'
+            print(f"[⚠️ OVS] RATE_LIMIT marked for {src_ip_clean}")
+            
+        elif action in ['ALLOW', 'LOG', 'ALERT_ONLY']:
+            # These don't require flow rules - handled at application level
+            result['rules_added'] = []
+            result['note'] = f'{action} handled at application level, no OVS rule needed'
+            
+        # Track injected rule
+        with injected_rules_lock:
+            injected_rules[src_ip_clean] = {'action': action, 'time': time.time()}
+            
+    except Exception as e:
+        result['status'] = 'error'
+        result['error'] = str(e)
+        print(f"[❌ OVS] Failed to inject rule: {e}")
+    
+    return result
+
+
+def remove_ovs_rule(src_ip):
+    """Remove all OVS rules for a specific source IP"""
+    src_ip_clean = src_ip.split('/')[0] if '/' in src_ip else src_ip
+    
+    try:
+        # Delete rules matching this IP
+        run_cmd(f"ovs-ofctl del-flows {BRIDGE_NAME} \"ip,nw_src={src_ip_clean}\"", sudo=True)
+        run_cmd(f"ovs-ofctl del-flows {BRIDGE_NAME} \"ip,nw_dst={src_ip_clean}\"", sudo=True)
+        
+        with injected_rules_lock:
+            injected_rules.pop(src_ip_clean, None)
+        
+        print(f"[🔓 OVS] Removed rules for {src_ip_clean}")
+        return {'status': 'ok', 'src_ip': src_ip_clean}
+    except Exception as e:
+        return {'status': 'error', 'error': str(e)}
+
+
+def get_ovs_flows():
+    """Get current OVS flow table dump"""
+    try:
+        result = subprocess.run(
+            f"sudo ovs-ofctl dump-flows {BRIDGE_NAME}",
+            shell=True, capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\n')
+            flows = []
+            for line in lines:
+                if line.startswith(' cookie=') or 'cookie=' in line:
+                    flows.append(line.strip())
+            return {'status': 'ok', 'flows': flows, 'raw': result.stdout}
+        else:
+            return {'status': 'error', 'error': result.stderr}
+    except Exception as e:
+        return {'status': 'error', 'error': str(e)}
+
+
+def get_ovs_ports():
+    """Get OVS bridge port information"""
+    try:
+        result = subprocess.run(
+            f"sudo ovs-ofctl show {BRIDGE_NAME}",
+            shell=True, capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            return {'status': 'ok', 'info': result.stdout}
+        else:
+            return {'status': 'error', 'error': result.stderr}
+    except Exception as e:
+        return {'status': 'error', 'error': str(e)}
+
+
+def clear_all_ovs_rules():
+    """Clear all manually added OVS rules (keep default)"""
+    try:
+        # Delete all flows with priority > 0 (keep table-miss rule)
+        run_cmd(f"ovs-ofctl del-flows {BRIDGE_NAME}", sudo=True)
+        # Re-add default normal action
+        run_cmd(f"ovs-ofctl add-flow {BRIDGE_NAME} \"priority=0,actions=normal\"", sudo=True)
+        
+        with injected_rules_lock:
+            injected_rules.clear()
+        
+        print("[🧹 OVS] Cleared all custom rules")
+        return {'status': 'ok'}
+    except Exception as e:
+        return {'status': 'error', 'error': str(e)}
+
+# Monitor capture interface name (host side)
+MONITOR_CAPTURE_IFACE = "mon-cap"
+
+def setup_topology():
+    """Set up the OVS-based network topology"""
+    print("\n[+] Creating OVS Bridge...")
+    run_cmd(f"ovs-vsctl add-br {BRIDGE_NAME}", sudo=True)
+    run_cmd(f"ovs-vsctl set-fail-mode {BRIDGE_NAME} standalone", sudo=True)
+
+    print("[+] Creating Namespaces and Connections...")
+    for ns, data in NAMESPACES.items():
+        veth_host = data['veth']
+        veth_ns = f"{veth_host}_ns"
+        
+        # Skip monitor - we'll handle it separately
+        if ns == "ns_monitor":
+            continue
+        
+        # 1. Create NetNS
+        run_cmd(f"ip netns add {ns}", sudo=True)
+        
+        # 2. Create Veth Pair
+        run_cmd(f"ip link add {veth_host} type veth peer name {veth_ns}", sudo=True)
+        
+        # 3. Attach Host side to OVS
+        run_cmd(f"ovs-vsctl add-port {BRIDGE_NAME} {veth_host}", sudo=True)
+        run_cmd(f"ip link set {veth_host} up", sudo=True)
+        
+        # 4. Move Peer to NetNS
+        run_cmd(f"ip link set {veth_ns} netns {ns}", sudo=True)
+        
+        # 5. Configure interface inside NetNS
+        run_cmd(f"ip netns exec {ns} ip link set dev {veth_ns} name eth0", sudo=True)
+        run_cmd(f"ip netns exec {ns} ip link set dev lo up", sudo=True)
+        run_cmd(f"ip netns exec {ns} ip link set dev eth0 up", sudo=True)
+        
+        # 6. Assign IP (except monitor)
+        if data['ip'] != "0.0.0.0":
+            run_cmd(f"ip netns exec {ns} ip addr add {data['ip']} dev eth0", sudo=True)
+
+    # Create monitor as a veth pair - one end on OVS, other end for capture on host
+    print("[+] Creating Monitor Interface...")
+    mon_veth = NAMESPACES['ns_monitor']['veth']  # veth_mon - goes to OVS
+    # Create veth pair: veth_mon <-> mon-cap
+    run_cmd(f"ip link add {mon_veth} type veth peer name {MONITOR_CAPTURE_IFACE}", sudo=True)
+    # Add veth_mon to OVS bridge
+    run_cmd(f"ovs-vsctl add-port {BRIDGE_NAME} {mon_veth}", sudo=True)
+    run_cmd(f"ip link set {mon_veth} up", sudo=True)
+    # Bring up the capture interface on host
+    run_cmd(f"ip link set {MONITOR_CAPTURE_IFACE} up", sudo=True)
+    run_cmd(f"ip link set {MONITOR_CAPTURE_IFACE} promisc on", sudo=True)
+
+    print("[+] Setting up Port Mirroring (SPAN)...")
+    port_result = subprocess.check_output(
+        f"sudo ovs-vsctl get port {NAMESPACES['ns_monitor']['veth']} _uuid",
+        shell=True
+    ).decode().strip()
+    
+    mirror_cmd = (f"ovs-vsctl -- --id=@m create mirror name=m0 select-all=true "
+                  f"output-port={port_result} "
+                  f"-- set bridge {BRIDGE_NAME} mirrors=@m")
+    run_cmd(mirror_cmd, sudo=True)
+
+    print("[+] Starting Victim Web Server...")
+    proc = subprocess.Popen(
+        f"sudo ip netns exec ns_server python3 -m http.server 80",
+        shell=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        preexec_fn=os.setsid
+    )
+    return proc
+
+
+def generate_normal_traffic_loop(duration=0):
+    """Generate normal traffic in a loop"""
+    import random
+    start_time = time.time()
+    
+    while traffic_state['running']:
+        if duration > 0 and (time.time() - start_time) > duration:
+            break
+        
+        try:
+            action = random.choice(['ping', 'web', 'web', 'sleep'])
+            
+            if action == 'ping':
+                subprocess.run(
+                    f"sudo ip netns exec ns_user ping -c 2 -W 1 {TARGET_IP}",
+                    shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5
+                )
+            elif action == 'web':
+                subprocess.run(
+                    f"sudo ip netns exec ns_user curl -s -o /dev/null --connect-timeout 2 http://{TARGET_IP}/",
+                    shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5
+                )
+            
+            time.sleep(random.uniform(0.5, 3.0))
+            
+        except Exception as e:
+            print(f"[Traffic] Error: {e}")
+            time.sleep(1)
+    
+    traffic_state['running'] = False
+    print("[Traffic] Normal traffic generation stopped.")
+
+
+def run_attack_loop(attack_type, duration=0, attacker_ns='ns_attacker'):
+    """Run attack in a loop until stopped from specified attacker namespace"""
+    start_time = time.time()
+    
+    # Build commands with dynamic namespace
+    attack_commands = {
+        'syn': f"sudo ip netns exec {attacker_ns} hping3 -S -p 80 --flood {TARGET_IP}",
+        'udp': f"sudo ip netns exec {attacker_ns} timeout 10 iperf3 -c {TARGET_IP} -u -b 100M -t 10",
+        'scan': f"sudo ip netns exec {attacker_ns} nmap -sS -p 1-1000 {TARGET_IP}",
+        'web': f"sudo ip netns exec {attacker_ns} ab -n 5000 -c 20 http://{TARGET_IP}/",
+        'botnet': f"sudo ip netns exec {attacker_ns} nc -z -v -w 1 {TARGET_IP} 80"  # For single execution
+    }
+    
+    attacker_ip = NAMESPACES.get(attacker_ns, {}).get('ip', 'unknown').split('/')[0]
+    print(f"[Attack] Starting {attack_type} from {attacker_ns} ({attacker_ip})")
+    
+    while attack_state['running']:
+        if duration > 0 and (time.time() - start_time) > duration:
+            break
+        
+        try:
+            if attack_type == 'botnet':
+                # Beaconing simulation
+                subprocess.run(
+                    attack_commands['botnet'],
+                    shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=5
+                )
+                time.sleep(2)
+            else:
+                cmd = attack_commands.get(attack_type)
+                if cmd:
+                    proc = subprocess.Popen(
+                        cmd,
+                        shell=True,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        preexec_fn=os.setsid
+                    )
+                    attack_state['process'] = proc
+                    
+                    # Wait for completion or stop signal
+                    while proc.poll() is None and attack_state['running']:
+                        time.sleep(0.5)
+                    
+                    if not attack_state['running'] and proc.poll() is None:
+                        # Kill the process group
+                        try:
+                            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                        except:
+                            pass
+                    
+                    attack_state['process'] = None
+                    
+        except Exception as e:
+            print(f"[Attack] Error: {e}")
+            time.sleep(1)
+    
+    attack_state['running'] = False
+    attack_state['attack_type'] = None
+    attack_state['attacker_ns'] = None
+    print(f"[Attack] Attack '{attack_type}' from {attacker_ns} stopped.")
 
 app = Flask(__name__)
 # Increase max upload size to 2GB to avoid 413 Errors / Connection Resets on large datasets
@@ -1084,12 +1473,42 @@ def start_iface():
                 mod_sn = live_state.get('safetynet_model', 'default')
                 mod_gnn = live_state.get('gnn_model', 'default')
                 
-                pred = predict_one({kk: feats[kk] for kk in FEATURE_KEYS}, src, dst, sid, mod_xgb, mod_sn, mod_gnn)
+                # Extract 15 features for prediction and storage
+                features_dict = {kk: feats[kk] for kk in FEATURE_KEYS}
+                
+                # Track total prediction time
+                pred_start = time.time()
+                pred = predict_one(features_dict, src, dst, sid, mod_xgb, mod_sn, mod_gnn)
+                pred_end = time.time()
+                total_latency_ms = round((pred_end - pred_start) * 1000, 2)
                 
                 verdict = pred.get('verdict', 'UNKNOWN')
-                action = pred.get('action')
-                if not action:
-                    action = 'BLOCK' if verdict not in ['BENIGN', 'UNKNOWN', 'UNAVAILABLE'] else 'ALLOW'
+                # Get action from backend (new format: ALLOW, LOG, RATE_LIMIT, BLOCK, ALERT_ONLY)
+                action = pred.get('action', '').upper()
+                
+                # Fallback for old backend responses
+                if not action or action.lower() in ['allow', 'block']:
+                    if action.lower() == 'block':
+                        action = 'BLOCK'
+                    elif verdict not in ['BENIGN', 'UNKNOWN', 'UNAVAILABLE']:
+                        # Determine action based on confidence if not provided
+                        xgb_conf = pred.get('xgb', {}).get('confidence', 0)
+                        if xgb_conf >= BLOCK_THRESHOLD:
+                            action = 'BLOCK'
+                        elif xgb_conf >= RATE_LIMIT_THRESHOLD:
+                            action = 'RATE_LIMIT'
+                        elif xgb_conf >= LOG_THRESHOLD:
+                            action = 'LOG'
+                        else:
+                            action = 'ALLOW'
+                    else:
+                        action = 'ALLOW'
+                
+                # Inject OVS rule based on action (only for BLOCK and RATE_LIMIT)
+                rule_injected = None
+                if action in ['BLOCK', 'RATE_LIMIT'] and topo_state.get('running'):
+                    rule_result = inject_ovs_rule(src, action)
+                    rule_injected = rule_result
 
                 iso_forest = pred.get('isolation_forest', {})
                 xgb_model = pred.get('xgb', {})
@@ -1111,12 +1530,15 @@ def start_iface():
                     'src_port': sport,
                     'dst_port': dport,
                     'protocol': proto,
+                    'features': features_dict,  # Include all 15 features
                     'prediction': verdict,
                     'action': action,
                     'confidence': xgb_model.get('confidence', 0.0),
                     'gnn_verdict': gnn_verdict,
                     'gnn_confidence': gnn_conf,
-                    'details': details
+                    'details': details,
+                    'latency_ms': total_latency_ms,  # Total prediction time
+                    'rule_injected': rule_injected  # Track if OVS rule was added
                 }
                 live_state['flows'].append(record)
         live_state['extractor'] = LiveCIC(iface=iface, timeout=0.5, print_interval=0.1)
@@ -1141,7 +1563,367 @@ def stop_iface():
 @app.route('/flows', methods=['GET'])
 def list_flows():
     with state_lock:
-        return jsonify({'flows': live_state['flows'], 'running': live_state['running']})
+        # Return flows with 15 features included
+        flows_with_features = []
+        for flow in live_state['flows']:
+            flow_copy = dict(flow)
+            # Features should already be included in the record
+            flows_with_features.append(flow_copy)
+        return jsonify({'flows': flows_with_features, 'running': live_state['running']})
+
+
+@app.route('/flows/clear', methods=['POST'])
+def clear_flows():
+    """Clear all accumulated live flows"""
+    with state_lock:
+        live_state['flows'] = []
+    return jsonify({'status': 'cleared'})
+
+
+# =============================================================================
+# TOPOLOGY CONTROL ENDPOINTS
+# =============================================================================
+
+@app.route('/topo/start', methods=['POST'])
+def start_topo():
+    """Start the OVS network topology"""
+    with topo_lock:
+        if topo_state['running']:
+            return jsonify({'status': 'already_running', 'message': 'Topology is already running'})
+        
+        try:
+            cleanup_topology()
+            http_proc = setup_topology()
+            topo_state['http_server_proc'] = http_proc
+            topo_state['running'] = True
+            
+            return jsonify({
+                'status': 'started',
+                'message': 'Topology started successfully',
+                'monitor_interface': MONITOR_CAPTURE_IFACE  # mon-cap on host for capture
+            })
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+
+@app.route('/topo/stop', methods=['POST'])
+def stop_topo():
+    """Stop the topology and all related processes"""
+    with topo_lock:
+        if not topo_state['running']:
+            return jsonify({'status': 'not_running', 'message': 'Topology is not running'})
+        
+        try:
+            # Stop attack if running
+            if attack_state['running']:
+                attack_state['running'] = False
+                if attack_state['process']:
+                    try:
+                        os.killpg(os.getpgid(attack_state['process'].pid), signal.SIGTERM)
+                    except:
+                        pass
+            
+            # Stop traffic if running
+            if traffic_state['running']:
+                traffic_state['running'] = False
+            
+            # Stop HTTP server
+            if topo_state['http_server_proc']:
+                try:
+                    os.killpg(os.getpgid(topo_state['http_server_proc'].pid), signal.SIGTERM)
+                except:
+                    pass
+                topo_state['http_server_proc'] = None
+            
+            # Cleanup topology
+            cleanup_topology()
+            topo_state['running'] = False
+            
+            return jsonify({'status': 'stopped', 'message': 'Topology stopped successfully'})
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+
+@app.route('/topo/status', methods=['GET'])
+def topo_status():
+    """Get current topology status"""
+    with injected_rules_lock:
+        rules_copy = dict(injected_rules)
+    return jsonify({
+        'topo_running': topo_state['running'],
+        'traffic_running': traffic_state['running'],
+        'attack_running': attack_state['running'],
+        'attack_type': attack_state['attack_type'],
+        'injected_rules': rules_copy
+    })
+
+
+# =============================================================================
+# OVS SWITCH FLOW MANAGEMENT ENDPOINTS
+# =============================================================================
+
+@app.route('/switch/flows', methods=['GET'])
+def switch_flows():
+    """Get current OVS flow table"""
+    if not topo_state['running']:
+        return jsonify({'error': 'Topology not running', 'flows': [], 'raw': ''})
+    
+    result = get_ovs_flows()
+    return jsonify(result)
+
+
+@app.route('/switch/ports', methods=['GET'])
+def switch_ports():
+    """Get OVS switch port information"""
+    if not topo_state['running']:
+        return jsonify({'error': 'Topology not running', 'info': ''})
+    
+    result = get_ovs_ports()
+    return jsonify(result)
+
+
+@app.route('/switch/rules', methods=['GET'])
+def switch_rules():
+    """Get currently injected rules by the IDS"""
+    with injected_rules_lock:
+        rules_copy = dict(injected_rules)
+    return jsonify({'status': 'ok', 'rules': rules_copy, 'bridge': BRIDGE_NAME})
+
+
+@app.route('/switch/inject', methods=['POST'])
+def switch_inject():
+    """Manually inject an OVS rule for an IP"""
+    data = request.get_json(force=True)
+    src_ip = data.get('src_ip')
+    action = data.get('action', 'BLOCK')
+    
+    if not src_ip:
+        return jsonify({'error': 'src_ip required'}), 400
+    
+    if action not in ['ALLOW', 'LOG', 'RATE_LIMIT', 'BLOCK', 'ALERT_ONLY']:
+        return jsonify({'error': 'Invalid action. Choose: ALLOW, LOG, RATE_LIMIT, BLOCK, ALERT_ONLY'}), 400
+    
+    result = inject_ovs_rule(src_ip, action)
+    return jsonify(result)
+
+
+@app.route('/switch/remove', methods=['POST'])
+def switch_remove():
+    """Remove OVS rules for an IP"""
+    data = request.get_json(force=True)
+    src_ip = data.get('src_ip')
+    
+    if not src_ip:
+        return jsonify({'error': 'src_ip required'}), 400
+    
+    result = remove_ovs_rule(src_ip)
+    return jsonify(result)
+
+
+@app.route('/switch/clear', methods=['POST'])
+def switch_clear():
+    """Clear all custom OVS rules"""
+    result = clear_all_ovs_rules()
+    return jsonify(result)
+
+
+# =============================================================================
+# TRAFFIC GENERATION ENDPOINTS
+# =============================================================================
+
+@app.route('/traffic/start', methods=['POST'])
+def start_traffic():
+    """Start normal traffic generation"""
+    if not topo_state['running']:
+        return jsonify({'error': 'Topology must be running first'}), 400
+    
+    if traffic_state['running']:
+        return jsonify({'status': 'already_running'})
+    
+    data = request.get_json(force=True) if request.is_json else {}
+    duration = data.get('duration', 0)  # 0 = infinite
+    
+    traffic_state['running'] = True
+    t = threading.Thread(target=generate_normal_traffic_loop, args=(duration,), daemon=True)
+    traffic_state['thread'] = t
+    t.start()
+    
+    return jsonify({'status': 'started', 'duration': duration})
+
+
+@app.route('/traffic/stop', methods=['POST'])
+def stop_traffic():
+    """Stop normal traffic generation"""
+    traffic_state['running'] = False
+    return jsonify({'status': 'stopped'})
+
+
+# =============================================================================
+# ATTACK GENERATION ENDPOINTS
+# =============================================================================
+
+ATTACK_TYPES = {
+    'syn': 'SYN Flood (DoS)',
+    'udp': 'UDP Flood (DoS)',
+    'scan': 'Port Scan (Probe)',
+    'web': 'HTTP Flood (Web)',
+    'botnet': 'C&C Beaconing (Botnet)'
+}
+
+# Available attacker namespaces
+ATTACKER_NS = ['ns_attacker', 'ns_attacker2', 'ns_attacker3']
+
+
+@app.route('/attack/types', methods=['GET'])
+def get_attack_types():
+    """Get available attack types and attacker namespaces"""
+    attackers = []
+    for ns in ATTACKER_NS:
+        if ns in NAMESPACES:
+            ip = NAMESPACES[ns]['ip'].split('/')[0]
+            attackers.append({'ns': ns, 'ip': ip})
+    return jsonify({
+        'attack_types': ATTACK_TYPES,
+        'attackers': attackers
+    })
+
+
+@app.route('/attack/start', methods=['POST'])
+def start_attack():
+    """Start an attack of specified type from a specified attacker namespace"""
+    if not topo_state['running']:
+        return jsonify({'error': 'Topology must be running first'}), 400
+    
+    data = request.get_json(force=True) if request.is_json else {}
+    attack_type = data.get('attack_type')
+    attacker_ns = data.get('attacker_ns', 'ns_attacker')  # Default to first attacker
+    duration = data.get('duration', 0)  # 0 = infinite
+    
+    if not attack_type or attack_type not in ATTACK_TYPES:
+        return jsonify({'error': f'Invalid attack type. Choose from: {list(ATTACK_TYPES.keys())}'}), 400
+    
+    if attacker_ns not in ATTACKER_NS:
+        return jsonify({'error': f'Invalid attacker. Choose from: {ATTACKER_NS}'}), 400
+    
+    # Stop existing attack if running
+    if attack_state['running']:
+        attack_state['running'] = False
+        if attack_state['thread']:
+            attack_state['thread'].join(timeout=2)
+    
+    attack_state['running'] = True
+    attack_state['attack_type'] = attack_type
+    attack_state['attacker_ns'] = attacker_ns
+    
+    t = threading.Thread(target=run_attack_loop, args=(attack_type, duration, attacker_ns), daemon=True)
+    attack_state['thread'] = t
+    t.start()
+    
+    attacker_ip = NAMESPACES[attacker_ns]['ip'].split('/')[0]
+    return jsonify({
+        'status': 'started',
+        'attack_type': attack_type,
+        'attack_name': ATTACK_TYPES[attack_type],
+        'attacker_ns': attacker_ns,
+        'attacker_ip': attacker_ip,
+        'duration': duration
+    })
+
+
+@app.route('/attack/stop', methods=['POST'])
+def stop_attack():
+    """Stop the current attack"""
+    if not attack_state['running']:
+        return jsonify({'status': 'not_running'})
+    
+    attack_state['running'] = False
+    
+    # Kill any running attack process
+    if attack_state['process']:
+        try:
+            os.killpg(os.getpgid(attack_state['process'].pid), signal.SIGTERM)
+        except:
+            pass
+        attack_state['process'] = None
+    
+    return jsonify({'status': 'stopped'})
+
+
+# =============================================================================
+# LIVE LOGS CSV EXPORT
+# =============================================================================
+
+@app.route('/flows/export', methods=['POST'])
+def export_flows_csv():
+    """Export current live flows to CSV and return as downloadable file or save to server"""
+    with state_lock:
+        flows = list(live_state.get('flows', []))
+    
+    if not flows:
+        return jsonify({'error': 'No flows to export'}), 400
+    
+    data = request.get_json(force=True) if request.is_json else {}
+    save_to_server = data.get('save_to_server', False)
+    filename = data.get('filename', f"live_capture_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+    
+    # Build CSV
+    output = io.StringIO()
+    
+    # Headers: timestamp, 3-tuple info, 15 features, prediction info
+    headers = [
+        'timestamp', 'src_ip', 'dst_ip', 'src_port', 'dst_port', 'protocol',
+    ] + FEATURE_KEYS + [
+        'prediction', 'action', 'confidence', 'gnn_verdict', 'gnn_confidence'
+    ]
+    
+    writer = csv.DictWriter(output, fieldnames=headers, extrasaction='ignore')
+    writer.writeheader()
+    
+    for flow in flows:
+        row = {
+            'timestamp': flow.get('timestamp', ''),
+            'src_ip': flow.get('src_ip', ''),
+            'dst_ip': flow.get('dst_ip', ''),
+            'src_port': flow.get('src_port', ''),
+            'dst_port': flow.get('dst_port', ''),
+            'protocol': flow.get('protocol', ''),
+            'prediction': flow.get('prediction', ''),
+            'action': flow.get('action', ''),
+            'confidence': flow.get('confidence', ''),
+            'gnn_verdict': flow.get('gnn_verdict', ''),
+            'gnn_confidence': flow.get('gnn_confidence', ''),
+        }
+        
+        # Add 15 features
+        features = flow.get('features', {})
+        for key in FEATURE_KEYS:
+            row[key] = features.get(key, '')
+        
+        writer.writerow(row)
+    
+    csv_content = output.getvalue()
+    
+    if save_to_server:
+        # Save to CSV_DIR
+        filepath = os.path.join(CSV_DIR, filename)
+        with open(filepath, 'w') as f:
+            f.write(csv_content)
+        return jsonify({
+            'status': 'saved',
+            'filename': filename,
+            'rows': len(flows),
+            'message': f'Saved {len(flows)} flows to {filename}'
+        })
+    else:
+        # Return CSV content for download
+        from flask import Response
+        return Response(
+            csv_content,
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
 
 
 @app.route('/stored_files', methods=['GET'])

@@ -224,7 +224,8 @@ class CICExtractor:
             if offline:
                 sniff(offline=offline, prn=self.packet_handler, store=False)
             else:
-                sniff(iface=self.iface, prn=self.packet_handler, store=False)
+                sniff(iface=self.iface, prn=self.packet_handler, store=False,
+                      stop_filter=lambda x: not self.running)
         except Exception as e:
             print(f"Error while sniffing: {e}", file=sys.stderr)
             self.running = False

@@ -1,0 +1,9 @@
+# FYP Dashboard - Allow network namespace and OVS commands without password
+# Install: sudo cp sudoers_fyp /etc/sudoers.d/fyp && sudo chmod 440 /etc/sudoers.d/fyp
+
+yuheng ALL=(root) NOPASSWD: /usr/sbin/ip netns *
+yuheng ALL=(root) NOPASSWD: /usr/sbin/ip link *
+yuheng ALL=(root) NOPASSWD: /usr/bin/ovs-vsctl *
+yuheng ALL=(root) NOPASSWD: /usr/sbin/ip addr *
+yuheng ALL=(root) NOPASSWD: /usr/bin/ovs-ofctl *
+yuheng ALL=(root) NOPASSWD: /usr/bin/tcpdump *

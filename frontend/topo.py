@@ -6,10 +6,12 @@ import sys
 # Configuration
 BRIDGE_NAME = "ovs-br0"
 NAMESPACES = {
-    "ns_server":   {"ip": "10.0.0.10/24", "veth": "veth_serv"},
-    "ns_user":     {"ip": "10.0.0.1/24",  "veth": "veth_user"},
-    "ns_attacker": {"ip": "10.0.0.66/24", "veth": "veth_hack"},
-    "ns_monitor":  {"ip": "0.0.0.0",      "veth": "veth_mon"} 
+    "ns_server":    {"ip": "10.0.0.10/24", "veth": "veth_serv"},
+    "ns_user":      {"ip": "10.0.0.1/24",  "veth": "veth_user"},
+    "ns_attacker":  {"ip": "10.0.0.66/24", "veth": "veth_hack"},
+    "ns_attacker2": {"ip": "10.0.0.67/24", "veth": "veth_hack2"},
+    "ns_attacker3": {"ip": "10.0.0.68/24", "veth": "veth_hack3"},
+    "ns_monitor":   {"ip": "0.0.0.0",      "veth": "veth_mon"} 
 }
 
 def run(cmd):
