@@ -712,13 +712,58 @@ async def retrain_model_endpoint(
             # 4. Fit
             sn.fit(X_benign_scaled)
             
-            # 5. Save
+            # 5. Evaluate on full data
+            from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+            X_all = df[EXPECTED_COLUMNS]
+            X_all_scaled = sn.scaler.transform(X_all)
+            y_true = df['norm_label'].apply(lambda x: 0 if x == benign_norm else 1)
+            
+            # SafetyNet predict: -1 = anomaly, 1 = normal
+            sn_preds_raw = sn.model.predict(X_all_scaled)
+            # Convert: -1 (anomaly) -> 1 (attack), 1 (normal) -> 0 (benign)
+            y_pred = (sn_preds_raw == -1).astype(int)
+            
+            metrics = {
+                "accuracy": round(accuracy_score(y_true, y_pred), 4),
+                "precision": round(precision_score(y_true, y_pred, zero_division=0), 4),
+                "recall": round(recall_score(y_true, y_pred, zero_division=0), 4),
+                "f1": round(f1_score(y_true, y_pred, zero_division=0), 4)
+            }
+            
+            # Confusion matrix
+            cm = confusion_matrix(y_true, y_pred)
+            if cm.shape == (2, 2):
+                confusion = {
+                    "tn": int(cm[0][0]),
+                    "fp": int(cm[0][1]),
+                    "fn": int(cm[1][0]),
+                    "tp": int(cm[1][1])
+                }
+            else:
+                confusion = {"tn": 0, "fp": 0, "fn": 0, "tp": 0}
+            
+            split_info = {
+                "total_samples": len(df),
+                "benign_count": len(df_benign),
+                "attack_count": len(df) - len(df_benign),
+                "training_samples": len(df_benign)
+            }
+            
+            # 6. Save
             out_path = f"models/safetynet/{sanitized_name}.pkl"
             os.makedirs("models/safetynet", exist_ok=True)
             joblib.dump(sn, out_path)
             model_store['safety_net'] = sn # Hot swap? Maybe dangerous but okay for demo.
             
-            return {"status": "success", "model": out_path}
+            return {
+                "status": "success", 
+                "model": out_path,
+                "model_type": "isolation_forest",
+                "model_name": sanitized_name,
+                "metrics": metrics,
+                "confusion_matrix": confusion,
+                "split_info": split_info
+            }
 
         elif model_type == "xgb":
             # 1. Initialize XGBDetector
@@ -747,7 +792,48 @@ async def retrain_model_endpoint(
             # 3. Train
             xgb_det.train_binary(X_train, y_train, X_val, y_val)
             
-            # 4. Save
+            # 4. Evaluate on test set
+            from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
+            y_pred = xgb_det.model.predict(X_test)
+            y_proba = xgb_det.model.predict_proba(X_test)[:, 1]
+            
+            metrics = {
+                "accuracy": round(accuracy_score(y_test, y_pred), 4),
+                "precision": round(precision_score(y_test, y_pred, zero_division=0), 4),
+                "recall": round(recall_score(y_test, y_pred, zero_division=0), 4),
+                "f1": round(f1_score(y_test, y_pred, zero_division=0), 4),
+                "auc": round(roc_auc_score(y_test, y_proba), 4)
+            }
+            
+            # Confusion matrix
+            cm = confusion_matrix(y_test, y_pred)
+            confusion = {
+                "tn": int(cm[0][0]),
+                "fp": int(cm[0][1]),
+                "fn": int(cm[1][0]),
+                "tp": int(cm[1][1])
+            }
+            
+            # Learning curve from evals_result
+            evals = xgb_det.evals_result
+            learning_curve = {
+                "train_logloss": evals.get('validation_0', {}).get('logloss', []),
+                "val_logloss": evals.get('validation_1', {}).get('logloss', []),
+                "train_auc": evals.get('validation_0', {}).get('auc', []),
+                "val_auc": evals.get('validation_1', {}).get('auc', [])
+            }
+            
+            # Data split info
+            split_info = {
+                "total_samples": len(df),
+                "train_samples": len(y_train),
+                "val_samples": len(y_val),
+                "test_samples": len(y_test),
+                "benign_count": int((y_binary == 0).sum()),
+                "attack_count": int((y_binary == 1).sum())
+            }
+            
+            # 5. Save
             out_path = f"models/xgb/{sanitized_name}.json"
             os.makedirs("models/xgb", exist_ok=True)
             xgb_det.model.save_model(out_path)
@@ -757,7 +843,16 @@ async def retrain_model_endpoint(
             xgb_det2.model = xgb_det.model
             model_store['xgb'] = xgb_det2
             
-            return {"status": "success", "model": out_path, "metrics": str(xgb_det.evals_result)}
+            return {
+                "status": "success", 
+                "model": out_path, 
+                "model_type": "xgb",
+                "model_name": sanitized_name,
+                "metrics": metrics,
+                "confusion_matrix": confusion,
+                "learning_curve": learning_curve,
+                "split_info": split_info
+            }
 
         elif model_type == "gnn":
             raise HTTPException(501, "GNN Retraining not yet implemented via API due to complexity.")
