@@ -6,3 +6,6 @@ To AGENT:
 1. This device is only running frontend if you found the current machine IP is 10.100.10.131 & 203.80.21.40.
 2. If you would like to update backend code, please update and commit to git, then ask user to pull the latest backend code and rerun at the GPU machine side (10.100.10.15).
 3. You are free to update any frontend code.
+4. To get what is the models and scalers, please curl from 10.100.10.15.
+5. 10.100.10.15 is always running, if not pingable, remind me to start it so that you can access the resouces on the server. 
+6. I will try to make sure the backend code will sync to this backend folder as well. Not for running the backend code, but understand whether the backend code is valid or need changes.

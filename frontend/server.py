@@ -42,13 +42,117 @@ UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads')
 PCAP_DIR = os.path.join(UPLOAD_DIR, 'pcaps')
 CSV_DIR = os.path.join(UPLOAD_DIR, 'csv')
 METADATA_DIR = os.path.join(UPLOAD_DIR, 'metadata')
+GLOBAL_MAPPING_PATH = os.path.join(METADATA_DIR, 'global_mapping.json')
 
 for d in (UPLOAD_DIR, PCAP_DIR, CSV_DIR, METADATA_DIR):
     os.makedirs(d, exist_ok=True)
 
+def load_global_mapping():
+    if os.path.exists(GLOBAL_MAPPING_PATH):
+        try:
+            with open(GLOBAL_MAPPING_PATH, 'r') as f:
+                return json.load(f)
+        except:
+            pass
+    return {}
+
+def save_global_mapping(mapping):
+    with open(GLOBAL_MAPPING_PATH, 'w') as f:
+        json.dump(mapping, f, indent=4)
+
+def get_suggested_mapping(headers):
+    """
+    Given a list of CSV headers, suggest a mapping based on the global dictionary.
+    Returns a dict with 'src_ip', ..., and 'features': {...}
+    """
+    global_map = load_global_mapping()
+    if not global_map:
+        return {}
+    
+    mapping = {'features': {}}
+    headers_lower = [h.lower().strip() for h in headers]
+    header_map = {h.lower().strip(): h for h in headers} # lower -> original
+
+    def find_match(candidates):
+        if not candidates: return None
+        for c in candidates:
+            c_clean = c.lower().strip()
+            if c_clean in headers_lower:
+                return header_map[c_clean]
+        return None
+
+    # Basic fields
+    for field in ['timestamp', 'src_ip', 'dst_ip', 'src_port', 'dst_port', 'protocol', 'label']:
+        candidates = global_map.get(field, [])
+        match = find_match(candidates)
+        if match:
+            mapping[field] = match
+
+    # Features
+    g_features = global_map.get('features', {})
+    for feat_key, candidates in g_features.items():
+        match = find_match(candidates)
+        if match:
+            mapping['features'][feat_key] = match
+            
+    return mapping
+
+def update_global_from_mapping(new_mapping):
+    """
+    Update the global mapping dictionary with new aliases from a user-provided mapping.
+    """
+    global_map = load_global_mapping()
+    if not global_map:
+        # Should initiate with defaults if missing, but assuming it exists or we handle empty
+        global_map = {
+             "timestamp": [], "src_ip": [], "dst_ip": [], 
+             "src_port": [], "dst_port": [], "protocol": [], "label": [],
+             "features": {}
+        }
+
+    def add_alias(field, alias):
+        clean_alias = str(alias).strip()
+        if not clean_alias:
+            return
+            
+        if clean_alias not in global_map.setdefault(field, []):
+            # Check if alias exists case-insensitively to avoid dupes like "Src" vs "src"
+            current = [x.lower() for x in global_map[field]]
+            if clean_alias.lower() not in current:
+                global_map[field].append(clean_alias)
+
+    # Basic fields
+    for field in ['timestamp', 'src_ip', 'dst_ip', 'src_port', 'dst_port', 'protocol', 'label']:
+        val = new_mapping.get(field)
+        if val:
+            add_alias(field, val)
+            
+    # Features
+    mapped_features = new_mapping.get('features', {})
+    if 'features' not in global_map:
+        global_map['features'] = {}
+        
+    for key, val in mapped_features.items():
+        if val:
+            if key not in global_map['features']:
+                global_map['features'][key] = []
+            
+            clean_val = str(val).strip()
+            if not clean_val:
+                continue
+                
+            # Add alias
+            current = [x.lower() for x in global_map['features'][key]]
+            if clean_val.lower() not in current:
+                global_map['features'][key].append(clean_val)
+
+    save_global_mapping(global_map)
+
+
 def get_metadata_path(filename):
     return os.path.join(METADATA_DIR, f"{filename}.json")
 
+# Deprecated but kept for compatibility during migration if needed
 def load_metadata(filename):
     path = get_metadata_path(filename)
     if os.path.exists(path):
@@ -58,6 +162,7 @@ def load_metadata(filename):
         except:
             return None
     return None
+
 
 def save_metadata_file(filename, data):
     path = get_metadata_path(filename)
@@ -735,9 +840,21 @@ def process_pcap():
 
     metadata = None
     if source_kind == 'csv':
-        metadata = load_metadata(saved_name)
+        # Retrieve mapping passed from frontend, OR try to deduce it
+        # The frontend should ideally send 'mapping' in the form data if it was just confirmed
+        mapping_json = request.form.get('mapping')
+        
+        if mapping_json:
+            try:
+                metadata = json.loads(mapping_json)
+                # If we got a mapping, update global dict
+                update_global_from_mapping(metadata)
+            except:
+                print("Failed to parse provided mapping")
+                metadata = None
+        
         if not metadata:
-            # Return special status to prompt user for mapping
+            # If no mapping provided (e.g. quick re-run), try to auto-map
             # Read header
             header = []
             try:
@@ -747,14 +864,14 @@ def process_pcap():
             except:
                 pass
             
-            return jsonify({
-                'status': 'mapping_needed',
-                'filename': saved_name,
-                'header': header,
-                'feature_keys': FEATURE_KEYS
-            })
-        
-        # If metadata exists, use it
+            # Get suggestion
+            metadata = get_suggested_mapping(header)
+            
+            # Check if mapping is sufficient? 
+            # For now, we assume if it's not provided, we try our best.
+            # But if critical features are missing, job might fail or produce zeros.
+            # The frontend is responsible for intercepting 'mapping_needed' via other endpoints or pre-checks.
+
         if 'benign_label' in metadata:
              benign_label = metadata['benign_label']
 
@@ -1076,28 +1193,40 @@ def csv_headers():
 
 @app.route('/get_mapping', methods=['GET'])
 def get_mapping():
-    """Get existing column mapping for a CSV file."""
+    """Get suggested column mapping for a CSV file based on Global Dict."""
     filename = request.args.get('filename')
     if not filename:
         return jsonify({'error': 'filename required'}), 400
     
-    metadata = load_metadata(filename)
-    if metadata:
-        return jsonify(metadata)
-    return jsonify({}), 404
+    filepath = os.path.join(CSV_DIR, filename)
+    if not os.path.exists(filepath):
+        # Maybe it's an uploaded file not yet saved? 
+        # But this endpoint is usually called for stored files or after upload.
+        return jsonify({'error': 'file not found'}), 404
+
+    # Read headers
+    try:
+        with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+            
+        suggested = get_suggested_mapping(headers)
+        return jsonify(suggested)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/save_mapping', methods=['POST'])
 def save_mapping_route():
-    """Save column mapping for a CSV file."""
+    """Update global mapping with new aliases."""
     data = request.get_json(force=True)
-    filename = data.get('filename')
     mapping = data.get('mapping')
     
-    if not filename or not mapping:
-        return jsonify({'error': 'filename and mapping required'}), 400
+    if not mapping:
+        return jsonify({'error': 'mapping required'}), 400
     
-    # Trim all column name values before saving
+    update_global_from_mapping(mapping)
+    return jsonify({'status': 'ok', 'message': 'Global mapping updated'})
     trimmed_mapping = trim_metadata_values(mapping)
     save_metadata_file(filename, trimmed_mapping)
     return jsonify({'status': 'ok'})
@@ -1274,13 +1403,17 @@ def analyze_recalibration():
         arr = arr[np.isfinite(arr)]
         
         # Check sample count
-        if len(arr) < 1000:
+        if len(arr) < 50:
             status = "unstable (insufficient clean samples)"
             results.append({
                 'feature': key,
                 'median_ratio': 1.0,
                 'iqr_ratio': 1.0,
-                'status': status
+                'status': status,
+                'median_new': 0.0,
+                'iqr_new': 0.0,
+                'median_ref': 0.0,
+                'iqr_ref': 0.0
             })
             continue # Exclude from decision metrics
         
@@ -1338,7 +1471,11 @@ def analyze_recalibration():
             'feature': key,
             'median_ratio': median_ratio,
             'iqr_ratio': iqr_ratio,
-            'status': status
+            'status': status,
+            'median_new': median_new,
+            'iqr_new': iqr_new,
+            'median_ref': median_ref,
+            'iqr_ref': iqr_ref
         })
         
         # 5. Shift Magnitude
@@ -1378,7 +1515,11 @@ def analyze_recalibration():
                 'feature': r['feature'],
                 'median_ratio': m_rat,
                 'iqr_ratio': i_rat,
-                'status': r['status']
+                'status': r['status'],
+                'median_new': r.get('median_new', 0.0),
+                'iqr_new': r.get('iqr_new', 0.0),
+                'median_ref': r.get('median_ref', 0.0),
+                'iqr_ref': r.get('iqr_ref', 0.0)
             })
             
         return jsonify({
@@ -1438,14 +1579,13 @@ def proxy_list_models():
 
 @app.route('/api/rescale', methods=['POST'])
 def proxy_rescale():
-    if 'csv' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-    
-    file = request.files['csv']
     scaler_name = request.form.get('scaler_name')
     
+    # File handling
+    use_stored = request.form.get('use_stored') == 'true'
+    filename = request.form.get('filename')
+    
     # Mapping and Label params
-    mapping_file = request.form.get('mapping_source_file')
     mapping_str = request.form.get('mapping')
     
     # Strict boolean parsing
@@ -1453,28 +1593,54 @@ def proxy_rescale():
     label_col = request.form.get('label_col')
     benign_label = request.form.get('benign_label', 'BENIGN')
     
+    src_path = None
+    temp_path = None
+    
     try:
-        # 1. Resolve Mapping (Mandatory)
+        # 1. Resolve Source File
+        if use_stored:
+            if not filename:
+                return jsonify({'error': 'filename required for stored file'}), 400
+            src_path = os.path.join(CSV_DIR, filename)
+            if not os.path.exists(src_path):
+                # Try finding it in uploads just in case (e.g. legacy)
+                 src_path = os.path.join(UPLOAD_DIR, filename)
+                 if not os.path.exists(src_path):
+                    return jsonify({'error': 'Stored file not found'}), 404
+        else:
+            if 'csv' not in request.files:
+                return jsonify({'error': 'No file provided'}), 400
+            file = request.files['csv']
+            temp_dir = os.path.join(UPLOAD_DIR, 'temp_rescale')
+            os.makedirs(temp_dir, exist_ok=True)
+            temp_path = os.path.join(temp_dir, f"rescale_{uuid.uuid4().hex}.csv")
+            file.save(temp_path)
+            src_path = temp_path
+            
+        # 2. Resolve Mapping
         metadata = None
-        if mapping_file:
-             metadata = load_metadata(mapping_file)
-        elif mapping_str:
+        if mapping_str:
              try:
-                 parsed = json.loads(mapping_str)
-                 if isinstance(parsed, dict):
-                    metadata = {'features': parsed} if 'features' not in parsed else parsed
+                 metadata = json.loads(mapping_str)
+                 update_global_from_mapping(metadata)
              except:
                  pass
-                 
-        if not metadata or 'features' not in metadata:
-            return jsonify({'error': 'Column mapping is required for rescaling'}), 400
-
-        # 2. Save Upload temporarily for processing
-        temp_dir = os.path.join(UPLOAD_DIR, 'temp_rescale')
-        os.makedirs(temp_dir, exist_ok=True)
-        temp_path = os.path.join(temp_dir, f"rescale_{uuid.uuid4().hex}.csv")
-        file.save(temp_path)
         
+        if not metadata:
+            # Auto-detect
+            try:
+                with open(src_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    reader = csv.reader(f)
+                    header = next(reader)
+                metadata = get_suggested_mapping(header)
+            except:
+                pass
+                
+        if not metadata or 'features' not in metadata:
+             # Clean up
+            if temp_path and os.path.exists(temp_path): os.remove(temp_path)
+            return jsonify({'error': 'Column mapping/features calculation failed. Provide mapping.'}), 400
+
         try:
             # 3. Load & Filter Data taking 10k Benign
             target_count = 10000
@@ -1484,29 +1650,33 @@ def proxy_rescale():
             load_meta = metadata.copy()
             if is_labelled and label_col:
                 load_meta['label'] = label_col
+            elif is_labelled and 'label' in metadata:
+                pass # Already set
+            else:
+                 # Check if label is in metadata
+                 if 'label' in metadata:
+                     if is_labelled: pass # good
+                     else: load_meta.pop('label', None)
                 
-            print(f"[Rescale] Loading samples from {temp_path}. Labelled={is_labelled}, Filter={filter_lbl}")
+            print(f"[Rescale] Loading samples from {src_path}. Labelled={is_labelled}, Filter={filter_lbl}")
                 
             entries = load_csv_entries(
-                temp_path,
+                src_path,
                 metadata=load_meta,
                 filter_label=filter_lbl,
                 target_count=target_count,
-                 # If unlabelled, just take first 10k by setting limit/target
                 limit=target_count if not is_labelled else None 
             )
             
             if not entries:
                  return jsonify({'error': f'No valid samples found (Labelled={is_labelled}, Label={filter_lbl})'}), 400
                  
-            # Allow smaller datasets (user request: use all even if < 10000, and ensure we don't error on small valid sets)
             if len(entries) < 10:
                  return jsonify({'error': f'Insufficient samples ({len(entries)}) found for rescaling. Need at least 10.'}), 400
 
             print(f"[Rescale] Collected {len(entries)} valid samples for rescaling.")
 
             # 4. Generate Clean CSV for Backend
-            # We write ONLY the 15 features, using standard names.
             output = io.StringIO()
             writer = csv.DictWriter(output, fieldnames=FEATURE_KEYS)
             writer.writeheader()
@@ -1519,80 +1689,137 @@ def proxy_rescale():
             # 5. Send to Backend
             base = get_base_url()
             data = {'name': scaler_name} if scaler_name else {}
-            # No mapping needed since columns are standardized
             
-            # Streaming the StringIO requires encoding? requests handles it usually if file-like
-            # But StringIO is text, files usually expect bytes. 
-            # Flask/Requests might handle text/csv
-            # Safe bet: encode to bytes
             mem_file = io.BytesIO(output.getvalue().encode('utf-8'))
-            
             files = {'file': ('rescaled_cleaned.csv', mem_file, 'text/csv')}
             
             resp = requests.post(f"{base}/refit_scaler", files=files, data=data, timeout=120)
             return jsonify(resp.json()), resp.status_code
 
         finally:
-            if os.path.exists(temp_path):
+            if temp_path and os.path.exists(temp_path):
                 os.remove(temp_path)
 
     except Exception as e:
         traceback.print_exc()
+        if temp_path and os.path.exists(temp_path):
+             os.remove(temp_path)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/retrain', methods=['POST'])
 def proxy_retrain():
-    if 'csv' not in request.files:
-        return jsonify({'error': 'No file provided'}), 400
-    
-    file = request.files['csv']
     model_type = request.form.get('model_type')
     model_name = request.form.get('model_name')
     label_col = request.form.get('label_col', 'Label')
     benign_label = request.form.get('benign_label', 'BENIGN')
     scaler_id = request.form.get('scaler_id', 'default')
     
-    mapping_file = request.form.get('mapping_source_file')
+    use_stored = request.form.get('use_stored') == 'true'
+    filename = request.form.get('filename')
+    
     mapping_str = request.form.get('mapping')
     
     if not model_type or not model_name:
          return jsonify({'error': 'model_type and model_name required'}), 400
-         
-    # Enforce Mapping (Mandatory as per request)
-    metadata = None
-    if mapping_file:
-         metadata = load_metadata(mapping_file)
-    elif mapping_str:
-         try:
-             parsed = json.loads(mapping_str)
-             if isinstance(parsed, dict):
-                metadata = {'features': parsed} if 'features' not in parsed else parsed
-         except: pass
-         
-    if not metadata or 'features' not in metadata:
-         return jsonify({'error': 'Column mapping is required for retraining'}), 400
-         
+
+    src_path = None
+    temp_path = None
+    file_handle = None
+
     try:
+         # 1. Resolve Source
+        if use_stored:
+            if not filename: return jsonify({'error': 'filename required for stored file'}), 400
+            src_path = os.path.join(CSV_DIR, filename)
+            if not os.path.exists(src_path):
+                return jsonify({'error': 'Stored file not found'}), 404
+            file_handle = open(src_path, 'rb')
+            filename_to_send = os.path.basename(src_path)
+        else:
+            if 'csv' not in request.files: return jsonify({'error': 'No file provided'}), 400
+            file = request.files['csv']
+            # We can stream directly from request.files if we didn't need to read headers for mapping...
+            # But we might need to auto-detect mapping if not provided.
+            if not mapping_str:
+                # Need to read header
+                temp_dir = os.path.join(UPLOAD_DIR, 'temp_retrain')
+                os.makedirs(temp_dir, exist_ok=True)
+                temp_path = os.path.join(temp_dir, f"retrain_{uuid.uuid4().hex}.csv")
+                file.save(temp_path)
+                src_path = temp_path
+                file_handle = open(src_path, 'rb')
+                filename_to_send = file.filename
+            else:
+                 # We have mapping, just stream
+                 file_handle = file.stream
+                 filename_to_send = file.filename
+
+        # 2. Resolve Mapping
+        metadata = None
+        if mapping_str:
+             try:
+                 metadata = json.loads(mapping_str)
+                 update_global_from_mapping(metadata)
+             except: pass
+        
+        # If no mapping str provided, we must rely on auto-detection.
+        # But if we stream directly from upload without saving, we can't easily peek...
+        # So we enforced saving above if !mapping_str.
+        if not metadata and src_path:
+             try:
+                # Peek header
+                 with open(src_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    reader = csv.reader(f)
+                    header = next(reader)
+                 metadata = get_suggested_mapping(header)
+             except: pass
+             
+        if not metadata or 'features' not in metadata:
+             if temp_path and os.path.exists(temp_path): os.remove(temp_path)
+             if file_handle: file_handle.close()
+             return jsonify({'error': 'Column mapping required'}), 400
+         
+        # 3. Send to Backend
         base = get_base_url()
-            
-        files = {'file': (file.filename, file.stream, file.mimetype)}
+        
+        # Note: file_handle position might need reset ?
+        if src_path:
+             file_handle.seek(0)
+        else:
+             file.stream.seek(0) # Reset stream if we read from it (we didn't read from file.stream directly above, we saved it.)
+        
+        # If we are sending a file stream, 'requests' works best with open files
+        files = {'file': (filename_to_send, file_handle, 'text/csv')}
         data = {
             'model_name': model_name,
             'label_col': label_col,
             'benign_label': benign_label,
             'scaler_id': scaler_id,
-            'mapping': json.dumps(metadata['features']) # Pass explicit mapping
+            'mapping': json.dumps(metadata['features']) 
         }
         
-        # If mapping file provided, load its metadata (Already done above)
-        
-        # retrain path
         resp = requests.post(f"{base}/retrain/{model_type}", files=files, data=data, timeout=300)
+        
+        if temp_path and os.path.exists(temp_path): 
+            try:
+                file_handle.close()
+            except: pass
+            os.remove(temp_path)
+        elif use_stored:
+             file_handle.close()
+             
         try:
             return jsonify(resp.json()), resp.status_code
         except:
              return jsonify({'error': 'Invalid JSON from backend', 'text': resp.text}), resp.status_code
+
     except Exception as e:
+        if file_handle: 
+            try: file_handle.close()
+            except: pass
+        if temp_path and os.path.exists(temp_path):
+             try: os.remove(temp_path)
+             except: pass
         return jsonify({'error': str(e)}), 500
 
 

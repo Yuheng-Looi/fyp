@@ -353,17 +353,23 @@
                                class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Upload Reference CSV</label>
-                        <input type="file" id="scalerFile" accept=".csv"
-                               class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"/>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Source Dataset</label>
+                        <div class="flex flex-col gap-2">
+                            <!-- Upload -->
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-500 w-12">Upload:</span>
+                                <input type="file" id="scalerFile" accept=".csv"
+                                   class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-500 cursor-pointer"/>
+                            </div>
+                            <!-- OR Stored -->
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-500 w-12">Stored:</span>
+                                <select id="scalerStoredSelect" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
+                                     <option value="">-- Or Select Stored File --</option>
+                                </select>
+                            </div>
+                        </div>
                         <p class="text-xs text-slate-500 mt-1">File must contain representative BENIGN traffic.</p>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Mapping Source (Mandatory)</label>
-                        <select id="rescaleMapSource" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
-                             <option value="">-- Select Mapping Source --</option>
-                        </select>
-                         <p class="text-xs text-slate-500 mt-1">Select a stored file to apply its column mapping.</p>
                     </div>
                     
                     <!-- Label Config -->
@@ -435,16 +441,20 @@
                                class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Upload Labelled Dataset</label>
-                        <input type="file" id="retrainFile" accept=".csv"
-                               class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer"/>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Mapping Source (Mandatory)</label>
-                        <select id="retrainMapSource" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 outline-none">
-                             <option value="">-- Select Mapping Source --</option>
-                        </select>
-                         <p class="text-xs text-slate-500 mt-1">Select a stored file to apply its column mapping.</p>
+                        <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Training Dataset</label>
+                        <div class="flex flex-col gap-2">
+                             <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-500 w-12">Upload:</span>
+                                <input type="file" id="retrainFile" accept=".csv"
+                                    class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer"/>
+                             </div>
+                             <div class="flex items-center gap-2">
+                                <span class="text-xs text-slate-500 w-12">Stored:</span>
+                                <select id="retrainStoredSelect" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 outline-none">
+                                     <option value="">-- Or Select Stored File --</option>
+                                </select>
+                             </div>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-1">Scaler to Use</label>
@@ -2198,13 +2208,13 @@ These are model predictions only.`;
                 const data = await res.json();
                 const sel = document.getElementById('storedSelect');
                 const rescaleSel = document.getElementById('storedRescaleSelect');
-                const rescaleMapSel = document.getElementById('rescaleMapSource');
-                const retrainMapSel = document.getElementById('retrainMapSource');
+                const rescaleStoredNew = document.getElementById('scalerStoredSelect'); // New
+                const retrainStoredNew = document.getElementById('retrainStoredSelect'); // New
                 
                 if(sel) sel.innerHTML = '<option value="">-- Select --</option>';
                 if(rescaleSel) rescaleSel.innerHTML = '<option value="">-- Select --</option>';
-if(rescaleMapSel) rescaleMapSel.innerHTML = '<option value="">-- Select Mapping Source --</option>';
-if(retrainMapSel) retrainMapSel.innerHTML = '<option value="">-- Select Mapping Source --</option>';
+                if(rescaleStoredNew) rescaleStoredNew.innerHTML = '<option value="">-- For Stored File --</option>';
+                if(retrainStoredNew) retrainStoredNew.innerHTML = '<option value="">-- For Stored File --</option>';
                 
                 if (data.pcaps.length > 0) {
                     const group = document.createElement('optgroup');
@@ -2231,24 +2241,25 @@ if(retrainMapSel) retrainMapSel.innerHTML = '<option value="">-- Select Mapping 
                         opt.text = f.name;
                         group.appendChild(opt);
 
-                        // Legacy Rescale Select
+                        // Legacy Rescale Analysis Select (just name)
                          const opt2 = document.createElement('option');
                         opt2.value = f.name; 
                         opt2.text = f.name;
                         rescaleGroup.appendChild(opt2);
-
-                        // New Mapping Selects
-                        if (rescaleMapSel) {
+                        
+                        // New Rescale/Retrain Selects (csv:name pref)
+                        // Actually submitRescale expects format: 'csv:name' logic we added
+                        if (rescaleStoredNew) {
                             const optM = document.createElement('option');
-                            optM.value = f.name;
+                            optM.value = `csv:${f.name}`;
                             optM.text = f.name;
-                            rescaleMapSel.appendChild(optM);
+                            rescaleStoredNew.appendChild(optM);
                         }
-                        if (retrainMapSel) {
+                        if (retrainStoredNew) {
                             const optR = document.createElement('option');
-                            optR.value = f.name;
+                            optR.value = `csv:${f.name}`;
                             optR.text = f.name;
-                            retrainMapSel.appendChild(optR);
+                            retrainStoredNew.appendChild(optR);
                         }
                     });
                     if(sel) sel.appendChild(group);
@@ -2582,18 +2593,55 @@ if(retrainMapSel) retrainMapSel.innerHTML = '<option value="">-- Select Mapping 
              
              // Table
              const table = document.getElementById('rescale-table');
-             table.innerHTML = data.results.map(r => {
+             
+             // Header
+             let html = `
+                <div class="grid grid-cols-12 gap-2 text-[10px] text-slate-500 font-bold px-4 py-2 border-b border-slate-700 bg-slate-900 sticky top-0 z-10">
+                    <div class="col-span-4">FEATURE</div>
+                    <div class="col-span-3 text-right">MEDIAN (New/Base)</div>
+                    <div class="col-span-3 text-right">IQR (New/Base)</div>
+                    <div class="col-span-2 text-center">STATUS</div>
+                </div>
+             `;
+             
+             html += data.results.map(r => {
                  const color = r.status === 'scale_consistent' ? 'text-emerald-400' : 'text-red-400';
                  const symbol = r.status === 'scale_consistent' ? '✓' : '✗';
                  
-                 // Show tooltips?
+                 // Values safely formatted
+                 const fmt = (v) => (v !== undefined && v !== null) ? Number(v).toFixed(2) : '-';
+                 
+                 const mNew = fmt(r.median_new);
+                 const mRef = fmt(r.median_ref);
+                 const iNew = fmt(r.iqr_new);
+                 const iRef = fmt(r.iqr_ref);
+                 
+                 // Calculate Ratio of Ratios for tooltip
+                 let rorText = "Undefined";
+                 let mRat = r.median_ratio !== undefined ? r.median_ratio : 0;
+                 let iRat = r.iqr_ratio !== undefined ? r.iqr_ratio : 0;
+                 if (Math.abs(iRat) < 1e-9) rorText = "Inf";
+                 else rorText = (mRat / iRat).toFixed(2);
+                 
+                 const tooltip = `Ratio of Ratios: ${rorText}\n(Median Ratio: ${mRat.toFixed(2)} / IQR Ratio: ${iRat.toFixed(2)})`;
+                 
                  return `
-                    <div class="flex justify-between items-center px-4 py-2 border-b border-slate-800 hover:bg-slate-800/50 text-xs">
-                        <div class="flex-1 truncate" title="${r.feature}">${r.feature}</div>
-                        <div class="w-16 text-center font-bold ${color}">${symbol}</div>
+                    <div class="grid grid-cols-12 gap-2 items-center px-4 py-2 border-b border-slate-800 hover:bg-slate-800/50 text-xs text-slate-300 group relative">
+                        <div class="col-span-4 truncate font-mono" title="${r.feature}">${r.feature}</div>
+                        <div class="col-span-3 text-right space-y-0.5">
+                            <div class="text-white">${mNew}</div>
+                            <div class="text-[10px] text-slate-500">${mRef}</div>
+                        </div>
+                        <div class="col-span-3 text-right space-y-0.5">
+                            <div class="text-white">${iNew}</div>
+                            <div class="text-[10px] text-slate-500">${iRef}</div>
+                        </div>
+                        <div class="col-span-2 text-center font-bold ${color} text-lg cursor-help" title="${tooltip}">${symbol}</div>
                     </div>
                  `;
              }).join('');
+             
+             table.innerHTML = html;
              
              // Chart
              const points = data.results.map(r => ({
@@ -2680,6 +2728,22 @@ if(retrainMapSel) retrainMapSel.innerHTML = '<option value="">-- Select Mapping 
                 storedRescaleSelect.addEventListener('change', () => {
                    if (storedRescaleSelect.value) rescaleInput.value = "";
                 });
+            }
+            
+            // Exclusive inputs for Create Scaler
+            const scalerFile = document.getElementById('scalerFile');
+            const scalerStored = document.getElementById('scalerStoredSelect');
+            if (scalerFile && scalerStored) {
+                scalerFile.addEventListener('change', () => { if(scalerFile.value) scalerStored.value = ''; });
+                scalerStored.addEventListener('change', () => { if(scalerStored.value) scalerFile.value = ''; });
+            }
+
+            // Exclusive inputs for Retrain
+            const retrainFile = document.getElementById('retrainFile');
+            const retrainStored = document.getElementById('retrainStoredSelect');
+            if (retrainFile && retrainStored) {
+                retrainFile.addEventListener('change', () => { if(retrainFile.value) retrainStored.value = ''; });
+                retrainStored.addEventListener('change', () => { if(retrainStored.value) retrainFile.value = ''; });
             }
         });
 
@@ -2818,23 +2882,20 @@ if(retrainMapSel) retrainMapSel.innerHTML = '<option value="">-- Select Mapping 
         async function submitRescale() {
             const name = document.getElementById('newScalerName').value;
             const file = document.getElementById('scalerFile').files[0];
-            const mapSource = document.getElementById('rescaleMapSource').value;
+            const storedVal = document.getElementById('scalerStoredSelect').value;
             
             const isLabelled = document.getElementById('rescaleIsLabelled').checked;
             const labelCol = document.getElementById('rescaleLabelCol').value;
             const benignVal = document.getElementById('rescaleBenignVal').value;
             
-            if(!file) return alert('Please upload a CSV file');
-            if(!mapSource) return alert('Please select a Mapping Source (Mandatory)');
+            if(!file && !storedVal) return alert('Please select a dataset (Upload or Stored)');
             
             const btn = document.getElementById('btn-rescale');
             btn.innerText = 'Creating...';
             btn.disabled = true;
             
             const fd = new FormData();
-            fd.append('csv', file);
             if(name) fd.append('scaler_name', name);
-            fd.append('mapping_source_file', mapSource);
             
             fd.append('labelled', isLabelled);
             if(isLabelled) {
@@ -2842,34 +2903,66 @@ if(retrainMapSel) retrainMapSel.innerHTML = '<option value="">-- Select Mapping 
                 fd.append('benign_label', benignVal);
             }
             
-            try {
-                const res = await fetch('/api/rescale', { method: 'POST', body: fd });
-                const data = await res.json();
-                if(!res.ok) throw new Error(data.error || 'Failed');
+            const run = async (mapping) => {
+                 if(mapping) fd.append('mapping', JSON.stringify(mapping));
+                 try {
+                    const res = await fetch('/api/rescale', { method: 'POST', body: fd });
+                    const data = await res.json();
+                    if(!res.ok) throw new Error(data.error || 'Failed');
+                    
+                    alert('Success: ' + data.message);
+                    loadScalers();
+                    document.getElementById('newScalerName').value = '';
+                    if(document.getElementById('scalerFile')) document.getElementById('scalerFile').value = '';
+                    if(document.getElementById('scalerStoredSelect')) document.getElementById('scalerStoredSelect').value = '';
+                } catch(e) {
+                    alert('Error: ' + e.message);
+                } finally {
+                    btn.innerText = 'Create New Scaler';
+                    btn.disabled = false;
+                }
+            };
+            
+            if (file) {
+                fd.append('csv', file);
                 
-                alert('Success: ' + data.message);
-                loadScalers();
-                document.getElementById('newScalerName').value = '';
-                document.getElementById('scalerFile').value = '';
-                // Keep label config as is or reset? Resetting is safer.
-                document.getElementById('rescaleMapSource').value = '';
-            } catch(e) {
-                alert('Error: ' + e.message);
-            } finally {
-                btn.innerText = 'Create New Scaler';
-                btn.disabled = false;
+                // Trigger Mapping Modal
+                pendingFormData = fd;
+                pendingCallback = run;
+                await showMappingModalForFile(file);
+                
+            } else if (storedVal) {
+                const [type, rawName] = storedVal.split(':');
+                if(type !== 'csv') {
+                     btn.innerText = 'Create New Scaler';
+                     btn.disabled = false;
+                     return alert("Only CSV supported");
+                }
+                const fname = rawName;
+                fd.append('use_stored', 'true');
+                fd.append('filename', fname);
+
+                pendingFormData = fd;
+                pendingCallback = run;
+                const ok = await showMappingModalForStored(fname, 'csv');
+                if(!ok) {
+                    btn.innerText = 'Create New Scaler';
+                    btn.disabled = false;
+                    alert("Failed to access stored file");
+                }
             }
         }
         
         async function submitRetrain() {
             const file = document.getElementById('retrainFile').files[0];
+            const storedVal = document.getElementById('retrainStoredSelect').value;
+            
             const name = document.getElementById('newModelName').value;
             const labelCol = document.getElementById('retrainLabelCol').value;
             const benign = document.getElementById('retrainBenignLabel').value;
-            const mapSource = document.getElementById('retrainMapSource').value;
             const scalerId = document.getElementById('retrainScalerSelect').value;
             
-            if(!file || !name) return alert('File and Model Name required');
+            if((!file && !storedVal) || !name) return alert('Dataset and Model Name required');
             
             const btn = document.getElementById('btn-retrain');
             const status = document.getElementById('retrain-status');
@@ -2879,30 +2972,61 @@ if(retrainMapSel) retrainMapSel.innerHTML = '<option value="">-- Select Mapping 
             status.classList.remove('hidden');
             
             const fd = new FormData();
-            fd.append('csv', file);
             fd.append('model_name', name);
             fd.append('model_type', currentModelType);
             fd.append('label_col', labelCol);
             fd.append('benign_label', benign);
-            if(mapSource) fd.append('mapping_source_file', mapSource);
             if(scalerId) fd.append('scaler_id', scalerId);
             
-            try {
-                const res = await fetch('/api/retrain', { method: 'POST', body: fd });
-                const data = await res.json();
-                if(!res.ok) throw new Error(data.error || data.detail || 'Failed');
-                
-                alert('Retraining Complete! Model saved.');
-                loadModels(currentModelType);
-                populateModelDropdowns();
-                status.innerHTML = 'Success!';
-            } catch(e) {
-                console.error(e);
-                alert('Retrain Error: ' + e.message);
-                status.innerHTML = 'Failed: ' + e.message;
-            } finally {
-                btn.innerText = 'Start Retraining';
-                btn.disabled = false;
+            const run = async (mapping) => {
+                 if(mapping) fd.append('mapping', JSON.stringify(mapping));
+                 try {
+                    const res = await fetch('/api/retrain', { method: 'POST', body: fd });
+                    const data = await res.json();
+                    if(!res.ok) throw new Error(data.error || data.detail || 'Failed');
+                    
+                    alert('Retraining Complete! Model saved.');
+                    loadModels(currentModelType);
+                    status.innerHTML = 'Success!';
+                    
+                    document.getElementById('newModelName').value = '';
+                    if(document.getElementById('retrainFile')) document.getElementById('retrainFile').value = '';
+                    if(document.getElementById('retrainStoredSelect')) document.getElementById('retrainStoredSelect').value = '';
+                    
+                } catch(e) {
+                    console.error(e);
+                    alert('Retrain Error: ' + e.message);
+                    status.innerHTML = 'Failed: ' + e.message;
+                } finally {
+                    btn.innerText = 'Start Retraining';
+                    btn.disabled = false;
+                }
+            };
+            
+            if (file) {
+                fd.append('csv', file);
+                pendingFormData = fd;
+                pendingCallback = run;
+                await showMappingModalForFile(file);
+            } else if (storedVal) {
+                 const [type, rawName] = storedVal.split(':');
+                 if(type !== 'csv') {
+                      btn.innerText = 'Start Retraining';
+                      btn.disabled = false;
+                      return alert("Only CSV supported");
+                 }
+                 const fname = rawName;
+                 fd.append('use_stored', 'true');
+                 fd.append('filename', fname);
+                 
+                 pendingFormData = fd;
+                 pendingCallback = run;
+                 const ok = await showMappingModalForStored(fname, 'csv');
+                 if(!ok) {
+                     btn.innerText = 'Start Retraining';
+                     btn.disabled = false;
+                     alert("Failed to access stored file");
+                 }
             }
         }
         
