@@ -305,7 +305,9 @@ def predict_traffic(flow: NetworkFlow):
     if xgb_model_obj:
         try:
             xgb_pred = int(xgb_model_obj.model.predict(model_input_scaled)[0])
-            xgb_prob = float(xgb_model_obj.model.predict_proba(model_input_scaled)[0][1])
+            raw_prob = float(xgb_model_obj.model.predict_proba(model_input_scaled)[0][1])
+            # If BENIGN (0), return P(Benign) = 1 - P(Attack). If Attack (1), return P(Attack).
+            xgb_prob = raw_prob if xgb_pred == 1 else 1.0 - raw_prob
         except: pass
         
     xgb_end = time.time()
