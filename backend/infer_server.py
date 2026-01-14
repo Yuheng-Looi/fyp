@@ -136,6 +136,7 @@ class NetworkFlow(BaseModel):
     xgb_model: Optional[str] = None
     safetynet_model: Optional[str] = None
     gnn_model: Optional[str] = None
+    model_trust: str = "NO_ACTION"
 
 @app.post("/refit_scaler")
 async def refit_scaler(file: UploadFile = File(...), name: Optional[str] = Form(None), mapping: Optional[str] = Form(None)):
@@ -305,9 +306,12 @@ def predict_traffic(flow: NetworkFlow):
     if xgb_model_obj:
         try:
             xgb_pred = int(xgb_model_obj.model.predict(model_input_scaled)[0])
-            raw_prob = float(xgb_model_obj.model.predict_proba(model_input_scaled)[0][1])
+            raw_prob_attack = float(xgb_model_obj.model.predict_proba(model_input_scaled)[0][1])
             # If BENIGN (0), return P(Benign) = 1 - P(Attack). If Attack (1), return P(Attack).
-            xgb_prob = raw_prob if xgb_pred == 1 else 1.0 - raw_prob
+            if xgb_pred == 1:
+                xgb_prob = raw_prob_attack          # P(Attack)
+            else:
+                xgb_prob = 1.0 - raw_prob_attack    # P(Benign) 
         except: pass
         
     xgb_end = time.time()
@@ -343,27 +347,55 @@ def predict_traffic(flow: NetworkFlow):
     gnn_end = time.time()
     gnn_delay = f"{(gnn_end - gnn_start) * 1000:.2f}ms"
 
-    # 6. Determine Final Verdict and Action
+    # 6. Action Decision Logic (Binary Only)
+    
+    # -- Inputs --
+    binary_pred = xgb_pred # 0 or 1
+    binary_conf = raw_prob_attack # P(Attack)
+    model_trust = flow.model_trust
+    if_flag = is_anomaly
+    
+    # -- Thresholds --
+    LOG_THRESHOLD = 0.5
+    BLOCK_THRESHOLD = 0.75
+    
+    # Adaptive tuning
+    if if_flag == 1:
+        LOG_THRESHOLD = max(0.45, LOG_THRESHOLD - 0.05)
+        BLOCK_THRESHOLD = max(0.65, BLOCK_THRESHOLD - 0.1)
+        
+    # -- Decision Logic --
+    action = "ALLOW"
+    
+    if model_trust == "RETRAIN":
+        action = "ALERT_ONLY"
+    elif binary_pred == 0:
+        action = "ALLOW"
+    elif binary_conf < LOG_THRESHOLD:
+        action = "LOG"
+    elif binary_conf < BLOCK_THRESHOLD:
+        action = "RATE_LIMIT"
+    else:
+        action = "BLOCK"
+        
+    # Determine Final Verdict for display
     final_verdict = "BENIGN"
-    action = "allow"
-
-    if xgb_pred == 1:
+    if action in ["BLOCK", "RATE_LIMIT"]:
         final_verdict = "KNOWN_ATTACK"
-        action = "block"
-    elif is_anomaly == 1:
-        final_verdict = "ZERO_DAY_SUSPICION"
-        action = "block"
+    elif action == "LOG":
+        final_verdict = "SUSPICIOUS"
+    elif action == "ALERT_ONLY":
+        final_verdict = "ALERT"
 
     # 7. Construct Response
     result = {
         "isolation_forest": {
             "flag": is_anomaly,
-            # "confidence": removed as per request (not available in standard IsolationForest)
             "delay": sn_delay
         },
         "xgb": {
             "flag": xgb_pred,
-            "confidence": xgb_prob,
+            "confidence": xgb_prob, 
             "delay": xgb_delay
         },
         "gnn": {
@@ -372,7 +404,13 @@ def predict_traffic(flow: NetworkFlow):
             "delay": gnn_delay
         },
         "verdict": final_verdict,
-        "action": action
+        "action": action,
+        "model_trust": model_trust,
+        "binary_prediction": "ATTACK" if binary_pred == 1 else "BENIGN",
+        "binary_confidence": binary_conf,
+        "gnn_prediction": gnn_verdict,
+        "gnn_confidence": gnn_conf,
+        "if_flag": if_flag
     }
     
     return result
