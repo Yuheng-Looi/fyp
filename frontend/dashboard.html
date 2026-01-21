@@ -4288,27 +4288,71 @@ These are model predictions only.`;
                  if(mapping) fd.append('mapping', JSON.stringify(mapping));
                  try {
                     const res = await fetch('/api/retrain', { method: 'POST', body: fd });
-                    const data = await res.json();
-                    if(!res.ok) throw new Error(data.error || data.detail || 'Failed');
+                    const initialData = await res.json();
                     
-                    // Add timestamp and store in history
-                    data.timestamp = Date.now();
-                    trainHistory.unshift(data);
-                    if (trainHistory.length > 20) trainHistory.pop(); // Keep last 20
-                    localStorage.setItem('trainHistory', JSON.stringify(trainHistory));
+                    if(!res.ok) throw new Error(initialData.error || initialData.detail || 'Failed to start');
                     
-                    // Display results
-                    displayRetrainResults(data);
-                    renderTrainHistory();
-                    
-                    alert('Retraining Complete! Model saved: ' + data.model);
-                    loadModels(currentModelType);
-                    status.innerHTML = 'Success!';
-                    
-                    document.getElementById('newModelName').value = '';
-                    if(document.getElementById('retrainFile')) document.getElementById('retrainFile').value = '';
-                    if(document.getElementById('retrainStoredSelect')) document.getElementById('retrainStoredSelect').value = '';
-                    
+                    // Async Job Handling
+                    if (initialData.status === 'pending' && initialData.job_id) {
+                         const jobId = initialData.job_id;
+                         status.innerHTML = 'Training running... 0s';
+                         
+                         let active = true;
+                         let ticks = 0;
+                         while(active && ticks < 1200) { // 20 mins max (1s ticks)
+                             await new Promise(r => setTimeout(r, 1000));
+                             ticks++;
+                             status.innerHTML = `Training running... ${ticks}s`;
+                             
+                             const pollRes = await fetch(`/api/retrain/status/${jobId}`);
+                             const pollData = await pollRes.json();
+                             
+                             if (pollData.status === 'completed') {
+                                 const data = pollData.result;
+                                 
+                                 data.timestamp = Date.now();
+                                 trainHistory.unshift(data);
+                                 if (trainHistory.length > 20) trainHistory.pop(); 
+                                 localStorage.setItem('trainHistory', JSON.stringify(trainHistory));
+                                 
+                                 displayRetrainResults(data);
+                                 renderTrainHistory();
+                                 
+                                 alert('Retraining Complete! Model saved: ' + data.model);
+                                 loadModels(currentModelType);
+                                 status.innerHTML = 'Success!';
+                                 
+                                 document.getElementById('newModelName').value = '';
+                                 if(document.getElementById('retrainFile')) document.getElementById('retrainFile').value = '';
+                                 if(document.getElementById('retrainStoredSelect')) document.getElementById('retrainStoredSelect').value = '';
+                                 active = false;
+                             } else if (pollData.status === 'failed') {
+                                 throw new Error(pollData.error || 'Unknown training error');
+                             }
+                             // else status == 'running' or 'pending', continue
+                         }
+                         if(active) throw new Error("Frontend timeout waiting for job");
+                         
+                    } else if (initialData.model || initialData.metrics) { 
+                        // Synchronous fallback (e.g. if code reverts)
+                        const data = initialData;
+                        data.timestamp = Date.now();
+                        trainHistory.unshift(data);
+                        if (trainHistory.length > 20) trainHistory.pop();
+                        localStorage.setItem('trainHistory', JSON.stringify(trainHistory));
+                        
+                        displayRetrainResults(data);
+                        renderTrainHistory();
+                        
+                        alert('Retraining Complete! Model saved: ' + data.model);
+                        loadModels(currentModelType);
+                        status.innerHTML = 'Success!';
+                        
+                        document.getElementById('newModelName').value = '';
+                        if(document.getElementById('retrainFile')) document.getElementById('retrainFile').value = '';
+                        if(document.getElementById('retrainStoredSelect')) document.getElementById('retrainStoredSelect').value = '';
+                    }
+
                 } catch(e) {
                     console.error(e);
                     alert('Retrain Error: ' + e.message);

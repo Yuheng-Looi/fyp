@@ -3104,6 +3104,16 @@ def proxy_retrain():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/retrain/status/<job_id>', methods=['GET'])
+def proxy_retrain_status(job_id):
+    try:
+        base = get_base_url()
+        resp = requests.get(f"{base}/retrain/status/{job_id}", timeout=10)
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     # Ensure clean state at startup
     try:

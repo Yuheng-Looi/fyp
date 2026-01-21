@@ -653,9 +653,336 @@ def list_models_endpoint():
         "isolation_forest": [os.path.basename(f) for f in glob.glob("models/safetynet/*.pkl")]
     }
 
+@app.get("/retrain/status/{job_id}")
+def get_training_status(job_id: str):
+    if job_id not in training_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    return training_jobs[job_id]
+
+def run_training_task(job_id, params):
+    try:
+        training_jobs[job_id] = {"status": "running"}
+        # Load CSV from temp path
+        file_path = params['file_path']
+        df = pd.read_csv(file_path)
+        
+        # Execute logic using the shared helper
+        result = execute_training_logic(df, params)
+        training_jobs[job_id] = {"status": "completed", "result": result}
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        training_jobs[job_id] = {"status": "failed", "error": str(e)}
+    finally:
+        # Cleanup temp file
+        if os.path.exists(params['file_path']):
+            try:
+                os.remove(params['file_path'])
+            except: pass
+
+def execute_training_logic(df, params):
+    model_type = params['model_type']
+    model_name = params['model_name']
+    mapping = params.get('mapping')
+    scaler_id = params.get('scaler_id', 'default')
+    label_col = params.get('label_col', 'Label')
+    benign_label = params.get('benign_label', 'BENIGN')
+    sanitized_name = "".join(x for x in model_name if x.isalnum() or x in ['_', '-'])
+    
+    # Helper: Load Scaler
+    def load_specific_scaler(sid):
+        if sid in scaler_store:
+            return scaler_store[sid]
+        path = f'scalers/scaler_{sid}.pkl'
+        if sid == 'default' or not os.path.exists(path):
+             path2 = f'scalers/{sid}.pkl'
+             if os.path.exists(path2): path = path2
+             else: path = 'scalers/trichannel_scaler.pkl'
+        if os.path.exists(path):
+            try:
+                sc = joblib.load(path)
+                scaler_store[sid] = sc
+                return sc
+            except: raise ValueError(f"Failed to load scaler {sid}")
+        else: raise ValueError(f"Scaler {sid} not found")
+
+    # 1. Apply Mapping
+    if mapping:
+        try:
+            map_dict = json.loads(mapping) if isinstance(mapping, str) else mapping
+            rename_dict = {v: k for k, v in map_dict.items()}
+            df.rename(columns=rename_dict, inplace=True)
+        except Exception as e:
+            print(f"[!] Invalid mapping: {e}")
+    else:
+        df.rename(columns=COLUMN_MAPPING, inplace=True)
+        
+    # 2. Check Labels
+    found_label = None
+    for c in df.columns:
+        if c.strip() == label_col.strip():
+            found_label = c
+            break
+    
+    if not found_label:
+        raise ValueError(f"Label column '{label_col}' not found in CSV")
+
+    # 3. Clean
+    for col in EXPECTED_COLUMNS:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+    df.dropna(subset=EXPECTED_COLUMNS, inplace=True)
+
+    # 4. Model Logic
+    if model_type == "isolation_forest":
+        target_scaler_path = 'scalers/trichannel_scaler.pkl'
+        if scaler_id != 'default':
+             if os.path.exists(f'scalers/{scaler_id}.pkl'): target_scaler_path = f'scalers/{scaler_id}.pkl'
+             elif os.path.exists(f'scalers/scaler_{scaler_id}.pkl'): target_scaler_path = f'scalers/scaler_{scaler_id}.pkl'
+        
+        sn = SafetyNet(scaler_path=target_scaler_path, label_col=found_label)
+        
+        df['norm_label'] = df[found_label].astype(str).str.strip().str.upper()
+        benign_norm = benign_label.strip().upper()
+        df_benign = df[df['norm_label'] == benign_norm]
+        
+        if len(df_benign) < 100: raise ValueError("Not enough benign samples")
+        
+        current_scaler = load_specific_scaler(scaler_id)
+        sn.scaler = current_scaler
+             
+        sn.fit(sn.scaler.transform(df_benign[EXPECTED_COLUMNS]))
+        
+        # Eval
+        X_all = sn.scaler.transform(df[EXPECTED_COLUMNS])
+        y_true = df['norm_label'].apply(lambda x: 0 if x == benign_norm else 1)
+        preds = sn.model.predict(X_all)
+        y_pred = (preds == -1).astype(int)
+        
+        metrics = {
+            "accuracy": round(accuracy_score(y_true, y_pred), 4),
+            "precision": round(precision_score(y_true, y_pred, zero_division=0), 4),
+            "recall": round(recall_score(y_true, y_pred, zero_division=0), 4),
+            "f1": round(f1_score(y_true, y_pred, zero_division=0), 4)
+        }
+        
+        out_path = f"models/safetynet/{sanitized_name}.pkl"
+        os.makedirs("models/safetynet", exist_ok=True)
+        joblib.dump(sn, out_path)
+        model_store['safety_net'] = sn
+        
+        return {
+            "status": "success",
+            "model": out_path,
+            "metrics": metrics,
+            "model_type": "isolation_forest",
+            "model_name": sanitized_name
+        }
+
+    elif model_type == "xgb":
+        xgb_det = XGBDetector()
+        X = df[EXPECTED_COLUMNS]
+        y = df[found_label].apply(lambda x: 0 if str(x).strip().upper() == benign_label.strip().upper() else 1)
+        
+        if y.nunique() < 2: raise ValueError("XGB needs mixed labels")
+        
+        active_scaler = load_specific_scaler(scaler_id)
+        X_scaled = active_scaler.transform(X)
+        X_train, X_val, X_test, y_train, y_val, y_test = xgb_det.get_golden_split(X_scaled, y)
+        xgb_det.train_binary(X_train, y_train, X_val, y_val)
+        
+        # Eval
+        y_pred = xgb_det.model.predict(X_test)
+        y_prob = xgb_det.model.predict_proba(X_test)[:, 1]
+        
+        metrics = {
+            "accuracy": round(accuracy_score(y_test, y_pred), 4),
+            "precision": round(precision_score(y_test, y_pred, zero_division=0), 4),
+            "recall": round(recall_score(y_test, y_pred, zero_division=0), 4),
+            "f1": round(f1_score(y_test, y_pred, zero_division=0), 4),
+            "auc": round(roc_auc_score(y_test, y_prob), 4)
+        }
+        
+        out_path = f"models/xgb/{sanitized_name}.json"
+        os.makedirs("models/xgb", exist_ok=True)
+        xgb_det.model.save_model(out_path)
+        
+        # Hot swap
+        xgb_det2 = XGBDetector()
+        xgb_det2.model = xgb_det.model
+        model_store['xgb'] = xgb_det2
+        
+        return {
+            "status": "success", 
+            "model": out_path, 
+            "metrics": metrics,
+            "model_type": "xgb", 
+            "model_name": sanitized_name,
+            "learning_curve": xgb_det.evals_result,
+            "split_info": {"train": len(y_train), "val": len(y_val), "test": len(y_test)}
+        }
+
+    elif model_type == "gnn":
+        df_user = df
+        
+        # INSDN
+        insdn_ratio = float(params.get('insdn_ratio', 0.2))
+        insdn_dir = params.get('insdn_dir', 'datasets/insdn')
+        df_insdn = pd.DataFrame()
+        
+        if insdn_ratio > 0:
+             if not os.path.isabs(insdn_dir): insdn_dir = os.path.abspath(insdn_dir)
+             files = glob.glob(os.path.join(insdn_dir, "*.csv"))
+             frames = []
+             for f in files:
+                 try:
+                     t = pd.read_csv(f, low_memory=False)
+                     t.rename(columns=COLUMN_MAPPING, inplace=True)
+                     if found_label not in t.columns:
+                        for c in t.columns:
+                            if c.strip() == label_col.strip():
+                                t.rename(columns={c: found_label}, inplace=True)
+                                break
+                     frames.append(t)
+                 except: pass
+             if frames:
+                 df_insdn = pd.concat(frames, ignore_index=True)
+                 for c in EXPECTED_COLUMNS:
+                      if c in df_insdn.columns: df_insdn[c] = pd.to_numeric(df_insdn[c], errors='coerce')
+                 df_insdn.dropna(subset=EXPECTED_COLUMNS, inplace=True)
+                 if found_label in df_insdn.columns:
+                      df_insdn['norm_label'] = df_insdn[found_label].astype(str).str.strip().str.replace(r"[\u200b\u200c\u200d\ufeff]", "", regex=True)
+                      
+        # Clean user
+        df_user['norm_label'] = df_user[found_label].astype(str).str.strip().str.replace(r"[\u200b\u200c\u200d\ufeff]", "", regex=True)
+        
+        # Mix
+        insdn_added = 0
+        if not df_insdn.empty and insdn_ratio > 0:
+            target = max(1, int(len(df_user) * insdn_ratio))
+            if len(df_insdn) > target: df_insdn = df_insdn.sample(n=target, random_state=int(params.get('random_seed', 42)))
+            insdn_added = len(df_insdn)
+            df_mix = pd.concat([df_user, df_insdn], ignore_index=True)
+        else:
+            df_mix = df_user
+            
+        print(f"[-] Fitting new LabelEncoder on {len(df_mix)} samples with {df_mix['norm_label'].nunique()} unique labels.")
+        le = LabelEncoder()
+        df_mix['Label_Encoded'] = le.fit_transform(df_mix['norm_label'])
+        
+        gnn_scaler = StandardScaler()
+        gnn_scaler.fit(df_mix[EXPECTED_COLUMNS])
+        X = gnn_scaler.transform(df_mix[EXPECTED_COLUMNS])
+        
+        gnn_df = df_mix[['Label_Encoded']].copy()
+        gnn_df[EXPECTED_COLUMNS] = X
+        if 'Src IP' not in df_mix.columns: gnn_df['Src IP'] = 0
+        else: gnn_df['Src IP'] = df_mix['Src IP']
+        if 'Dst IP' not in df_mix.columns: gnn_df['Dst IP'] = 0
+        else: gnn_df['Dst IP'] = df_mix['Dst IP']
+        if 'Timestamp' not in df_mix.columns: gnn_df['Timestamp'] = time.time()
+        else: gnn_df['Timestamp'] = df_mix['Timestamp']
+        if 'Protocol' not in gnn_df.columns:
+             gnn_df['Protocol'] = df_mix['Protocol'].values if 'Protocol' in df_mix.columns else 0
+            
+        data = gnn_utils.build_graph(
+            gnn_df, EXPECTED_COLUMNS,
+            strategy=params.get('gnn_strategy', 'knn_protocol'),
+            k=int(params.get('gnn_k', 5)),
+            delta_t_seconds=int(params.get('gnn_delta_t', 10))
+        )
+        
+        y_all = data.y.cpu().numpy()
+        idx_all = np.arange(len(y_all))
+        train_idx, temp_idx = train_test_split(idx_all, test_size=(1.0 - float(params.get('split_train', 0.7))), stratify=y_all, random_state=int(params.get('random_seed', 42)))
+        
+        val_ratio = float(params.get('split_val', 0.15))
+        test_ratio = float(params.get('split_test', 0.15))
+        relative_val = val_ratio / (val_ratio + test_ratio)
+        
+        val_idx, test_idx = train_test_split(temp_idx, test_size=(1.0 - relative_val), stratify=y_all[temp_idx], random_state=int(params.get('random_seed', 42)))
+        
+        train_mask = torch.zeros(len(y_all), dtype=torch.bool)
+        val_mask = torch.zeros(len(y_all), dtype=torch.bool)
+        test_mask = torch.zeros(len(y_all), dtype=torch.bool)
+        train_mask[train_idx] = True
+        val_mask[val_idx] = True
+        test_mask[test_idx] = True
+        
+        num_classes = len(le.classes_)
+        model = gnn_utils.GNNClassifier(
+            input_dim=len(EXPECTED_COLUMNS),
+            hidden_dim=int(params.get('gnn_hidden_dim', 64)),
+            num_classes=num_classes,
+            num_layers=int(params.get('gnn_num_layers', 2)),
+            dropout=float(params.get('gnn_dropout', 0.3)),
+            arch=params.get('gnn_arch', 'sage')
+        )
+        
+        cw = compute_class_weight('balanced', classes=np.unique(y_all), y=y_all)
+        cw = torch.tensor(cw, dtype=torch.float)
+        
+        gnn_utils.train_gnn(
+            model, data, train_mask, val_mask,
+            epochs=int(params.get('gnn_epochs', 60)),
+            class_weights=cw
+        )
+        
+        with torch.no_grad():
+             logits = model(data.x, data.edge_index)
+             preds = logits.argmax(dim=1)
+        
+        y_t = data.y[test_mask].cpu().numpy()
+        y_p = preds[test_mask].cpu().numpy()
+        
+        metrics = {
+            "accuracy": round(accuracy_score(y_t, y_p), 4),
+            "f1": round(f1_score(y_t, y_p, average='macro', zero_division=0), 4),
+            "recall": round(recall_score(y_t, y_p, average='macro', zero_division=0), 4)
+        }
+        
+        out_path = f"models/gnn/{sanitized_name}.pt"
+        os.makedirs("models/gnn", exist_ok=True)
+        torch.save(model.state_dict(), out_path)
+        joblib.dump(gnn_scaler, f"scalers/gnn_scaler_{sanitized_name}.pkl")
+        
+        os.makedirs('encoders', exist_ok=True)
+        with open(f"encoders/{sanitized_name}_label_encoder.pkl", 'wb') as f:
+             pickle.dump(le, f)
+        
+        # Hot Swap
+        model.eval()
+        model_store['gnn_multiclass'] = model
+        scaler_store['gnn_scaler'] = gnn_scaler
+        encoder_store['label_encoder'] = le
+        
+        config = {
+            "info": {
+                "arch": params.get('gnn_arch'), 
+                "config": params
+            },
+            "metrics": metrics
+        }
+        with open(f"models/gnn/{sanitized_name}_config.json", 'w') as f: json.dump(config, f)
+        
+        return {
+            "status": "success",
+            "model": out_path,
+            "metrics": metrics,
+            "model_type": "gnn",
+            "model_name": sanitized_name,
+            "gnn_config": config,
+            "split_info": {"total": len(df_mix), "train": len(train_idx), "val": len(val_idx), "test": len(test_idx), "insdn_added": insdn_added}
+        }
+    
+    raise ValueError("Unknown model type")
+
 @app.post("/retrain/{model_type}")
 async def retrain_model_endpoint(
     model_type: str, 
+    background_tasks: BackgroundTasks,
     model_name: str = Form(...),
     file: UploadFile = File(...),
     label_col: str = Form("Label"),
@@ -677,551 +1004,45 @@ async def retrain_model_endpoint(
     split_test: float = Form(0.15),
     random_seed: int = Form(42)
 ):
-    valid_types = ["xgb", "isolation_forest", "gnn"]
-    if model_type not in valid_types:
-        raise HTTPException(400, f"Invalid model type. Must be one of {valid_types}")
+    # Create temp file for the background task to read
+    temp_dir = "temp_uploads"
+    os.makedirs(temp_dir, exist_ok=True)
+    temp_path = os.path.join(temp_dir, f"train_{uuid.uuid4().hex}.csv")
+    
+    with open(temp_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
         
-    sanitized_name = "".join(x for x in model_name if x.isalnum() or x in ['_', '-'])
-    if not sanitized_name:
-        raise HTTPException(400, "Invalid model name")
-        
-    # Helper: Load Scaler
-    def load_specific_scaler(sid):
-        if sid in scaler_store:
-            return scaler_store[sid]
-        
-        # Determine path
-        # Try direct or legacy depending on how ID was listed
-        # list_scalers returns ID without prefix usually.
-        # But file is saved WITH prefix.
-        
-        path = f'scalers/scaler_{sid}.pkl'
-        
-        if sid == 'default' or not os.path.exists(path):
-             # Try other path if weird setup
-             path2 = f'scalers/{sid}.pkl'
-             if os.path.exists(path2):
-                 path = path2
-             else:
-                 path = 'scalers/trichannel_scaler.pkl'
-             
-        if os.path.exists(path):
-            try:
-                sc = joblib.load(path)
-                scaler_store[sid] = sc
-                return sc
-            except:
-                raise HTTPException(500, f"Failed to load scaler {sid}")
-        else:
-             raise HTTPException(404, f"Scaler {sid} not found")
-
-    try:
-        # Load CSV
-        df = pd.read_csv(file.file)
-
-        # Apply Column Mapping
-        if mapping:
-            try:
-                map_dict = json.loads(mapping)
-                rename_dict = {v: k for k, v in map_dict.items()}
-                df.rename(columns=rename_dict, inplace=True)
-            except Exception as e:
-                print(f"[!] Invalid mapping provided: {e}")
-        else:
-            df.rename(columns=COLUMN_MAPPING, inplace=True)
-        
-        # Check Label Col
-        # Clean label col name logic? (strip info)
-        # Maybe user provides ' Label '
-        found_label = None
-        for c in df.columns:
-            if c.strip() == label_col.strip():
-                found_label = c
-                break
-        
-        if not found_label:
-            raise HTTPException(400, f"Label column '{label_col}' not found in CSV")
-            
-        # Check Features
-        # We need the 15 features
-        missing = [c for c in EXPECTED_COLUMNS if c not in df.columns]
-        if missing:
-             raise HTTPException(400, f"Missing features: {missing}")
-
-        # --- DATA CLEANING START ---
-        # Force numeric conversion for expected feature columns
-        # This handles mixed types, "Infinity", "NaN", and repeated headers
-        for col in EXPECTED_COLUMNS:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-            
-        # Drop rows where any feature became NaN (due to coercion)
-        df.dropna(subset=EXPECTED_COLUMNS, inplace=True)
-        # --- DATA CLEANING END ---
-
-        # Retrain Logic Switch
-        if model_type == "isolation_forest":
-            # 1. Initialize SafetyNet
-            # Use the selected scaler
-            # TriChannelScaler logic is assumed if using default or similar structure.
-            
-            # Determine scaler path for SafetyNet (which might re-load it, or we pass the object if updated)
-            # SafetyNet class expects scaler_path string usually to load it internally if not provided with object.
-            # Let's check constructor signature from anomaly_utils if we could but assume generic usage:
-            # We will pass the scaler object directly if possible or the path.
-            
-            target_scaler_path = 'scalers/trichannel_scaler.pkl'
-            
-            if scaler_id != 'default':
-                # Try direct
-                if os.path.exists(f'scalers/{scaler_id}.pkl'):
-                     target_scaler_path = f'scalers/{scaler_id}.pkl'
-                elif os.path.exists(f'scalers/scaler_{scaler_id}.pkl'):
-                     target_scaler_path = f'scalers/scaler_{scaler_id}.pkl'
-                else:
-                     # Fallback check
-                     pass 
-            
-            if not os.path.exists(target_scaler_path):
-                 raise HTTPException(404, f"Scaler file not found: {target_scaler_path}")
-            
-            sn = SafetyNet(scaler_path=target_scaler_path, label_col=found_label)
-            
-            # 2. Get Benign Only
-            # Normalize labels?
-            df['norm_label'] = df[found_label].astype(str).str.strip().str.upper()
-            benign_norm = benign_label.strip().upper()
-            
-            df_benign = df[df['norm_label'] == benign_norm]
-            if len(df_benign) < 100:
-                raise HTTPException(400, f"Not enough benign samples ({len(df_benign)}) for SafetyNet training")
-                
-            # 3. Scale Data (Important: SafetyNet needs Scaled Data)
-            # We need to scale df_benign using the scaler
-            # Load scaler object to ensure we have it
-            current_scaler = load_specific_scaler(scaler_id)
-            if not current_scaler:
-                 raise HTTPException(500, "Base scaler for SafetyNet training not found")
-            
-            # Start fresh with this scaler in SafetyNet instance
-            sn.scaler = current_scaler
-            
-            # Transform
-            X_benign = df_benign[EXPECTED_COLUMNS]
-            X_benign_scaled = sn.scaler.transform(X_benign) 
-            
-            # SafetyNet expects DataFrame with 45 columns (if TriChannel)
-            # transform returns DataFrame usually if input was DataFrame in sklearn wrappers, 
-            # but TriChannelScaler returns DataFrame.
-            
-            # 4. Fit
-            sn.fit(X_benign_scaled)
-            
-            # 5. Evaluate on full data
-            X_all = df[EXPECTED_COLUMNS]
-            X_all_scaled = sn.scaler.transform(X_all)
-            y_true = df['norm_label'].apply(lambda x: 0 if x == benign_norm else 1)
-            
-            # SafetyNet predict: -1 = anomaly, 1 = normal
-            sn_preds_raw = sn.model.predict(X_all_scaled)
-            # Convert: -1 (anomaly) -> 1 (attack), 1 (normal) -> 0 (benign)
-            y_pred = (sn_preds_raw == -1).astype(int)
-            
-            metrics = {
-                "accuracy": round(accuracy_score(y_true, y_pred), 4),
-                "precision": round(precision_score(y_true, y_pred, zero_division=0), 4),
-                "recall": round(recall_score(y_true, y_pred, zero_division=0), 4),
-                "f1": round(f1_score(y_true, y_pred, zero_division=0), 4)
-            }
-            
-            # Confusion matrix
-            cm = confusion_matrix(y_true, y_pred)
-            if cm.shape == (2, 2):
-                confusion = {
-                    "tn": int(cm[0][0]),
-                    "fp": int(cm[0][1]),
-                    "fn": int(cm[1][0]),
-                    "tp": int(cm[1][1])
-                }
-            else:
-                confusion = {"tn": 0, "fp": 0, "fn": 0, "tp": 0}
-            
-            split_info = {
-                "total_samples": len(df),
-                "benign_count": len(df_benign),
-                "attack_count": len(df) - len(df_benign),
-                "training_samples": len(df_benign)
-            }
-            
-            # 6. Save
-            out_path = f"models/safetynet/{sanitized_name}.pkl"
-            os.makedirs("models/safetynet", exist_ok=True)
-            joblib.dump(sn, out_path)
-            model_store['safety_net'] = sn # Hot swap? Maybe dangerous but okay for demo.
-            
-            return {
-                "status": "success", 
-                "model": out_path,
-                "model_type": "isolation_forest",
-                "model_name": sanitized_name,
-                "metrics": metrics,
-                "confusion_matrix": confusion,
-                "split_info": split_info
-            }
-
-        elif model_type == "xgb":
-            # 1. Initialize XGBDetector
-            xgb_det = XGBDetector()
-            
-            # 2. Split Data
-            X = df[EXPECTED_COLUMNS]
-            y = df[found_label]
-            
-            # Encode Y -> 0 (Benign), 1 (Attack)
-            # Need to match benign_label
-            y_binary = y.apply(lambda x: 0 if str(x).strip().upper() == benign_label.strip().upper() else 1)
-            
-            if y_binary.nunique() < 2:
-                 raise HTTPException(400, "XGBoost requires both Benign and Attack samples.")
-
-            # Scale X
-            # Use selected scaler
-            active_scaler = load_specific_scaler(scaler_id)
-                 
-            X_scaled = active_scaler.transform(X)
-            
-            # Split
-            X_train, X_val, X_test, y_train, y_val, y_test = xgb_det.get_golden_split(X_scaled, y_binary)
-            
-            # 3. Train
-            xgb_det.train_binary(X_train, y_train, X_val, y_val)
-            
-            # 4. Evaluate on test set
-            y_pred = xgb_det.model.predict(X_test)
-            y_proba = xgb_det.model.predict_proba(X_test)[:, 1]
-            
-            metrics = {
-                "accuracy": round(accuracy_score(y_test, y_pred), 4),
-                "precision": round(precision_score(y_test, y_pred, zero_division=0), 4),
-                "recall": round(recall_score(y_test, y_pred, zero_division=0), 4),
-                "f1": round(f1_score(y_test, y_pred, zero_division=0), 4),
-                "auc": round(roc_auc_score(y_test, y_proba), 4)
-            }
-            
-            # Confusion matrix
-            cm = confusion_matrix(y_test, y_pred)
-            confusion = {
-                "tn": int(cm[0][0]),
-                "fp": int(cm[0][1]),
-                "fn": int(cm[1][0]),
-                "tp": int(cm[1][1])
-            }
-            
-            # Learning curve from evals_result
-            evals = xgb_det.evals_result
-            learning_curve = {
-                "train_logloss": evals.get('validation_0', {}).get('logloss', []),
-                "val_logloss": evals.get('validation_1', {}).get('logloss', []),
-                "train_auc": evals.get('validation_0', {}).get('auc', []),
-                "val_auc": evals.get('validation_1', {}).get('auc', [])
-            }
-            
-            # Data split info
-            split_info = {
-                "total_samples": len(df),
-                "train_samples": len(y_train),
-                "val_samples": len(y_val),
-                "test_samples": len(y_test),
-                "benign_count": int((y_binary == 0).sum()),
-                "attack_count": int((y_binary == 1).sum())
-            }
-            
-            # 5. Save
-            out_path = f"models/xgb/{sanitized_name}.json"
-            os.makedirs("models/xgb", exist_ok=True)
-            xgb_det.model.save_model(out_path)
-            
-            # Store hot swap
-            xgb_det2 = XGBDetector()
-            xgb_det2.model = xgb_det.model
-            model_store['xgb'] = xgb_det2
-            
-            return {
-                "status": "success", 
-                "model": out_path, 
-                "model_type": "xgb",
-                "model_name": sanitized_name,
-                "metrics": metrics,
-                "confusion_matrix": confusion,
-                "learning_curve": learning_curve,
-                "split_info": split_info
-            }
-
-        elif model_type == "gnn":
-            # --- GNN Retrain (Multiclass) ---
-            # 1) Load user dataset (already in df) and ensure required columns
-            df_user = df.copy()
-
-            # 2) Load INSDN datasets (optional) and sample a portion
-            insdn_added = 0
-            insdn_used_files = []
-            df_insdn = pd.DataFrame()
-            insdn_ratio = max(0.0, min(float(insdn_ratio), 1.0))
-
-            try:
-                insdn_dir_abs = insdn_dir
-                if not os.path.isabs(insdn_dir_abs):
-                    insdn_dir_abs = os.path.join(os.getcwd(), insdn_dir_abs)
-                if insdn_ratio > 0 and os.path.exists(insdn_dir_abs):
-                    insdn_files = glob.glob(os.path.join(insdn_dir_abs, "*.csv"))
-                    if insdn_files:
-                        frames = []
-                        for fpath in insdn_files:
-                            try:
-                                tmp = pd.read_csv(fpath, low_memory=False)
-                                # apply mapping for CIC variants
-                                tmp.rename(columns=COLUMN_MAPPING, inplace=True)
-                                if found_label not in tmp.columns:
-                                    # Try to find a label column by name match
-                                    for c in tmp.columns:
-                                        if c.strip() == label_col.strip():
-                                            tmp.rename(columns={c: found_label}, inplace=True)
-                                            break
-                                frames.append(tmp)
-                                insdn_used_files.append(os.path.basename(fpath))
-                            except Exception:
-                                continue
-                        if frames:
-                            df_insdn = pd.concat(frames, ignore_index=True)
-            except Exception:
-                df_insdn = pd.DataFrame()
-
-            # 3) Clean/align both datasets
-            def clean_frame(frame: pd.DataFrame) -> pd.DataFrame:
-                # Ensure expected columns
-                for col in EXPECTED_COLUMNS:
-                    if col not in frame.columns:
-                        frame[col] = np.nan
-                # Force numeric conversion for features
-                for col in EXPECTED_COLUMNS:
-                    frame[col] = pd.to_numeric(frame[col], errors='coerce')
-                # Drop rows with NaNs in features
-                frame = frame.dropna(subset=EXPECTED_COLUMNS)
-
-                # Normalize timestamps if present
-                if 'Timestamp' in frame.columns:
-                    frame['Timestamp'] = pd.to_datetime(frame['Timestamp'], errors='coerce')
-
-                # Normalize label column name
-                if found_label not in frame.columns:
-                    # Best-effort: if any column matches label_col after strip
-                    for c in frame.columns:
-                        if c.strip() == label_col.strip():
-                            frame.rename(columns={c: found_label}, inplace=True)
-                            break
-                if found_label not in frame.columns:
-                    return pd.DataFrame()
-
-                # Normalize labels
-                frame['norm_label'] = (
-                    frame[found_label]
-                    .astype(str)
-                    .str.replace(r"[\u200b\u200c\u200d\ufeff]", "", regex=True)
-                    .str.strip()
-                    .str.replace(r"\s+", " ", regex=True)
-                )
-                return frame
-
-            df_user = clean_frame(df_user)
-            if df_user.empty:
-                raise HTTPException(400, "User dataset has no valid rows after cleaning.")
-
-            if not df_insdn.empty:
-                df_insdn = clean_frame(df_insdn)
-                if df_insdn.empty:
-                    insdn_ratio = 0.0
-
-            # 4) Mix datasets (keep old attack patterns + new)
-            if insdn_ratio > 0 and not df_insdn.empty:
-                user_count = len(df_user)
-                target_insdn = max(1, int(user_count * insdn_ratio))
-                if len(df_insdn) > target_insdn:
-                    df_insdn = df_insdn.sample(n=target_insdn, random_state=random_seed)
-                insdn_added = len(df_insdn)
-                df_mix = pd.concat([df_user, df_insdn], ignore_index=True)
-            else:
-                df_mix = df_user
-
-            # 5) Prepare features + labels (multiclass)
-            # Create NEW label encoder to support new attack types
-            print(f"[-] Fitting new LabelEncoder on {len(df_mix)} samples with {df_mix['norm_label'].nunique()} unique labels.")
-            le = LabelEncoder()
-            df_mix['Label_Encoded'] = le.fit_transform(df_mix['norm_label'])
-            
-            # Do not overwrite global encoder here. We will save it with the model artifacts later.
-            # encoder_store['label_encoder'] = le  <-- Only update after successful training/hot swap
-
-            # 6) Scale features for GNN using StandardScaler
-            gnn_scaler = StandardScaler()
-            gnn_scaler.fit(df_mix[EXPECTED_COLUMNS])
-            X_scaled = gnn_scaler.transform(df_mix[EXPECTED_COLUMNS])
-
-            # 7) Build graph (use scaled features)
-            gnn_df = df_mix[['Label_Encoded']].copy()
-            gnn_df[EXPECTED_COLUMNS] = X_scaled
-            # Build a simple graph using scaled features
-            # Attach meta columns required for graph strategies
-            for meta_col in ['Src IP', 'Dst IP', 'Timestamp']:
-                if meta_col not in df_mix.columns:
-                    gnn_df[meta_col] = 0
-                else:
-                    gnn_df[meta_col] = df_mix[meta_col].values
-            # Keep feature-scaled Protocol for node features; use raw Protocol only if missing
-            if 'Protocol' not in gnn_df.columns:
-                gnn_df['Protocol'] = df_mix['Protocol'].values if 'Protocol' in df_mix.columns else 0
-
-            data = gnn_utils.build_graph(
-                gnn_df,
-                EXPECTED_COLUMNS,
-                strategy=gnn_strategy,
-                k=gnn_k,
-                delta_t_seconds=gnn_delta_t
-            )
-
-            # 8) Create stratified masks
-            y_all = data.y.cpu().numpy()
-            idx_all = np.arange(len(y_all))
-            if split_train + split_val + split_test <= 0.99:
-                raise HTTPException(400, "Split ratios must sum to 1.0")
-            if abs((split_train + split_val + split_test) - 1.0) > 1e-3:
-                raise HTTPException(400, "Split ratios must sum to 1.0")
-
-            train_idx, temp_idx = train_test_split(
-                idx_all,
-                test_size=(1.0 - split_train),
-                random_state=random_seed,
-                stratify=y_all
-            )
-            # Compute val/test from temp
-            val_ratio = split_val / (split_val + split_test)
-            val_idx, test_idx = train_test_split(
-                temp_idx,
-                test_size=(1.0 - val_ratio),
-                random_state=random_seed,
-                stratify=y_all[temp_idx]
-            )
-
-            train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-            val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-            test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
-            train_mask[train_idx] = True
-            val_mask[val_idx] = True
-            test_mask[test_idx] = True
-
-            # 9) Model init + training
-            num_classes = len(le.classes_)
-            model = gnn_utils.GNNClassifier(
-                input_dim=len(EXPECTED_COLUMNS),
-                hidden_dim=int(gnn_hidden_dim),
-                num_classes=num_classes,
-                num_layers=int(gnn_num_layers),
-                dropout=float(gnn_dropout),
-                arch=str(gnn_arch).lower()
-            )
-
-            # Compute class weights for imbalance
-            class_weights = compute_class_weight(
-                class_weight='balanced',
-                classes=np.unique(y_all),
-                y=y_all
-            )
-            class_weights = torch.tensor(class_weights, dtype=torch.float)
-
-            history = gnn_utils.train_gnn(
-                model,
-                data,
-                train_mask,
-                val_mask,
-                epochs=int(gnn_epochs),
-                lr=0.01,
-                patience=10,
-                class_weights=class_weights
-            )
-
-            # 10) Evaluate
-            with torch.no_grad():
-                logits = model(data.x, data.edge_index)
-                preds = logits.argmax(dim=1)
-            y_true = data.y[test_mask].cpu().numpy()
-            y_pred = preds[test_mask].cpu().numpy()
-            acc = accuracy_score(y_true, y_pred)
-            metrics = gnn_utils.evaluate_gnn(model, data, test_mask, le, is_binary_task=False)
-            metrics['accuracy'] = round(float(acc), 4)
-
-            # 11) Save artifacts
-            os.makedirs('models/gnn', exist_ok=True)
-            os.makedirs('scalers', exist_ok=True)
-            os.makedirs('encoders', exist_ok=True)
-
-            model_path = f"models/gnn/{sanitized_name}.pt"
-            scaler_path = f"scalers/gnn_scaler_{sanitized_name}.pkl"
-            encoder_path = f"encoders/{sanitized_name}_label_encoder.pkl"
-            config_path = f"models/gnn/{sanitized_name}_config.json"
-
-            torch.save(model.state_dict(), model_path)
-            joblib.dump(gnn_scaler, scaler_path)
-            with open(encoder_path, 'wb') as f:
-                pickle.dump(le, f)
-
-            config = {
-                "info": {
-                    "arch": str(gnn_arch).lower(),
-                    "encoder_path": encoder_path,
-                    "config": {
-                        "hidden_dim": int(gnn_hidden_dim),
-                        "num_layers": int(gnn_num_layers),
-                        "dropout": float(gnn_dropout)
-                    }
-                },
-                "data": {
-                    "feature_count": len(EXPECTED_COLUMNS),
-                    "num_classes": num_classes
-                }
-            }
-            with open(config_path, 'w') as f:
-                json.dump(config, f, indent=2)
-
-            # Hot swap
-            model.eval()
-            model_store['gnn_multiclass'] = model
-            scaler_store['gnn_scaler'] = gnn_scaler
-            encoder_store['label_encoder'] = le
-
-            split_info = {
-                "total_samples": int(len(df_mix)),
-                "train_samples": int(len(train_idx)),
-                "val_samples": int(len(val_idx)),
-                "test_samples": int(len(test_idx)),
-                "user_samples": int(len(df_user)),
-                "insdn_added": int(insdn_added),
-                "insdn_files": insdn_used_files
-            }
-
-            return {
-                "status": "success",
-                "model": model_path,
-                "model_type": "gnn",
-                "model_name": sanitized_name,
-                "metrics": metrics,
-                "split_info": split_info,
-                "gnn_config": config,
-                "scaler_path": scaler_path,
-                "encoder_path": "encoders/label_encoder.pkl"
-            }
-            
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(500, f"Retraining failed: {str(e)}")
+    job_id = str(uuid.uuid4())
+    training_jobs[job_id] = {"status": "pending"}
+    
+    params = {
+        "model_type": model_type,
+        "model_name": model_name,
+        "file_path": temp_path,
+        "label_col": label_col,
+        "benign_label": benign_label,
+        "mapping": mapping,
+        "scaler_id": scaler_id,
+        "insdn_ratio": insdn_ratio,
+        "insdn_dir": insdn_dir,
+        "gnn_arch": gnn_arch,
+        "gnn_epochs": gnn_epochs,
+        "gnn_hidden_dim": gnn_hidden_dim,
+        "gnn_num_layers": gnn_num_layers,
+        "gnn_dropout": gnn_dropout,
+        "gnn_strategy": gnn_strategy,
+        "gnn_k": gnn_k,
+        "gnn_delta_t": gnn_delta_t,
+        "split_train": split_train,
+        "split_val": split_val,
+        "split_test": split_test,
+        "random_seed": random_seed
+    }
+    
+    background_tasks.add_task(run_training_task, job_id, params)
+    
+    return {"status": "pending", "job_id": job_id, "message": "Training started in background"}
 
 
 if __name__ == "__main__":
