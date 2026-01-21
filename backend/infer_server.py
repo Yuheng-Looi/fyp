@@ -85,21 +85,64 @@ def load_artifacts():
         # GNN Multiclass Model
         gnn_config_path = 'models/gnn/best_multiclass_config.json'
         gnn_model_path = 'models/gnn/best_multiclass_gnn.pt'
-        encoder_path = 'encoders/label_encoder.pkl'
+        default_encoder_path = 'encoders/label_encoder.pkl'
         
-        if os.path.exists(gnn_config_path) and os.path.exists(gnn_model_path) and os.path.exists(encoder_path):
+        if os.path.exists(gnn_config_path) and os.path.exists(gnn_model_path):
             print("[-] Loading GNN Multiclass model...")
             with open(gnn_config_path, 'r') as f:
                 gnn_config = json.load(f)
             
-            with open(encoder_path, 'rb') as f:
-                le = pickle.load(f)
-            encoder_store['label_encoder'] = le
+            # Determine encoder to load
+            # Check config for specific encoder path first
+            specific_encoder_path = gnn_config.get('info', {}).get('encoder_path')
+            le = None
             
+            if specific_encoder_path and os.path.exists(specific_encoder_path):
+                print(f"[-] Loading specific GNN encoder: {specific_encoder_path}")
+                with open(specific_encoder_path, 'rb') as f:
+                    le = pickle.load(f)
+            elif os.path.exists(default_encoder_path):
+                print(f"[-] Loading default encoder: {default_encoder_path}")
+                with open(default_encoder_path, 'rb') as f:
+                    le = pickle.load(f)
+            
+            if le is not None:
+                encoder_store['label_encoder'] = le
+            else:
+                print("[!] Error: No label encoder found (neither specific nor default).")
+
             # Initialize Model
             info = gnn_config['info']
             hyperparams = info['config']
-            num_classes = len(le.classes_)
+            
+            # Load state dict first to determine correct num_classes
+            state_dict = torch.load(gnn_model_path, map_location=torch.device('cpu'))
+            
+            # Infer num_classes from the last layer's weight in state_dict based on num_layers
+            last_layer_idx = hyperparams['num_layers'] - 1
+            # Try to find the weight key for the last layer to determine output dimension
+            detected_classes = None
+            
+            # Common patterns for PyG layers (SAGEConv, GATConv) end up using linear layers
+            # SAGEConv: layers.X.lin_l.weight
+            # GATConv: layers.X.lin_src.weight (or similar depending on implementation version)
+            
+            for key, tensor in state_dict.items():
+                if key.startswith(f"layers.{last_layer_idx}") and "weight" in key:
+                    # found a weight tensor for the last layer
+                    # The output dimension (num_classes) is typically encoded in the shape
+                    # For Linear(in, out), PyTorch stores [out, in]
+                    if len(tensor.shape) >= 1:
+                        detected_classes = tensor.shape[0]
+                        break
+            
+            if detected_classes:
+                print(f"[-] Detected num_classes from checkpoint: {detected_classes}")
+                if detected_classes != len(le.classes_):
+                    print(f"[!] Warning: LabelEncoder has {len(le.classes_)} classes but Model has {detected_classes}. Predictions might be misaligned.")
+                num_classes = detected_classes
+            else:
+                num_classes = len(le.classes_)
             
             gnn_model = gnn_utils.GNNClassifier(
                 input_dim=len(EXPECTED_COLUMNS),
@@ -110,7 +153,7 @@ def load_artifacts():
                 arch=info['arch']
             )
             
-            gnn_model.load_state_dict(torch.load(gnn_model_path, map_location=torch.device('cpu')))
+            gnn_model.load_state_dict(state_dict)
             gnn_model.eval()
             model_store['gnn_multiclass'] = gnn_model
             
@@ -1012,11 +1055,8 @@ async def retrain_model_endpoint(
             le = LabelEncoder()
             df_mix['Label_Encoded'] = le.fit_transform(df_mix['norm_label'])
             
-            # Save the new encoder immediately so it persists
-            os.makedirs('encoders', exist_ok=True)
-            with open('encoders/label_encoder.pkl', 'wb') as f:
-                pickle.dump(le, f)
-            encoder_store['label_encoder'] = le
+            # Do not overwrite global encoder here. We will save it with the model artifacts later.
+            # encoder_store['label_encoder'] = le  <-- Only update after successful training/hot swap
 
             # 6) Scale features for GNN using StandardScaler
             gnn_scaler = StandardScaler()
@@ -1122,14 +1162,18 @@ async def retrain_model_endpoint(
 
             model_path = f"models/gnn/{sanitized_name}.pt"
             scaler_path = f"scalers/gnn_scaler_{sanitized_name}.pkl"
+            encoder_path = f"encoders/{sanitized_name}_label_encoder.pkl"
             config_path = f"models/gnn/{sanitized_name}_config.json"
 
             torch.save(model.state_dict(), model_path)
             joblib.dump(gnn_scaler, scaler_path)
+            with open(encoder_path, 'wb') as f:
+                pickle.dump(le, f)
 
             config = {
                 "info": {
                     "arch": str(gnn_arch).lower(),
+                    "encoder_path": encoder_path,
                     "config": {
                         "hidden_dim": int(gnn_hidden_dim),
                         "num_layers": int(gnn_num_layers),

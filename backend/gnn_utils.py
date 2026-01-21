@@ -97,6 +97,11 @@ def build_graph(df, feature_cols, strategy='hybrid', k=5, delta_t_seconds=10):
     Constructs a PyG Data object based on the strategy.
     Strategies: 'knn_protocol', 'src_ip_temporal', 'dst_ip_temporal', 'hybrid'
     """
+    # CRITICAL: Reset index to ensure 0..N-1 alignment. 
+    # PyTorch Geometric nodes are defined by row position (0 to NumNodes-1).
+    # If the df has a discontinuous index (e.g. from filtering), using df.index as IDs will fail.
+    df = df.reset_index(drop=True)
+
     print(f"Building graph with strategy: {strategy}")
     
     # Node features
