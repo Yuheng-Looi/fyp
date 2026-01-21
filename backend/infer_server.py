@@ -15,6 +15,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Union, Optional
 from sklearn.metrics import accuracy_score, recall_score, f1_score, confusion_matrix
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
 from torch_geometric.data import Data
 
 from anomaly_utils import SafetyNet
@@ -112,17 +114,22 @@ def load_artifacts():
             gnn_model.eval()
             model_store['gnn_multiclass'] = gnn_model
             
-            # Fit GNN Scaler (StandardScaler) on reference data
-            # We need this because GNN was trained on StandardScaler(15 features), not TriChannel
-            ref_data_path = '01eda/cleaned_data15.csv'
-            if os.path.exists(ref_data_path):
-                print("[-] Fitting GNN Scaler on reference data...")
-                df_ref = pd.read_csv(ref_data_path, usecols=EXPECTED_COLUMNS)
-                gnn_scaler = StandardScaler()
-                gnn_scaler.fit(df_ref)
-                scaler_store['gnn_scaler'] = gnn_scaler
+            # Load GNN Scaler (StandardScaler). Prefer persisted scaler if present.
+            gnn_scaler_path = 'scalers/gnn_scaler.pkl'
+            if os.path.exists(gnn_scaler_path):
+                print("[-] Loading GNN scaler from disk...")
+                scaler_store['gnn_scaler'] = joblib.load(gnn_scaler_path)
             else:
-                print("[!] Reference data for GNN scaler not found. GNN predictions might be inaccurate.")
+                # Fallback: fit on reference data
+                ref_data_path = '01eda/cleaned_data15.csv'
+                if os.path.exists(ref_data_path):
+                    print("[-] Fitting GNN Scaler on reference data...")
+                    df_ref = pd.read_csv(ref_data_path, usecols=EXPECTED_COLUMNS)
+                    gnn_scaler = StandardScaler()
+                    gnn_scaler.fit(df_ref)
+                    scaler_store['gnn_scaler'] = gnn_scaler
+                else:
+                    print("[!] Reference data for GNN scaler not found. GNN predictions might be inaccurate.")
         else:
             print("[!] GNN Multiclass artifacts not found.")
 
@@ -609,7 +616,21 @@ async def retrain_model_endpoint(
     label_col: str = Form("Label"),
     benign_label: str = Form("BENIGN"),
     mapping: Optional[str] = Form(None),
-    scaler_id: str = Form("default")
+    scaler_id: str = Form("default"),
+    insdn_ratio: float = Form(0.2),
+    insdn_dir: str = Form("datasets/insdn"),
+    gnn_arch: str = Form("sage"),
+    gnn_epochs: int = Form(60),
+    gnn_hidden_dim: int = Form(64),
+    gnn_num_layers: int = Form(2),
+    gnn_dropout: float = Form(0.3),
+    gnn_strategy: str = Form("knn_protocol"),
+    gnn_k: int = Form(5),
+    gnn_delta_t: int = Form(10),
+    split_train: float = Form(0.7),
+    split_val: float = Form(0.15),
+    split_test: float = Form(0.15),
+    random_seed: int = Form(42)
 ):
     valid_types = ["xgb", "isolation_forest", "gnn"]
     if model_type not in valid_types:
@@ -893,7 +914,274 @@ async def retrain_model_endpoint(
             }
 
         elif model_type == "gnn":
-            raise HTTPException(501, "GNN Retraining not yet implemented via API due to complexity.")
+            # --- GNN Retrain (Multiclass) ---
+            # 1) Load user dataset (already in df) and ensure required columns
+            df_user = df.copy()
+
+            # 2) Load INSDN datasets (optional) and sample a portion
+            insdn_added = 0
+            insdn_used_files = []
+            df_insdn = pd.DataFrame()
+            insdn_ratio = max(0.0, min(float(insdn_ratio), 1.0))
+
+            try:
+                insdn_dir_abs = insdn_dir
+                if not os.path.isabs(insdn_dir_abs):
+                    insdn_dir_abs = os.path.join(os.getcwd(), insdn_dir_abs)
+                if insdn_ratio > 0 and os.path.exists(insdn_dir_abs):
+                    insdn_files = glob.glob(os.path.join(insdn_dir_abs, "*.csv"))
+                    if insdn_files:
+                        frames = []
+                        for fpath in insdn_files:
+                            try:
+                                tmp = pd.read_csv(fpath, low_memory=False)
+                                # apply mapping for CIC variants
+                                tmp.rename(columns=COLUMN_MAPPING, inplace=True)
+                                if found_label not in tmp.columns:
+                                    # Try to find a label column by name match
+                                    for c in tmp.columns:
+                                        if c.strip() == label_col.strip():
+                                            tmp.rename(columns={c: found_label}, inplace=True)
+                                            break
+                                frames.append(tmp)
+                                insdn_used_files.append(os.path.basename(fpath))
+                            except Exception:
+                                continue
+                        if frames:
+                            df_insdn = pd.concat(frames, ignore_index=True)
+            except Exception:
+                df_insdn = pd.DataFrame()
+
+            # 3) Clean/align both datasets
+            def clean_frame(frame: pd.DataFrame) -> pd.DataFrame:
+                # Ensure expected columns
+                for col in EXPECTED_COLUMNS:
+                    if col not in frame.columns:
+                        frame[col] = np.nan
+                # Force numeric conversion for features
+                for col in EXPECTED_COLUMNS:
+                    frame[col] = pd.to_numeric(frame[col], errors='coerce')
+                # Drop rows with NaNs in features
+                frame = frame.dropna(subset=EXPECTED_COLUMNS)
+
+                # Normalize timestamps if present
+                if 'Timestamp' in frame.columns:
+                    frame['Timestamp'] = pd.to_datetime(frame['Timestamp'], errors='coerce')
+
+                # Normalize label column name
+                if found_label not in frame.columns:
+                    # Best-effort: if any column matches label_col after strip
+                    for c in frame.columns:
+                        if c.strip() == label_col.strip():
+                            frame.rename(columns={c: found_label}, inplace=True)
+                            break
+                if found_label not in frame.columns:
+                    return pd.DataFrame()
+
+                # Normalize labels
+                frame['norm_label'] = (
+                    frame[found_label]
+                    .astype(str)
+                    .str.replace(r"[\u200b\u200c\u200d\ufeff]", "", regex=True)
+                    .str.strip()
+                    .str.replace(r"\s+", " ", regex=True)
+                )
+                return frame
+
+            df_user = clean_frame(df_user)
+            if df_user.empty:
+                raise HTTPException(400, "User dataset has no valid rows after cleaning.")
+
+            if not df_insdn.empty:
+                df_insdn = clean_frame(df_insdn)
+                if df_insdn.empty:
+                    insdn_ratio = 0.0
+
+            # 4) Mix datasets (keep old attack patterns + new)
+            if insdn_ratio > 0 and not df_insdn.empty:
+                user_count = len(df_user)
+                target_insdn = max(1, int(user_count * insdn_ratio))
+                if len(df_insdn) > target_insdn:
+                    df_insdn = df_insdn.sample(n=target_insdn, random_state=random_seed)
+                insdn_added = len(df_insdn)
+                df_mix = pd.concat([df_user, df_insdn], ignore_index=True)
+            else:
+                df_mix = df_user
+
+            # 5) Prepare features + labels (multiclass)
+            # Use existing label encoder (preferred) if available
+            if 'label_encoder' in encoder_store:
+                le = encoder_store['label_encoder']
+            else:
+                # fallback: load from disk if exists
+                le = None
+                if os.path.exists('encoders/label_encoder.pkl'):
+                    with open('encoders/label_encoder.pkl', 'rb') as f:
+                        le = pickle.load(f)
+
+            if le is None:
+                raise HTTPException(500, "Label encoder not found for GNN retrain.")
+
+            # Filter to labels known to encoder
+            df_mix = df_mix[df_mix['norm_label'].isin(le.classes_)]
+            if df_mix.empty:
+                raise HTTPException(400, "No rows match existing label encoder classes after mixing.")
+
+            df_mix['Label_Encoded'] = le.transform(df_mix['norm_label'])
+
+            # 6) Scale features for GNN using StandardScaler
+            gnn_scaler = StandardScaler()
+            gnn_scaler.fit(df_mix[EXPECTED_COLUMNS])
+            X_scaled = gnn_scaler.transform(df_mix[EXPECTED_COLUMNS])
+
+            # 7) Build graph (use scaled features)
+            gnn_df = df_mix[['Label_Encoded']].copy()
+            gnn_df[EXPECTED_COLUMNS] = X_scaled
+            # Build a simple graph using scaled features
+            # Attach meta columns required for graph strategies
+            for meta_col in ['Src IP', 'Dst IP', 'Timestamp']:
+                if meta_col not in df_mix.columns:
+                    gnn_df[meta_col] = 0
+                else:
+                    gnn_df[meta_col] = df_mix[meta_col].values
+            # Keep feature-scaled Protocol for node features; use raw Protocol only if missing
+            if 'Protocol' not in gnn_df.columns:
+                gnn_df['Protocol'] = df_mix['Protocol'].values if 'Protocol' in df_mix.columns else 0
+
+            data = gnn_utils.build_graph(
+                gnn_df,
+                EXPECTED_COLUMNS,
+                strategy=gnn_strategy,
+                k=gnn_k,
+                delta_t_seconds=gnn_delta_t
+            )
+
+            # 8) Create stratified masks
+            y_all = data.y.cpu().numpy()
+            idx_all = np.arange(len(y_all))
+            if split_train + split_val + split_test <= 0.99:
+                raise HTTPException(400, "Split ratios must sum to 1.0")
+            if abs((split_train + split_val + split_test) - 1.0) > 1e-3:
+                raise HTTPException(400, "Split ratios must sum to 1.0")
+
+            train_idx, temp_idx = train_test_split(
+                idx_all,
+                test_size=(1.0 - split_train),
+                random_state=random_seed,
+                stratify=y_all
+            )
+            # Compute val/test from temp
+            val_ratio = split_val / (split_val + split_test)
+            val_idx, test_idx = train_test_split(
+                temp_idx,
+                test_size=(1.0 - val_ratio),
+                random_state=random_seed,
+                stratify=y_all[temp_idx]
+            )
+
+            train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+            val_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+            test_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
+            train_mask[train_idx] = True
+            val_mask[val_idx] = True
+            test_mask[test_idx] = True
+
+            # 9) Model init + training
+            num_classes = len(le.classes_)
+            model = gnn_utils.GNNClassifier(
+                input_dim=len(EXPECTED_COLUMNS),
+                hidden_dim=int(gnn_hidden_dim),
+                num_classes=num_classes,
+                num_layers=int(gnn_num_layers),
+                dropout=float(gnn_dropout),
+                arch=str(gnn_arch).lower()
+            )
+
+            # Compute class weights for imbalance
+            class_weights = compute_class_weight(
+                class_weight='balanced',
+                classes=np.unique(y_all),
+                y=y_all
+            )
+            class_weights = torch.tensor(class_weights, dtype=torch.float)
+
+            history = gnn_utils.train_gnn(
+                model,
+                data,
+                train_mask,
+                val_mask,
+                epochs=int(gnn_epochs),
+                lr=0.01,
+                patience=10,
+                class_weights=class_weights
+            )
+
+            # 10) Evaluate
+            with torch.no_grad():
+                logits = model(data.x, data.edge_index)
+                preds = logits.argmax(dim=1)
+            y_true = data.y[test_mask].cpu().numpy()
+            y_pred = preds[test_mask].cpu().numpy()
+            acc = accuracy_score(y_true, y_pred)
+            metrics = gnn_utils.evaluate_gnn(model, data, test_mask, le, is_binary_task=False)
+            metrics['accuracy'] = round(float(acc), 4)
+
+            # 11) Save artifacts
+            os.makedirs('models/gnn', exist_ok=True)
+            os.makedirs('scalers', exist_ok=True)
+            os.makedirs('encoders', exist_ok=True)
+
+            model_path = f"models/gnn/{sanitized_name}.pt"
+            scaler_path = f"scalers/gnn_scaler_{sanitized_name}.pkl"
+            config_path = f"models/gnn/{sanitized_name}_config.json"
+
+            torch.save(model.state_dict(), model_path)
+            joblib.dump(gnn_scaler, scaler_path)
+
+            config = {
+                "info": {
+                    "arch": str(gnn_arch).lower(),
+                    "config": {
+                        "hidden_dim": int(gnn_hidden_dim),
+                        "num_layers": int(gnn_num_layers),
+                        "dropout": float(gnn_dropout)
+                    }
+                },
+                "data": {
+                    "feature_count": len(EXPECTED_COLUMNS),
+                    "num_classes": num_classes
+                }
+            }
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+
+            # Hot swap
+            model.eval()
+            model_store['gnn_multiclass'] = model
+            scaler_store['gnn_scaler'] = gnn_scaler
+            encoder_store['label_encoder'] = le
+
+            split_info = {
+                "total_samples": int(len(df_mix)),
+                "train_samples": int(len(train_idx)),
+                "val_samples": int(len(val_idx)),
+                "test_samples": int(len(test_idx)),
+                "user_samples": int(len(df_user)),
+                "insdn_added": int(insdn_added),
+                "insdn_files": insdn_used_files
+            }
+
+            return {
+                "status": "success",
+                "model": model_path,
+                "model_type": "gnn",
+                "model_name": sanitized_name,
+                "metrics": metrics,
+                "split_info": split_info,
+                "gnn_config": config,
+                "scaler_path": scaler_path,
+                "encoder_path": "encoders/label_encoder.pkl"
+            }
             
     except Exception as e:
         import traceback

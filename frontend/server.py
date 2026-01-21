@@ -2951,6 +2951,20 @@ def proxy_retrain():
     label_col = request.form.get('label_col', 'Label')
     benign_label = request.form.get('benign_label', 'BENIGN')
     scaler_id = request.form.get('scaler_id', 'default')
+    insdn_ratio = request.form.get('insdn_ratio')
+    insdn_dir = request.form.get('insdn_dir')
+    gnn_arch = request.form.get('gnn_arch')
+    gnn_epochs = request.form.get('gnn_epochs')
+    gnn_hidden_dim = request.form.get('gnn_hidden_dim')
+    gnn_num_layers = request.form.get('gnn_num_layers')
+    gnn_dropout = request.form.get('gnn_dropout')
+    gnn_strategy = request.form.get('gnn_strategy')
+    gnn_k = request.form.get('gnn_k')
+    gnn_delta_t = request.form.get('gnn_delta_t')
+    split_train = request.form.get('split_train')
+    split_val = request.form.get('split_val')
+    split_test = request.form.get('split_test')
+    random_seed = request.form.get('random_seed')
     
     use_stored = request.form.get('use_stored') == 'true'
     filename = request.form.get('filename')
@@ -3035,6 +3049,35 @@ def proxy_retrain():
             'scaler_id': scaler_id,
             'mapping': json.dumps(metadata['features']) 
         }
+        # Optional GNN retrain params
+        if insdn_ratio is not None:
+            data['insdn_ratio'] = insdn_ratio
+        if insdn_dir:
+            data['insdn_dir'] = insdn_dir
+        if gnn_arch:
+            data['gnn_arch'] = gnn_arch
+        if gnn_epochs:
+            data['gnn_epochs'] = gnn_epochs
+        if gnn_hidden_dim:
+            data['gnn_hidden_dim'] = gnn_hidden_dim
+        if gnn_num_layers:
+            data['gnn_num_layers'] = gnn_num_layers
+        if gnn_dropout:
+            data['gnn_dropout'] = gnn_dropout
+        if gnn_strategy:
+            data['gnn_strategy'] = gnn_strategy
+        if gnn_k:
+            data['gnn_k'] = gnn_k
+        if gnn_delta_t:
+            data['gnn_delta_t'] = gnn_delta_t
+        if split_train:
+            data['split_train'] = split_train
+        if split_val:
+            data['split_val'] = split_val
+        if split_test:
+            data['split_test'] = split_test
+        if random_seed:
+            data['random_seed'] = random_seed
         
         resp = requests.post(f"{base}/retrain/{model_type}", files=files, data=data, timeout=300)
         

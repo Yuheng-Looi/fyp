@@ -658,6 +658,98 @@
                             <option value="default">Default Scaler</option>
                         </select>
                     </div>
+
+                    <!-- GNN Options (shown only for GNN retrain) -->
+                    <div id="gnn-retrain-options" class="hidden space-y-3 bg-slate-900/30 p-3 rounded border border-slate-700/50">
+                        <div class="text-xs font-bold text-slate-400 uppercase">GNN Retrain Options</div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">INSDN Mix Ratio</label>
+                                <input type="number" id="gnnInsdnRatio" value="0.2" min="0" max="1" step="0.05"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">INSDN Dir</label>
+                                <input type="text" id="gnnInsdnDir" value="datasets/insdn"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Architecture</label>
+                                <select id="gnnArch" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                                    <option value="sage">GraphSAGE</option>
+                                    <option value="gat">GAT</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Epochs</label>
+                                <input type="number" id="gnnEpochs" value="60" min="10" step="5"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Hidden Dim</label>
+                                <input type="number" id="gnnHiddenDim" value="64" min="16" step="16"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Layers</label>
+                                <input type="number" id="gnnNumLayers" value="2" min="2" step="1"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Dropout</label>
+                                <input type="number" id="gnnDropout" value="0.3" min="0" max="0.8" step="0.05"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Graph Strategy</label>
+                                <select id="gnnStrategy" class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                                    <option value="knn_protocol">KNN (Protocol)</option>
+                                    <option value="src_ip_temporal">SrcIP Temporal</option>
+                                    <option value="dst_ip_temporal">DstIP Temporal</option>
+                                    <option value="hybrid">Hybrid</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">K (KNN)</label>
+                                <input type="number" id="gnnK" value="5" min="3" step="1"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Δt (sec)</label>
+                                <input type="number" id="gnnDeltaT" value="10" min="1" step="1"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Train Split</label>
+                                <input type="number" id="gnnSplitTrain" value="0.7" min="0.5" max="0.9" step="0.05"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Val Split</label>
+                                <input type="number" id="gnnSplitVal" value="0.15" min="0.05" max="0.3" step="0.05"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Test Split</label>
+                                <input type="number" id="gnnSplitTest" value="0.15" min="0.05" max="0.3" step="0.05"
+                                       class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Random Seed</label>
+                            <input type="number" id="gnnSeed" value="42" min="1" step="1"
+                                   class="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:ring-2 focus:ring-purple-500 outline-none">
+                        </div>
+                        <p class="text-xs text-slate-500">INSDN ratio mixes old attack patterns with your retrain dataset.</p>
+                    </div>
                     <button onclick="submitRetrain()" id="btn-retrain"
                             class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded transition-colors shadow-lg shadow-emerald-900/20">
                         Start Retraining
@@ -3871,6 +3963,11 @@ These are model predictions only.`;
                     btn.classList.remove('bg-blue-600', 'text-white', 'ring-2', 'ring-blue-500');
                 }
             });
+            const gnnOpts = document.getElementById('gnn-retrain-options');
+            if (gnnOpts) {
+                if (type === 'gnn') gnnOpts.classList.remove('hidden');
+                else gnnOpts.classList.add('hidden');
+            }
             await loadModels(type);
         }
         
@@ -3984,12 +4081,12 @@ These are model predictions only.`;
                 <div class="bg-slate-900 rounded p-3 border border-slate-700 cursor-pointer hover:border-slate-500 transition-colors" onclick="showHistoryDetail(${idx})">
                     <div class="flex justify-between items-center">
                         <span class="text-white font-bold">${h.model_name}</span>
-                        <span class="text-xs px-2 py-0.5 rounded ${h.model_type === 'xgb' ? 'bg-blue-600' : 'bg-purple-600'} text-white">${h.model_type}</span>
+                        <span class="text-xs px-2 py-0.5 rounded ${h.model_type === 'xgb' ? 'bg-blue-600' : h.model_type === 'gnn' ? 'bg-violet-600' : 'bg-purple-600'} text-white">${h.model_type}</span>
                     </div>
                     <div class="text-xs text-slate-400 mt-1">${new Date(h.timestamp).toLocaleString()}</div>
                     <div class="flex gap-3 mt-2 text-xs">
-                        <span class="text-emerald-400">Acc: ${(h.metrics.accuracy * 100).toFixed(1)}%</span>
-                        <span class="text-cyan-400">F1: ${(h.metrics.f1 * 100).toFixed(1)}%</span>
+                        <span class="text-emerald-400">Acc: ${h.metrics && h.metrics.accuracy !== undefined ? (h.metrics.accuracy * 100).toFixed(1) + '%' : 'N/A'}</span>
+                        <span class="text-cyan-400">F1: ${h.metrics && (h.metrics.f1 !== undefined || h.metrics.macro_f1 !== undefined) ? ((h.metrics.f1 ?? h.metrics.macro_f1) * 100).toFixed(1) + '%' : 'N/A'}</span>
                         ${h.metrics.auc ? `<span class="text-amber-400">AUC: ${(h.metrics.auc * 100).toFixed(1)}%</span>` : ''}
                     </div>
                 </div>
@@ -4020,6 +4117,11 @@ These are model predictions only.`;
             const cm = data.confusion_matrix || {};
             const split = data.split_info || {};
             const lc = data.learning_curve || {};
+            const isGnn = data.model_type === 'gnn';
+            const metricAccuracy = metrics.accuracy;
+            const metricPrecision = metrics.precision;
+            const metricRecall = metrics.recall !== undefined ? metrics.recall : metrics.recall_attack;
+            const metricF1 = metrics.f1 !== undefined ? metrics.f1 : metrics.macro_f1;
             
             // Build confusion matrix visualization
             const cmHtml = cm.tn !== undefined ? `
@@ -4058,7 +4160,7 @@ These are model predictions only.`;
                 <div class="flex justify-between items-center mb-4">
                     <div>
                         <span class="text-white font-bold text-lg">${data.model_name || 'Unknown'}</span>
-                        <span class="ml-2 px-2 py-0.5 rounded text-xs ${data.model_type === 'xgb' ? 'bg-blue-600' : 'bg-purple-600'} text-white">${data.model_type || 'Unknown'}</span>
+                        <span class="ml-2 px-2 py-0.5 rounded text-xs ${data.model_type === 'xgb' ? 'bg-blue-600' : data.model_type === 'gnn' ? 'bg-violet-600' : 'bg-purple-600'} text-white">${data.model_type || 'Unknown'}</span>
                     </div>
                     <div class="text-xs text-slate-400">${data.timestamp ? new Date(data.timestamp).toLocaleString() : ''}</div>
                 </div>
@@ -4070,19 +4172,19 @@ These are model predictions only.`;
                         <div class="space-y-2">
                             <div class="flex justify-between">
                                 <span class="text-slate-400">Accuracy</span>
-                                <span class="text-emerald-400 font-bold">${metrics.accuracy !== undefined ? (metrics.accuracy * 100).toFixed(2) + '%' : 'N/A'}</span>
+                                <span class="text-emerald-400 font-bold">${metricAccuracy !== undefined ? (metricAccuracy * 100).toFixed(2) + '%' : 'N/A'}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-slate-400">Precision</span>
-                                <span class="text-blue-400 font-bold">${metrics.precision !== undefined ? (metrics.precision * 100).toFixed(2) + '%' : 'N/A'}</span>
+                                <span class="text-blue-400 font-bold">${metricPrecision !== undefined ? (metricPrecision * 100).toFixed(2) + '%' : 'N/A'}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-slate-400">Recall</span>
-                                <span class="text-amber-400 font-bold">${metrics.recall !== undefined ? (metrics.recall * 100).toFixed(2) + '%' : 'N/A'}</span>
+                                <span class="text-amber-400 font-bold">${metricRecall !== undefined ? (metricRecall * 100).toFixed(2) + '%' : 'N/A'}</span>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-slate-400">F1 Score</span>
-                                <span class="text-cyan-400 font-bold">${metrics.f1 !== undefined ? (metrics.f1 * 100).toFixed(2) + '%' : 'N/A'}</span>
+                                <span class="text-cyan-400 font-bold">${metricF1 !== undefined ? (metricF1 * 100).toFixed(2) + '%' : 'N/A'}</span>
                             </div>
                             ${metrics.auc !== undefined ? `
                             <div class="flex justify-between border-t border-slate-700 pt-2 mt-2">
@@ -4107,6 +4209,16 @@ These are model predictions only.`;
                                 <span class="text-slate-400">Total Samples</span>
                                 <span class="text-white font-mono">${split.total_samples || 'N/A'}</span>
                             </div>
+                            ${isGnn ? `
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">User Samples</span>
+                                <span class="text-slate-300 font-mono">${split.user_samples || 'N/A'}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-400">INSDN Added</span>
+                                <span class="text-slate-300 font-mono">${split.insdn_added || '0'}</span>
+                            </div>
+                            ` : ''}
                             <div class="flex justify-between">
                                 <span class="text-slate-400">Benign</span>
                                 <span class="text-emerald-400 font-mono">${split.benign_count || 'N/A'}</span>
@@ -4154,6 +4266,23 @@ These are model predictions only.`;
             fd.append('label_col', labelCol);
             fd.append('benign_label', benign);
             if(scalerId) fd.append('scaler_id', scalerId);
+
+            if (currentModelType === 'gnn') {
+                fd.append('insdn_ratio', document.getElementById('gnnInsdnRatio').value);
+                fd.append('insdn_dir', document.getElementById('gnnInsdnDir').value);
+                fd.append('gnn_arch', document.getElementById('gnnArch').value);
+                fd.append('gnn_epochs', document.getElementById('gnnEpochs').value);
+                fd.append('gnn_hidden_dim', document.getElementById('gnnHiddenDim').value);
+                fd.append('gnn_num_layers', document.getElementById('gnnNumLayers').value);
+                fd.append('gnn_dropout', document.getElementById('gnnDropout').value);
+                fd.append('gnn_strategy', document.getElementById('gnnStrategy').value);
+                fd.append('gnn_k', document.getElementById('gnnK').value);
+                fd.append('gnn_delta_t', document.getElementById('gnnDeltaT').value);
+                fd.append('split_train', document.getElementById('gnnSplitTrain').value);
+                fd.append('split_val', document.getElementById('gnnSplitVal').value);
+                fd.append('split_test', document.getElementById('gnnSplitTest').value);
+                fd.append('random_seed', document.getElementById('gnnSeed').value);
+            }
             
             const run = async (mapping) => {
                  if(mapping) fd.append('mapping', JSON.stringify(mapping));

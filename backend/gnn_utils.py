@@ -334,8 +334,17 @@ def evaluate_gnn(model, data, mask, label_encoder, is_binary_task=False):
         y_true_bin = y_true
         y_pred_bin = y_pred
     else:
-        # Assuming 'Normal' is one of the classes.
-        normal_idx = label_encoder.transform(['Normal'])[0]
+        # Determine benign class label
+        classes = list(label_encoder.classes_)
+        if 'Normal' in classes:
+            normal_idx = label_encoder.transform(['Normal'])[0]
+        elif 'BENIGN' in classes:
+            normal_idx = label_encoder.transform(['BENIGN'])[0]
+        elif 'Benign' in classes:
+            normal_idx = label_encoder.transform(['Benign'])[0]
+        else:
+            # Fallback to most frequent class in y_true
+            normal_idx = np.bincount(y_true).argmax()
         y_true_bin = (y_true != normal_idx).astype(int)
         y_pred_bin = (y_pred != normal_idx).astype(int)
     
