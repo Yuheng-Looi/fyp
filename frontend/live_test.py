@@ -17,11 +17,19 @@ ATTACK_TYPES = [
     ('syn', 'DoS-SYNFlood'),
     ('udp', 'DoS-UDP'),
     ('scan', 'PortScan'),
-    ('web', 'WebAttack-BruteForce'),
+    ('web', 'WebAttack-HttpFlood'),
 ]
+
+# Monitor capture interface - MUST match server.py and topo.py
+MONITOR_CAPTURE_IFACE = "mon-cap"
 
 def run_cmd_bg(cmd):
     return subprocess.Popen(cmd, shell=True, preexec_fn=os.setsid)
+
+def host_exec_bg(cmd):
+    """Run command on HOST (not in namespace) - for capture on mon-cap interface"""
+    full_cmd = f"{cmd} >/dev/null 2>&1"
+    return run_cmd_bg(full_cmd)
 
 def ns_exec_bg(ns, cmd):
     # Hide output to keep terminal clean for the report
@@ -130,11 +138,11 @@ def main():
         print(f"\n=== 2. Running Normal Traffic (target: {TARGET_NORMAL_FLOWS} flows) ===")
         traffic_script = os.path.join(cwd, "traffic_normal.py")
         
-        # Start Capture
+        # Start Capture on HOST using mon-cap interface (same as server.py live capture)
         norm_csv = os.path.join(output_dir, "test_normal.csv")
         if os.path.exists(norm_csv): os.remove(norm_csv)
-        cap_cmd = f"python3 {extractor_script} --iface eth0 --output {norm_csv}"
-        cap_proc = ns_exec_bg("ns_monitor", cap_cmd)
+        cap_cmd = f"python3 {extractor_script} --iface {MONITOR_CAPTURE_IFACE} --output {norm_csv}"
+        cap_proc = host_exec_bg(cap_cmd)
         
         # Start Traffic (infinite mode, we'll stop when flow count reached)
         gen_proc = ns_exec_bg("ns_user", f"python3 {traffic_script} --duration 0 --fast")
@@ -166,7 +174,7 @@ def main():
             
         print("Stopping Normal Capture...")
         subprocess.run(f"ip netns exec ns_user pkill -f traffic_normal.py", shell=True)
-        subprocess.run(f"ip netns exec ns_monitor pkill -f cic_extractor.py", shell=True)
+        subprocess.run(f"pkill -f 'cic_extractor.py --iface {MONITOR_CAPTURE_IFACE}'", shell=True)
         try: cap_proc.wait(timeout=5)
         except: pass
         try: gen_proc.wait(timeout=5)
@@ -192,11 +200,11 @@ def main():
         for attack_type, attack_label in ATTACK_TYPES:
             print(f"\n[⚔️] Running {attack_label} attack...")
             
-            # Start Capture for this attack
+            # Start Capture on HOST using mon-cap interface
             att_csv = os.path.join(output_dir, f"test_attack_{attack_type}.csv")
             if os.path.exists(att_csv): os.remove(att_csv)
-            cap_cmd = f"python3 {extractor_script} --iface eth0 --output {att_csv}"
-            cap_proc = ns_exec_bg("ns_monitor", cap_cmd)
+            cap_cmd = f"python3 {extractor_script} --iface {MONITOR_CAPTURE_IFACE} --output {att_csv}"
+            cap_proc = host_exec_bg(cap_cmd)
             time.sleep(1)  # Let capture start
             
             # Start Attack
@@ -205,8 +213,8 @@ def main():
             # Wait for attack to complete
             time.sleep(ATTACK_DURATION_PER_TYPE + 3)
             
-            # Stop capture
-            subprocess.run(f"ip netns exec ns_monitor pkill -f cic_extractor.py", shell=True)
+            # Stop capture on host
+            subprocess.run(f"pkill -f 'cic_extractor.py --iface {MONITOR_CAPTURE_IFACE}'", shell=True)
             try: cap_proc.wait(timeout=5)
             except: pass
             try: att_proc.wait(timeout=5)

@@ -32,6 +32,7 @@ import sys
 from typing import Dict, Tuple
 
 from scapy.all import sniff, IP, TCP, UDP
+from scapy.config import conf
 
 FEATURE_KEYS = [
     'Fwd Header Len', 'Protocol', 'Init Bwd Win Byts', 'Tot Fwd Pkts', 'Pkt Len Max',
@@ -220,14 +221,54 @@ class CICExtractor:
     def start(self, offline: str = None):
         self.flusher = threading.Thread(target=self.flusher_loop, daemon=True)
         self.flusher.start()
+        print(f"[CICExtractor] Starting capture on interface: {self.iface}", file=sys.stderr)
         try:
             if offline:
                 sniff(offline=offline, prn=self.packet_handler, store=False)
             else:
-                sniff(iface=self.iface, prn=self.packet_handler, store=False,
-                      stop_filter=lambda x: not self.running)
+                # Retry logic for interface initialization issues
+                max_retries = 3
+                retry_delay = 0.5
+                last_error = None
+                
+                # Attempt to refresh Scapy's internal interface cache
+                try:
+                    conf.ifaces.reload()
+                except Exception:
+                    from scapy.arch import get_if_list
+                    get_if_list()
+                
+                for attempt in range(max_retries):
+                    # Verify interface exists before each attempt
+                    import os
+                    if not os.path.exists(f'/sys/class/net/{self.iface}'):
+                        print(f"[CICExtractor] Interface {self.iface} not found, waiting...", file=sys.stderr)
+                        time.sleep(retry_delay)
+                        continue
+                    
+                    print(f"[CICExtractor] Calling sniff() on {self.iface} (attempt {attempt + 1}/{max_retries})...", file=sys.stderr)
+                    try:
+                        sniff(iface=self.iface, prn=self.packet_handler, store=False,
+                              stop_filter=lambda x: not self.running)
+                        print(f"[CICExtractor] sniff() returned normally", file=sys.stderr)
+                        return  # Success
+                    except OSError as e:
+                        last_error = e
+                        if e.errno == 19:  # No such device
+                            print(f"[CICExtractor] Device error, retrying in {retry_delay}s...", file=sys.stderr)
+                            time.sleep(retry_delay)
+                            continue
+                        else:
+                            raise  # Re-raise non-device errors
+                
+                # All retries failed
+                if last_error:
+                    raise last_error
+                    
         except Exception as e:
-            print(f"Error while sniffing: {e}", file=sys.stderr)
+            print(f"[CICExtractor] Error while sniffing: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
             self.running = False
 
     def stop(self):

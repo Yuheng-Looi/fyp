@@ -1,66 +1,56 @@
 import time
 import random
 import subprocess
-import requests
-import socket
-import threading
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 TARGET_IP = "10.0.0.10" # ns_server
-TARGET_URL = f"http://{TARGET_IP}"
 
 def log(msg):
     print(f"[BENIGN USER] {msg}")
 
 def generate_traffic(duration=0, fast_mode=False):
+    """
+    Generate normal traffic using the SAME methods as server.py's generate_normal_traffic_loop().
+    This ensures identical flow patterns between live capture and test dataset generation.
+    Uses curl and ping via subprocess (same as server.py).
+    """
     print(f"[*] Starting background traffic to {TARGET_IP}... (fast_mode={fast_mode})")
     start_time = time.time()
     
-    # Fast mode settings
-    if fast_mode:
-        sleep_min, sleep_max = 0.01, 0.1  # Much shorter sleep
-        workers = 4  # Parallel workers
-    else:
-        sleep_min, sleep_max = 0.5, 3.0
-        workers = 1
+    # Fast mode settings - matches server.py traffic generation timing
+    # Always use fast mode timing to match server.py
+    sleep_min, sleep_max = 0.01, 0.05
+    workers = 1
     
     def do_action():
+        """
+        Execute traffic actions using SAME commands as server.py's generate_normal_traffic_loop().
+        server.py uses: ping and curl via subprocess shell commands.
+        """
         try:
-            action = random.choice(['ping', 'web', 'web', 'tcp', 'tcp', 'udp'])
-            
+            # Weight towards web traffic like server.py does
+            action = random.choice(['ping', 'web', 'web', 'sleep'])
             if action == 'ping':
-                # Generate ICMP flows
-                subprocess.run(["ping", "-c", "1", "-W", "1", TARGET_IP], 
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                
+                subprocess.run(
+                    f"ping -c 1 -W 1 {TARGET_IP}",
+                    shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=2
+                )
             elif action == 'web':
-                # Generate TCP/HTTP flows
-                try:
-                    requests.get(TARGET_URL, timeout=1)
-                except: pass
-                
-            elif action == 'tcp':
-                # Generate raw TCP connection flows
-                try:
-                    port = random.choice([80, 22, 443, 8080, 8000])
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    sock.settimeout(0.5)
-                    sock.connect((TARGET_IP, port))
-                    sock.send(b"GET / HTTP/1.0\\r\\n\\r\\n")
-                    sock.recv(1024)
-                    sock.close()
-                except: pass
-                
-            elif action == 'udp':
-                # Generate UDP flows
-                try:
-                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                    sock.settimeout(0.5)
-                    port = random.choice([53, 123, 161, 514])
-                    sock.sendto(b"test", (TARGET_IP, port))
-                    sock.close()
-                except: pass
-                
+                subprocess.run(
+                    f"curl -s -o /dev/null --connect-timeout 2 http://{TARGET_IP}/",
+                    shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=2
+                )
+            # 'sleep' action does nothing (simulates idle periods)
+            time.sleep(random.uniform(0.01, 0.05))
+        except subprocess.TimeoutExpired:
+            pass
         except Exception as e:
             pass
     
@@ -75,7 +65,7 @@ def generate_traffic(duration=0, fast_mode=False):
                 # Submit batch of actions
                 futures = [executor.submit(do_action) for _ in range(workers * 2)]
                 for f in futures:
-                    try: f.result(timeout=2)
+                    try: f.result(timeout=5)
                     except: pass
                 
                 time.sleep(random.uniform(sleep_min, sleep_max))

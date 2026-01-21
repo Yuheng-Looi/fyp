@@ -1,0 +1,215 @@
+nohup: ignoring input
+825e62e1-cda0-473b-a747-e126c5178694
+
+=== 0. Configuration ===
+[*] Available Scalers: ['default', 'friday_new_scaler', 'live_scaler_v3', 'friday_scaler_v2', 'live_scaler', 'scaler_demo', 'demoscaler2', 'henry_test', 'live_scaler_v4', 'test', 'friday_scaler_v3', '54b9a97d-773e-4659-b092-9e89f7d84e21']
+[+] Selected Scaler: 54b9a97d-773e-4659-b092-9e89f7d84e21
+
+=== 1. Setting up Topology ===
+
+[!] Cleaning up existing topology...
+[CMD] ip netns del ns_server 2>/dev/null
+[CMD] ip netns del ns_user 2>/dev/null
+[CMD] ip netns del ns_attacker 2>/dev/null
+[CMD] ip netns del ns_attacker2 2>/dev/null
+[CMD] ip netns del ns_attacker3 2>/dev/null
+[CMD] ovs-vsctl del-br ovs-br0 2>/dev/null
+[CMD] ip link delete veth_serv 2>/dev/null
+[CMD] ip link delete veth_user 2>/dev/null
+[CMD] ip link delete veth_hack 2>/dev/null
+[CMD] ip link delete veth_hack2 2>/dev/null
+[CMD] ip link delete veth_hack3 2>/dev/null
+[CMD] ip link delete veth_mon 2>/dev/null
+[CMD] ip link delete mon-cap 2>/dev/null
+
+[+] Creating OVS Bridge...
+[CMD] ovs-vsctl add-br ovs-br0
+[CMD] ovs-vsctl set-fail-mode ovs-br0 standalone
+[+] Creating Namespaces and Connections...
+[CMD] ip netns add ns_server
+[CMD] ip link add veth_serv type veth peer name veth_serv_ns
+[CMD] ovs-vsctl add-port ovs-br0 veth_serv
+[CMD] ip link set veth_serv up
+[CMD] ip link set veth_serv_ns netns ns_server
+[CMD] ip netns exec ns_server ip link set dev veth_serv_ns name eth0
+[CMD] ip netns exec ns_server ip link set dev lo up
+[CMD] ip netns exec ns_server ip link set dev eth0 up
+[CMD] ip netns exec ns_server ip addr add 10.0.0.10/24 dev eth0
+[CMD] ip netns add ns_user
+[CMD] ip link add veth_user type veth peer name veth_user_ns
+[CMD] ovs-vsctl add-port ovs-br0 veth_user
+[CMD] ip link set veth_user up
+[CMD] ip link set veth_user_ns netns ns_user
+[CMD] ip netns exec ns_user ip link set dev veth_user_ns name eth0
+[CMD] ip netns exec ns_user ip link set dev lo up
+[CMD] ip netns exec ns_user ip link set dev eth0 up
+[CMD] ip netns exec ns_user ip addr add 10.0.0.1/24 dev eth0
+[CMD] ip netns add ns_attacker
+[CMD] ip link add veth_hack type veth peer name veth_hack_ns
+[CMD] ovs-vsctl add-port ovs-br0 veth_hack
+[CMD] ip link set veth_hack up
+[CMD] ip link set veth_hack_ns netns ns_attacker
+[CMD] ip netns exec ns_attacker ip link set dev veth_hack_ns name eth0
+[CMD] ip netns exec ns_attacker ip link set dev lo up
+[CMD] ip netns exec ns_attacker ip link set dev eth0 up
+[CMD] ip netns exec ns_attacker ip addr add 10.0.0.66/24 dev eth0
+[CMD] ip netns add ns_attacker2
+[CMD] ip link add veth_hack2 type veth peer name veth_hack2_ns
+[CMD] ovs-vsctl add-port ovs-br0 veth_hack2
+[CMD] ip link set veth_hack2 up
+[CMD] ip link set veth_hack2_ns netns ns_attacker2
+[CMD] ip netns exec ns_attacker2 ip link set dev veth_hack2_ns name eth0
+[CMD] ip netns exec ns_attacker2 ip link set dev lo up
+[CMD] ip netns exec ns_attacker2 ip link set dev eth0 up
+[CMD] ip netns exec ns_attacker2 ip addr add 10.0.0.67/24 dev eth0
+[CMD] ip netns add ns_attacker3
+[CMD] ip link add veth_hack3 type veth peer name veth_hack3_ns
+[CMD] ovs-vsctl add-port ovs-br0 veth_hack3
+[CMD] ip link set veth_hack3 up
+[CMD] ip link set veth_hack3_ns netns ns_attacker3
+[CMD] ip netns exec ns_attacker3 ip link set dev veth_hack3_ns name eth0
+[CMD] ip netns exec ns_attacker3 ip link set dev lo up
+[CMD] ip netns exec ns_attacker3 ip link set dev eth0 up
+[CMD] ip netns exec ns_attacker3 ip addr add 10.0.0.68/24 dev eth0
+[+] Creating Monitor Interface...
+[CMD] ip link add veth_mon type veth peer name mon-cap
+[CMD] ovs-vsctl add-port ovs-br0 veth_mon
+[CMD] ip link set veth_mon up
+[CMD] ip link set veth_mon promisc on
+[CMD] ip link set mon-cap up
+[CMD] ip link set mon-cap promisc on
+[+] Setting up Port Mirroring (SPAN)...
+[CMD] ovs-vsctl -- --id=@m create mirror name=m0 select-all=true output-port=a6ac4c31-e68c-4cfe-a755-10e9288f499a -- set bridge ovs-br0 mirrors=@m
+[+] Starting Victim Web Server...
+[CMD] ip netns exec ns_server nohup python3 -m http.server 80 > /dev/null 2>&1 &
+
+✅ TOPOLOGY READY!
+---------------------------------------------------
+1. Monitor (IDS):  sudo ip netns exec ns_monitor python3 listener.py
+2. Benign Traffic: sudo ip netns exec ns_user python3 traffic_normal.py
+3. Attacker:       sudo ip netns exec ns_attacker python3 attack_generator.py
+---------------------------------------------------
+Press Ctrl+C to stop and cleanup.
+
+=== 2. Running Normal Traffic (target: 45000 flows) ===
+ Flows: 21/45000 | Elapsed: 5s | Rate: 4.2/s | ETA: 10709s     Flows: 55/45000 | Elapsed: 10s | Rate: 5.5/s | ETA: 8171s     Flows: 93/45000 | Elapsed: 15s | Rate: 6.2/s | ETA: 7243s     Flows: 123/45000 | Elapsed: 20s | Rate: 6.2/s | ETA: 7297s     Flows: 159/45000 | Elapsed: 25s | Rate: 6.4/s | ETA: 7050s     Flows: 201/45000 | Elapsed: 30s | Rate: 6.7/s | ETA: 6686s     Flows: 236/45000 | Elapsed: 35s | Rate: 6.7/s | ETA: 6638s     Flows: 275/45000 | Elapsed: 40s | Rate: 6.9/s | ETA: 6505s     Flows: 309/45000 | Elapsed: 45s | Rate: 6.9/s | ETA: 6508s     Flows: 347/45000 | Elapsed: 50s | Rate: 6.9/s | ETA: 6434s     Flows: 385/45000 | Elapsed: 55s | Rate: 7.0/s | ETA: 6373s     Flows: 417/45000 | Elapsed: 60s | Rate: 7.0/s | ETA: 6414s     Flows: 447/45000 | Elapsed: 65s | Rate: 6.9/s | ETA: 6478s     Flows: 482/45000 | Elapsed: 70s | Rate: 6.9/s | ETA: 6465s     Flows: 514/45000 | Elapsed: 75s | Rate: 6.9/s | ETA: 6491s     Flows: 549/45000 | Elapsed: 80s | Rate: 6.9/s | ETA: 6477s     Flows: 584/45000 | Elapsed: 85s | Rate: 6.9/s | ETA: 6464s     Flows: 622/45000 | Elapsed: 90s | Rate: 6.9/s | ETA: 6421s     Flows: 656/45000 | Elapsed: 95s | Rate: 6.9/s | ETA: 6421s     Flows: 696/45000 | Elapsed: 100s | Rate: 7.0/s | ETA: 6365s     Flows: 738/45000 | Elapsed: 105s | Rate: 7.0/s | ETA: 6297s     Flows: 784/45000 | Elapsed: 110s | Rate: 7.1/s | ETA: 6203s     Flows: 827/45000 | Elapsed: 115s | Rate: 7.2/s | ETA: 6142s     Flows: 871/45000 | Elapsed: 120s | Rate: 7.3/s | ETA: 6079s     Flows: 903/45000 | Elapsed: 125s | Rate: 7.2/s | ETA: 6104s     Flows: 932/45000 | Elapsed: 130s | Rate: 7.2/s | ETA: 6146s     Flows: 970/45000 | Elapsed: 135s | Rate: 7.2/s | ETA: 6127s     Flows: 1011/45000 | Elapsed: 140s | Rate: 7.2/s | ETA: 6091s     Flows: 1049/45000 | Elapsed: 145s | Rate: 7.2/s | ETA: 6075s     Flows: 1090/45000 | Elapsed: 150s | Rate: 7.3/s | ETA: 6042s     Flows: 1123/45000 | Elapsed: 155s | Rate: 7.2/s | ETA: 6056s     Flows: 1161/45000 | Elapsed: 160s | Rate: 7.3/s | ETA: 6041s     Flows: 1201/45000 | Elapsed: 165s | Rate: 7.3/s | ETA: 6017s     Flows: 1233/45000 | Elapsed: 170s | Rate: 7.3/s | ETA: 6034s     Flows: 1263/45000 | Elapsed: 175s | Rate: 7.2/s | ETA: 6060s     Flows: 1296/45000 | Elapsed: 180s | Rate: 7.2/s | ETA: 6070s     Flows: 1329/45000 | Elapsed: 185s | Rate: 7.2/s | ETA: 6079s     Flows: 1361/45000 | Elapsed: 190s | Rate: 7.2/s | ETA: 6092s     Flows: 1394/45000 | Elapsed: 195s | Rate: 7.1/s | ETA: 6099s     Flows: 1422/45000 | Elapsed: 200s | Rate: 7.1/s | ETA: 6129s     Flows: 1455/45000 | Elapsed: 205s | Rate: 7.1/s | ETA: 6135s     Flows: 1491/45000 | Elapsed: 210s | Rate: 7.1/s | ETA: 6128s     Flows: 1530/45000 | Elapsed: 215s | Rate: 7.1/s | ETA: 6108s     Flows: 1565/45000 | Elapsed: 220s | Rate: 7.1/s | ETA: 6105s     Flows: 1601/45000 | Elapsed: 225s | Rate: 7.1/s | ETA: 6099s     Flows: 1642/45000 | Elapsed: 230s | Rate: 7.1/s | ETA: 6073s     Flows: 1677/45000 | Elapsed: 235s | Rate: 7.1/s | ETA: 6070s     Flows: 1709/45000 | Elapsed: 240s | Rate: 7.1/s | ETA: 6079s     Flows: 1740/45000 | Elapsed: 245s | Rate: 7.1/s | ETA: 6091s     Flows: 1772/45000 | Elapsed: 250s | Rate: 7.1/s | ETA: 6098s     Flows: 1808/45000 | Elapsed: 255s | Rate: 7.1/s | ETA: 6091s     Flows: 1845/45000 | Elapsed: 260s | Rate: 7.1/s | ETA: 6081s     Flows: 1879/45000 | Elapsed: 265s | Rate: 7.1/s | ETA: 6081s     Flows: 1906/45000 | Elapsed: 270s | Rate: 7.1/s | ETA: 6104s     Flows: 1938/45000 | Elapsed: 275s | Rate: 7.0/s | ETA: 6110s     Flows: 1964/45000 | Elapsed: 280s | Rate: 7.0/s | ETA: 6135s     Flows: 2001/45000 | Elapsed: 285s | Rate: 7.0/s | ETA: 6124s     Flows: 2039/45000 | Elapsed: 290s | Rate: 7.0/s | ETA: 6110s     Flows: 2068/45000 | Elapsed: 295s | Rate: 7.0/s | ETA: 6124s     Flows: 2101/45000 | Elapsed: 300s | Rate: 7.0/s | ETA: 6125s     Flows: 2139/45000 | Elapsed: 305s | Rate: 7.0/s | ETA: 6111s     Flows: 2171/45000 | Elapsed: 310s | Rate: 7.0/s | ETA: 6115s     Flows: 2201/45000 | Elapsed: 315s | Rate: 7.0/s | ETA: 6125s     Flows: 2238/45000 | Elapsed: 320s | Rate: 7.0/s | ETA: 6114s     Flows: 2278/45000 | Elapsed: 325s | Rate: 7.0/s | ETA: 6095s     Flows: 2321/45000 | Elapsed: 330s | Rate: 7.0/s | ETA: 6068s     Flows: 2351/45000 | Elapsed: 335s | Rate: 7.0/s | ETA: 6077s     Flows: 2392/45000 | Elapsed: 340s | Rate: 7.0/s | ETA: 6056s     Flows: 2428/45000 | Elapsed: 345s | Rate: 7.0/s | ETA: 6049s     Flows: 2457/45000 | Elapsed: 350s | Rate: 7.0/s | ETA: 6060s     Flows: 2500/45000 | Elapsed: 355s | Rate: 7.0/s | ETA: 6035s     Flows: 2536/45000 | Elapsed: 360s | Rate: 7.0/s | ETA: 6028s     Flows: 2570/45000 | Elapsed: 365s | Rate: 7.0/s | ETA: 6026s     Flows: 2605/45000 | Elapsed: 370s | Rate: 7.0/s | ETA: 6021s     Flows: 2645/45000 | Elapsed: 375s | Rate: 7.1/s | ETA: 6004s     Flows: 2677/45000 | Elapsed: 380s | Rate: 7.0/s | ETA: 6007s     Flows: 2713/45000 | Elapsed: 385s | Rate: 7.0/s | ETA: 6000s     Flows: 2755/45000 | Elapsed: 390s | Rate: 7.1/s | ETA: 5980s     Flows: 2785/45000 | Elapsed: 395s | Rate: 7.1/s | ETA: 5987s     Flows: 2821/45000 | Elapsed: 400s | Rate: 7.1/s | ETA: 5980s     Flows: 2855/45000 | Elapsed: 405s | Rate: 7.0/s | ETA: 5978s     Flows: 2892/45000 | Elapsed: 410s | Rate: 7.1/s | ETA: 5969s     Flows: 2931/45000 | Elapsed: 415s | Rate: 7.1/s | ETA: 5956s     Flows: 2963/45000 | Elapsed: 420s | Rate: 7.1/s | ETA: 5958s     Flows: 3004/45000 | Elapsed: 425s | Rate: 7.1/s | ETA: 5941s     Flows: 3041/45000 | Elapsed: 430s | Rate: 7.1/s | ETA: 5933s     Flows: 3074/45000 | Elapsed: 435s | Rate: 7.1/s | ETA: 5932s     Flows: 3109/45000 | Elapsed: 440s | Rate: 7.1/s | ETA: 5928s     Flows: 3153/45000 | Elapsed: 445s | Rate: 7.1/s | ETA: 5906s     Flows: 3182/45000 | Elapsed: 450s | Rate: 7.1/s | ETA: 5913s     Flows: 3226/45000 | Elapsed: 455s | Rate: 7.1/s | ETA: 5891s     Flows: 3263/45000 | Elapsed: 460s | Rate: 7.1/s | ETA: 5883s     Flows: 3298/45000 | Elapsed: 465s | Rate: 7.1/s | ETA: 5879s     Flows: 3329/45000 | Elapsed: 470s | Rate: 7.1/s | ETA: 5883s     Flows: 3364/45000 | Elapsed: 475s | Rate: 7.1/s | ETA: 5879s     Flows: 3408/45000 | Elapsed: 480s | Rate: 7.1/s | ETA: 5858s     Flows: 3449/45000 | Elapsed: 485s | Rate: 7.1/s | ETA: 5842s     Flows: 3491/45000 | Elapsed: 490s | Rate: 7.1/s | ETA: 5826s     Flows: 3529/45000 | Elapsed: 495s | Rate: 7.1/s | ETA: 5816s     Flows: 3562/45000 | Elapsed: 500s | Rate: 7.1/s | ETA: 5816s     Flows: 3600/45000 | Elapsed: 505s | Rate: 7.1/s | ETA: 5807s     Flows: 3643/45000 | Elapsed: 510s | Rate: 7.1/s | ETA: 5789s     Flows: 3674/45000 | Elapsed: 515s | Rate: 7.1/s | ETA: 5792s     Flows: 3705/45000 | Elapsed: 520s | Rate: 7.1/s | ETA: 5795s     Flows: 3741/45000 | Elapsed: 525s | Rate: 7.1/s | ETA: 5790s     Flows: 3774/45000 | Elapsed: 530s | Rate: 7.1/s | ETA: 5789s     Flows: 3806/45000 | Elapsed: 535s | Rate: 7.1/s | ETA: 5790s     Flows: 3842/45000 | Elapsed: 540s | Rate: 7.1/s | ETA: 5784s     Flows: 3880/45000 | Elapsed: 545s | Rate: 7.1/s | ETA: 5775s     Flows: 3922/45000 | Elapsed: 550s | Rate: 7.1/s | ETA: 5760s     Flows: 3958/45000 | Elapsed: 555s | Rate: 7.1/s | ETA: 5755s     Flows: 4005/45000 | Elapsed: 560s | Rate: 7.2/s | ETA: 5732s     Flows: 4038/45000 | Elapsed: 565s | Rate: 7.1/s | ETA: 5731s     Flows: 4087/45000 | Elapsed: 570s | Rate: 7.2/s | ETA: 5705s     Flows: 4128/45000 | Elapsed: 575s | Rate: 7.2/s | ETA: 5693s     Flows: 4166/45000 | Elapsed: 580s | Rate: 7.2/s | ETA: 5685s     Flows: 4203/45000 | Elapsed: 585s | Rate: 7.2/s | ETA: 5678s     Flows: 4239/45000 | Elapsed: 590s | Rate: 7.2/s | ETA: 5673s     Flows: 4271/45000 | Elapsed: 595s | Rate: 7.2/s | ETA: 5674s     Flows: 4302/45000 | Elapsed: 600s | Rate: 7.2/s | ETA: 5676s     Flows: 4331/45000 | Elapsed: 605s | Rate: 7.2/s | ETA: 5681s     Flows: 4363/45000 | Elapsed: 610s | Rate: 7.2/s | ETA: 5681s     Flows: 4397/45000 | Elapsed: 615s | Rate: 7.1/s | ETA: 5679s     Flows: 4437/45000 | Elapsed: 620s | Rate: 7.2/s | ETA: 5668s     Flows: 4472/45000 | Elapsed: 625s | Rate: 7.2/s | ETA: 5664s     Flows: 4505/45000 | Elapsed: 630s | Rate: 7.2/s | ETA: 5663s     Flows: 4542/45000 | Elapsed: 635s | Rate: 7.2/s | ETA: 5656s     Flows: 4577/45000 | Elapsed: 640s | Rate: 7.2/s | ETA: 5652s     Flows: 4614/45000 | Elapsed: 645s | Rate: 7.2/s | ETA: 5645s     Flows: 4651/45000 | Elapsed: 650s | Rate: 7.2/s | ETA: 5638s     Flows: 4688/45000 | Elapsed: 655s | Rate: 7.2/s | ETA: 5632s     Flows: 4720/45000 | Elapsed: 660s | Rate: 7.2/s | ETA: 5632s     Flows: 4764/45000 | Elapsed: 665s | Rate: 7.2/s | ETA: 5616s     Flows: 4799/45000 | Elapsed: 670s | Rate: 7.2/s | ETA: 5612s     Flows: 4830/45000 | Elapsed: 675s | Rate: 7.2/s | ETA: 5613s     Flows: 4867/45000 | Elapsed: 680s | Rate: 7.2/s | ETA: 5607s     Flows: 4905/45000 | Elapsed: 685s | Rate: 7.2/s | ETA: 5599s     Flows: 4936/45000 | Elapsed: 690s | Rate: 7.2/s | ETA: 5600s     Flows: 4965/45000 | Elapsed: 695s | Rate: 7.1/s | ETA: 5604s     Flows: 4998/45000 | Elapsed: 700s | Rate: 7.1/s | ETA: 5602s     Flows: 5031/45000 | Elapsed: 705s | Rate: 7.1/s | ETA: 5600s     Flows: 5061/45000 | Elapsed: 710s | Rate: 7.1/s | ETA: 5602s     Flows: 5097/45000 | Elapsed: 715s | Rate: 7.1/s | ETA: 5597s     Flows: 5135/45000 | Elapsed: 720s | Rate: 7.1/s | ETA: 5589s     Flows: 5172/45000 | Elapsed: 725s | Rate: 7.1/s | ETA: 5583s     Flows: 5209/45000 | Elapsed: 730s | Rate: 7.1/s | ETA: 5576s     Flows: 5242/45000 | Elapsed: 735s | Rate: 7.1/s | ETA: 5574s     Flows: 5280/45000 | Elapsed: 740s | Rate: 7.1/s | ETA: 5566s     Flows: 5324/45000 | Elapsed: 745s | Rate: 7.1/s | ETA: 5551s     Flows: 5352/45000 | Elapsed: 750s | Rate: 7.1/s | ETA: 5556s     Flows: 5381/45000 | Elapsed: 755s | Rate: 7.1/s | ETA: 5558s     Flows: 5413/45000 | Elapsed: 760s | Rate: 7.1/s | ETA: 5558s     Flows: 5443/45000 | Elapsed: 765s | Rate: 7.1/s | ETA: 5559s     Flows: 5482/45000 | Elapsed: 770s | Rate: 7.1/s | ETA: 5550s     Flows: 5519/45000 | Elapsed: 775s | Rate: 7.1/s | ETA: 5544s     Flows: 5555/45000 | Elapsed: 780s | Rate: 7.1/s | ETA: 5538s     Flows: 5593/45000 | Elapsed: 785s | Rate: 7.1/s | ETA: 5530s     Flows: 5632/45000 | Elapsed: 790s | Rate: 7.1/s | ETA: 5522s     Flows: 5667/45000 | Elapsed: 795s | Rate: 7.1/s | ETA: 5517s     Flows: 5702/45000 | Elapsed: 800s | Rate: 7.1/s | ETA: 5513s     Flows: 5742/45000 | Elapsed: 805s | Rate: 7.1/s | ETA: 5503s     Flows: 5767/45000 | Elapsed: 810s | Rate: 7.1/s | ETA: 5510s     Flows: 5800/45000 | Elapsed: 815s | Rate: 7.1/s | ETA: 5508s     Flows: 5830/45000 | Elapsed: 820s | Rate: 7.1/s | ETA: 5509s     Flows: 5864/45000 | Elapsed: 825s | Rate: 7.1/s | ETA: 5506s     Flows: 5896/45000 | Elapsed: 830s | Rate: 7.1/s | ETA: 5504s     Flows: 5935/45000 | Elapsed: 835s | Rate: 7.1/s | ETA: 5496s     Flows: 5970/45000 | Elapsed: 840s | Rate: 7.1/s | ETA: 5491s     Flows: 6000/45000 | Elapsed: 845s | Rate: 7.1/s | ETA: 5492s     Flows: 6028/45000 | Elapsed: 850s | Rate: 7.1/s | ETA: 5495s     Flows: 6069/45000 | Elapsed: 855s | Rate: 7.1/s | ETA: 5484s     Flows: 6105/45000 | Elapsed: 860s | Rate: 7.1/s | ETA: 5479s     Flows: 6144/45000 | Elapsed: 865s | Rate: 7.1/s | ETA: 5470s     Flows: 6178/45000 | Elapsed: 870s | Rate: 7.1/s | ETA: 5467s     Flows: 6209/45000 | Elapsed: 875s | Rate: 7.1/s | ETA: 5466s     Flows: 6243/45000 | Elapsed: 880s | Rate: 7.1/s | ETA: 5463s     Flows: 6276/45000 | Elapsed: 885s | Rate: 7.1/s | ETA: 5460s     Flows: 6313/45000 | Elapsed: 890s | Rate: 7.1/s | ETA: 5454s     Flows: 6344/45000 | Elapsed: 895s | Rate: 7.1/s | ETA: 5453s     Flows: 6377/45000 | Elapsed: 900s | Rate: 7.1/s | ETA: 5450s     Flows: 6413/45000 | Elapsed: 905s | Rate: 7.1/s | ETA: 5445s     Flows: 6450/45000 | Elapsed: 910s | Rate: 7.1/s | ETA: 5438s     Flows: 6490/45000 | Elapsed: 915s | Rate: 7.1/s | ETA: 5429s     Flows: 6523/45000 | Elapsed: 920s | Rate: 7.1/s | ETA: 5426s     Flows: 6560/45000 | Elapsed: 925s | Rate: 7.1/s | ETA: 5420s     Flows: 6594/45000 | Elapsed: 930s | Rate: 7.1/s | ETA: 5416s     Flows: 6631/45000 | Elapsed: 935s | Rate: 7.1/s | ETA: 5410s     Flows: 6669/45000 | Elapsed: 940s | Rate: 7.1/s | ETA: 5402s     Flows: 6709/45000 | Elapsed: 945s | Rate: 7.1/s | ETA: 5393s     Flows: 6751/45000 | Elapsed: 950s | Rate: 7.1/s | ETA: 5382s     Flows: 6793/45000 | Elapsed: 955s | Rate: 7.1/s | ETA: 5371s     Flows: 6828/45000 | Elapsed: 960s | Rate: 7.1/s | ETA: 5366s     Flows: 6856/45000 | Elapsed: 965s | Rate: 7.1/s | ETA: 5368s     Flows: 6889/45000 | Elapsed: 970s | Rate: 7.1/s | ETA: 5366s     Flows: 6923/45000 | Elapsed: 975s | Rate: 7.1/s | ETA: 5362s     Flows: 6958/45000 | Elapsed: 980s | Rate: 7.1/s | ETA: 5358s     Flows: 6993/45000 | Elapsed: 985s | Rate: 7.1/s | ETA: 5353s     Flows: 7032/45000 | Elapsed: 990s | Rate: 7.1/s | ETA: 5345s     Flows: 7072/45000 | Elapsed: 995s | Rate: 7.1/s | ETA: 5336s     Flows: 7107/45000 | Elapsed: 1000s | Rate: 7.1/s | ETA: 5331s     Flows: 7130/45000 | Elapsed: 1005s | Rate: 7.1/s | ETA: 5337s     Flows: 7165/45000 | Elapsed: 1010s | Rate: 7.1/s | ETA: 5333s     Flows: 7198/45000 | Elapsed: 1015s | Rate: 7.1/s | ETA: 5330s     Flows: 7234/45000 | Elapsed: 1020s | Rate: 7.1/s | ETA: 5325s     Flows: 7266/45000 | Elapsed: 1025s | Rate: 7.1/s | ETA: 5323s     Flows: 7295/45000 | Elapsed: 1030s | Rate: 7.1/s | ETA: 5323s     Flows: 7335/45000 | Elapsed: 1035s | Rate: 7.1/s | ETA: 5314s     Flows: 7375/45000 | Elapsed: 1040s | Rate: 7.1/s | ETA: 5305s     Flows: 7397/45000 | Elapsed: 1045s | Rate: 7.1/s | ETA: 5312s     Flows: 7438/45000 | Elapsed: 1050s | Rate: 7.1/s | ETA: 5302s     Flows: 7479/45000 | Elapsed: 1055s | Rate: 7.1/s | ETA: 5292s     Flows: 7518/45000 | Elapsed: 1060s | Rate: 7.1/s | ETA: 5284s     Flows: 7550/45000 | Elapsed: 1065s | Rate: 7.1/s | ETA: 5282s     Flows: 7591/45000 | Elapsed: 1070s | Rate: 7.1/s | ETA: 5273s     Flows: 7619/45000 | Elapsed: 1075s | Rate: 7.1/s | ETA: 5274s     Flows: 7652/45000 | Elapsed: 1080s | Rate: 7.1/s | ETA: 5271s     Flows: 7689/45000 | Elapsed: 1085s | Rate: 7.1/s | ETA: 5264s     Flows: 7730/45000 | Elapsed: 1090s | Rate: 7.1/s | ETA: 5255s     Flows: 7765/45000 | Elapsed: 1095s | Rate: 7.1/s | ETA: 5250s     Flows: 7800/45000 | Elapsed: 1100s | Rate: 7.1/s | ETA: 5246s     Flows: 7836/45000 | Elapsed: 1105s | Rate: 7.1/s | ETA: 5240s     Flows: 7870/45000 | Elapsed: 1110s | Rate: 7.1/s | ETA: 5236s     Flows: 7901/45000 | Elapsed: 1115s | Rate: 7.1/s | ETA: 5235s     Flows: 7934/45000 | Elapsed: 1120s | Rate: 7.1/s | ETA: 5232s     Flows: 7962/45000 | Elapsed: 1125s | Rate: 7.1/s | ETA: 5233s     Flows: 7998/45000 | Elapsed: 1130s | Rate: 7.1/s | ETA: 5227s     Flows: 8034/45000 | Elapsed: 1135s | Rate: 7.1/s | ETA: 5222s     Flows: 8076/45000 | Elapsed: 1140s | Rate: 7.1/s | ETA: 5212s     Flows: 8114/45000 | Elapsed: 1145s | Rate: 7.1/s | ETA: 5205s     Flows: 8146/45000 | Elapsed: 1150s | Rate: 7.1/s | ETA: 5202s     Flows: 8180/45000 | Elapsed: 1155s | Rate: 7.1/s | ETA: 5198s     Flows: 8216/45000 | Elapsed: 1160s | Rate: 7.1/s | ETA: 5193s     Flows: 8251/45000 | Elapsed: 1165s | Rate: 7.1/s | ETA: 5188s     Flows: 8293/45000 | Elapsed: 1170s | Rate: 7.1/s | ETA: 5178s     Flows: 8325/45000 | Elapsed: 1175s | Rate: 7.1/s | ETA: 5176s     Flows: 8366/45000 | Elapsed: 1180s | Rate: 7.1/s | ETA: 5167s     Flows: 8398/45000 | Elapsed: 1185s | Rate: 7.1/s | ETA: 5164s     Flows: 8436/45000 | Elapsed: 1190s | Rate: 7.1/s | ETA: 5157s     Flows: 8468/45000 | Elapsed: 1195s | Rate: 7.1/s | ETA: 5155s     Flows: 8509/45000 | Elapsed: 1200s | Rate: 7.1/s | ETA: 5146s     Flows: 8542/45000 | Elapsed: 1205s | Rate: 7.1/s | ETA: 5143s     Flows: 8577/45000 | Elapsed: 1210s | Rate: 7.1/s | ETA: 5138s     Flows: 8611/45000 | Elapsed: 1215s | Rate: 7.1/s | ETA: 5134s     Flows: 8648/45000 | Elapsed: 1220s | Rate: 7.1/s | ETA: 5128s     Flows: 8680/45000 | Elapsed: 1225s | Rate: 7.1/s | ETA: 5125s     Flows: 8713/45000 | Elapsed: 1230s | Rate: 7.1/s | ETA: 5122s     Flows: 8750/45000 | Elapsed: 1235s | Rate: 7.1/s | ETA: 5116s     Flows: 8787/45000 | Elapsed: 1240s | Rate: 7.1/s | ETA: 5110s     Flows: 8816/45000 | Elapsed: 1245s | Rate: 7.1/s | ETA: 5109s     Flows: 8853/45000 | Elapsed: 1250s | Rate: 7.1/s | ETA: 5103s     Flows: 8881/45000 | Elapsed: 1255s | Rate: 7.1/s | ETA: 5104s     Flows: 8924/45000 | Elapsed: 1260s | Rate: 7.1/s | ETA: 5093s     Flows: 8956/45000 | Elapsed: 1265s | Rate: 7.1/s | ETA: 5091s     Flows: 8988/45000 | Elapsed: 1270s | Rate: 7.1/s | ETA: 5088s     Flows: 9022/45000 | Elapsed: 1275s | Rate: 7.1/s | ETA: 5084s     Flows: 9060/45000 | Elapsed: 1280s | Rate: 7.1/s | ETA: 5077s     Flows: 9093/45000 | Elapsed: 1285s | Rate: 7.1/s | ETA: 5074s     Flows: 9131/45000 | Elapsed: 1290s | Rate: 7.1/s | ETA: 5067s     Flows: 9170/45000 | Elapsed: 1295s | Rate: 7.1/s | ETA: 5059s     Flows: 9199/45000 | Elapsed: 1300s | Rate: 7.1/s | ETA: 5059s     Flows: 9240/45000 | Elapsed: 1305s | Rate: 7.1/s | ETA: 5050s     Flows: 9276/45000 | Elapsed: 1310s | Rate: 7.1/s | ETA: 5045s     Flows: 9316/45000 | Elapsed: 1315s | Rate: 7.1/s | ETA: 5036s     Flows: 9358/45000 | Elapsed: 1320s | Rate: 7.1/s | ETA: 5027s     Flows: 9389/45000 | Elapsed: 1325s | Rate: 7.1/s | ETA: 5025s     Flows: 9417/45000 | Elapsed: 1330s | Rate: 7.1/s | ETA: 5025s     Flows: 9451/45000 | Elapsed: 1335s | Rate: 7.1/s | ETA: 5021s     Flows: 9488/45000 | Elapsed: 1340s | Rate: 7.1/s | ETA: 5015s     Flows: 9520/45000 | Elapsed: 1345s | Rate: 7.1/s | ETA: 5012s     Flows: 9559/45000 | Elapsed: 1350s | Rate: 7.1/s | ETA: 5005s     Flows: 9599/45000 | Elapsed: 1355s | Rate: 7.1/s | ETA: 4997s     Flows: 9633/45000 | Elapsed: 1360s | Rate: 7.1/s | ETA: 4993s     Flows: 9665/45000 | Elapsed: 1365s | Rate: 7.1/s | ETA: 4990s     Flows: 9709/45000 | Elapsed: 1370s | Rate: 7.1/s | ETA: 4979s     Flows: 9743/45000 | Elapsed: 1375s | Rate: 7.1/s | ETA: 4975s     Flows: 9780/45000 | Elapsed: 1380s | Rate: 7.1/s | ETA: 4969s     Flows: 9815/45000 | Elapsed: 1385s | Rate: 7.1/s | ETA: 4964s     Flows: 9850/45000 | Elapsed: 1390s | Rate: 7.1/s | ETA: 4960s     Flows: 9882/45000 | Elapsed: 1395s | Rate: 7.1/s | ETA: 4957s     Flows: 9916/45000 | Elapsed: 1400s | Rate: 7.1/s | ETA: 4953s     Flows: 9954/45000 | Elapsed: 1405s | Rate: 7.1/s | ETA: 4946s     Flows: 9986/45000 | Elapsed: 1410s | Rate: 7.1/s | ETA: 4943s     Flows: 10025/45000 | Elapsed: 1415s | Rate: 7.1/s | ETA: 4936s     Flows: 10063/45000 | Elapsed: 1420s | Rate: 7.1/s | ETA: 4929s     Flows: 10099/45000 | Elapsed: 1425s | Rate: 7.1/s | ETA: 4924s     Flows: 10128/45000 | Elapsed: 1430s | Rate: 7.1/s | ETA: 4923s     Flows: 10169/45000 | Elapsed: 1435s | Rate: 7.1/s | ETA: 4915s     Flows: 10199/45000 | Elapsed: 1440s | Rate: 7.1/s | ETA: 4913s     Flows: 10237/45000 | Elapsed: 1445s | Rate: 7.1/s | ETA: 4906s     Flows: 10279/45000 | Elapsed: 1450s | Rate: 7.1/s | ETA: 4897s     Flows: 10318/45000 | Elapsed: 1455s | Rate: 7.1/s | ETA: 4890s     Flows: 10360/45000 | Elapsed: 1460s | Rate: 7.1/s | ETA: 4881s     Flows: 10392/45000 | Elapsed: 1465s | Rate: 7.1/s | ETA: 4878s     Flows: 10429/45000 | Elapsed: 1470s | Rate: 7.1/s | ETA: 4872s     Flows: 10464/45000 | Elapsed: 1475s | Rate: 7.1/s | ETA: 4868s     Flows: 10498/45000 | Elapsed: 1480s | Rate: 7.1/s | ETA: 4864s     Flows: 10537/45000 | Elapsed: 1485s | Rate: 7.1/s | ETA: 4856s     Flows: 10569/45000 | Elapsed: 1490s | Rate: 7.1/s | ETA: 4854s     Flows: 10608/45000 | Elapsed: 1495s | Rate: 7.1/s | ETA: 4846s     Flows: 10651/45000 | Elapsed: 1500s | Rate: 7.1/s | ETA: 4837s     Flows: 10683/45000 | Elapsed: 1505s | Rate: 7.1/s | ETA: 4834s     Flows: 10721/45000 | Elapsed: 1510s | Rate: 7.1/s | ETA: 4828s     Flows: 10754/45000 | Elapsed: 1515s | Rate: 7.1/s | ETA: 4824s     Flows: 10792/45000 | Elapsed: 1520s | Rate: 7.1/s | ETA: 4818s     Flows: 10825/45000 | Elapsed: 1525s | Rate: 7.1/s | ETA: 4814s     Flows: 10874/45000 | Elapsed: 1530s | Rate: 7.1/s | ETA: 4801s     Flows: 10902/45000 | Elapsed: 1535s | Rate: 7.1/s | ETA: 4800s     Flows: 10937/45000 | Elapsed: 1540s | Rate: 7.1/s | ETA: 4796s     Flows: 10979/45000 | Elapsed: 1545s | Rate: 7.1/s | ETA: 4787s     Flows: 11018/45000 | Elapsed: 1550s | Rate: 7.1/s | ETA: 4780s     Flows: 11051/45000 | Elapsed: 1555s | Rate: 7.1/s | ETA: 4777s     Flows: 11078/45000 | Elapsed: 1560s | Rate: 7.1/s | ETA: 4776s     Flows: 11115/45000 | Elapsed: 1565s | Rate: 7.1/s | ETA: 4771s     Flows: 11152/45000 | Elapsed: 1570s | Rate: 7.1/s | ETA: 4765s     Flows: 11181/45000 | Elapsed: 1575s | Rate: 7.1/s | ETA: 4763s     Flows: 11212/45000 | Elapsed: 1580s | Rate: 7.1/s | ETA: 4761s     Flows: 11259/45000 | Elapsed: 1585s | Rate: 7.1/s | ETA: 4749s     Flows: 11298/45000 | Elapsed: 1590s | Rate: 7.1/s | ETA: 4742s     Flows: 11326/45000 | Elapsed: 1595s | Rate: 7.1/s | ETA: 4742s     Flows: 11363/45000 | Elapsed: 1600s | Rate: 7.1/s | ETA: 4736s     Flows: 11401/45000 | Elapsed: 1605s | Rate: 7.1/s | ETA: 4729s     Flows: 11440/45000 | Elapsed: 1610s | Rate: 7.1/s | ETA: 4723s     Flows: 11477/45000 | Elapsed: 1615s | Rate: 7.1/s | ETA: 4717s     Flows: 11504/45000 | Elapsed: 1620s | Rate: 7.1/s | ETA: 4716s     Flows: 11541/45000 | Elapsed: 1625s | Rate: 7.1/s | ETA: 4711s     Flows: 11579/45000 | Elapsed: 1630s | Rate: 7.1/s | ETA: 4704s     Flows: 11609/45000 | Elapsed: 1635s | Rate: 7.1/s | ETA: 4702s     Flows: 11650/45000 | Elapsed: 1640s | Rate: 7.1/s | ETA: 4694s     Flows: 11691/45000 | Elapsed: 1645s | Rate: 7.1/s | ETA: 4686s     Flows: 11722/45000 | Elapsed: 1650s | Rate: 7.1/s | ETA: 4684s     Flows: 11763/45000 | Elapsed: 1655s | Rate: 7.1/s | ETA: 4676s     Flows: 11793/45000 | Elapsed: 1661s | Rate: 7.1/s | ETA: 4677s     Flows: 11828/45000 | Elapsed: 1666s | Rate: 7.1/s | ETA: 4672s     Flows: 11856/45000 | Elapsed: 1671s | Rate: 7.1/s | ETA: 4671s     Flows: 11889/45000 | Elapsed: 1676s | Rate: 7.1/s | ETA: 4667s     Flows: 11924/45000 | Elapsed: 1681s | Rate: 7.1/s | ETA: 4662s     Flows: 11954/45000 | Elapsed: 1686s | Rate: 7.1/s | ETA: 4660s     Flows: 11991/45000 | Elapsed: 1691s | Rate: 7.1/s | ETA: 4655s     Flows: 12035/45000 | Elapsed: 1696s | Rate: 7.1/s | ETA: 4645s     Flows: 12061/45000 | Elapsed: 1701s | Rate: 7.1/s | ETA: 4645s     Flows: 12096/45000 | Elapsed: 1706s | Rate: 7.1/s | ETA: 4640s     Flows: 12126/45000 | Elapsed: 1711s | Rate: 7.1/s | ETA: 4638s     Flows: 12157/45000 | Elapsed: 1716s | Rate: 7.1/s | ETA: 4635s     Flows: 12190/45000 | Elapsed: 1721s | Rate: 7.1/s | ETA: 4632s     Flows: 12225/45000 | Elapsed: 1726s | Rate: 7.1/s | ETA: 4627s     Flows: 12261/45000 | Elapsed: 1731s | Rate: 7.1/s | ETA: 4622s     Flows: 12299/45000 | Elapsed: 1736s | Rate: 7.1/s | ETA: 4615s     Flows: 12337/45000 | Elapsed: 1741s | Rate: 7.1/s | ETA: 4609s     Flows: 12371/45000 | Elapsed: 1746s | Rate: 7.1/s | ETA: 4605s     Flows: 12409/45000 | Elapsed: 1751s | Rate: 7.1/s | ETA: 4598s     Flows: 12446/45000 | Elapsed: 1756s | Rate: 7.1/s | ETA: 4593s     Flows: 12478/45000 | Elapsed: 1761s | Rate: 7.1/s | ETA: 4589s     Flows: 12511/45000 | Elapsed: 1766s | Rate: 7.1/s | ETA: 4586s     Flows: 12551/45000 | Elapsed: 1771s | Rate: 7.1/s | ETA: 4578s     Flows: 12588/45000 | Elapsed: 1776s | Rate: 7.1/s | ETA: 4572s     Flows: 12630/45000 | Elapsed: 1781s | Rate: 7.1/s | ETA: 4564s     Flows: 12670/45000 | Elapsed: 1786s | Rate: 7.1/s | ETA: 4557s     Flows: 12707/45000 | Elapsed: 1791s | Rate: 7.1/s | ETA: 4551s     Flows: 12743/45000 | Elapsed: 1796s | Rate: 7.1/s | ETA: 4546s     Flows: 12775/45000 | Elapsed: 1801s | Rate: 7.1/s | ETA: 4543s    
+[!] Timeout reached. Collected 12775 flows.
+Stopping Normal Capture...
+[+] Normal flows collected: 12788
+
+=== 3. Running Attack Traffic (Multiple Types) ===
+[*] Target per attack type: ~4795 flows (to maintain balance)
+
+[⚔️] Running DoS-SYNFlood attack...
+    [DoS-SYNFlood] Captured 46699 flows
+
+[⚔️] Running DoS-UDP attack...
+    [DoS-UDP] Captured 37034 flows
+
+[⚔️] Running PortScan attack...
+    [PortScan] Captured 33822 flows
+
+[⚔️] Running WebAttack-HttpFlood attack...
+    [WebAttack-HttpFlood] Captured 35065 flows
+
+=== 4. Merging and analyzing ===
+[+] Created /home/yuheng/fyp/frontend/uploads/csv/test_combined.csv
+
+--- Class Distribution ---
+  BENIGN: 12788 (7.4%)
+  DoS-SYNFlood: 48256 (28.1%)
+  DoS-UDP: 38372 (22.3%)
+  PortScan: 35017 (20.4%)
+  WebAttack-HttpFlood: 37308 (21.7%)
+
+  BENIGN: 12788 | NON-BENIGN: 158953
+  Balance Check: BENIGN > NON-BENIGN/3 ? 12788 > 52984 = False
+
+[*] Uploading to http://10.100.10.15:8000/analyze_pcap...
+
+=== Cleanup ===
+
+[!] Cleaning up existing topology...
+[CMD] ip netns del ns_server 2>/dev/null
+[CMD] ip netns del ns_user 2>/dev/null
+[CMD] ip netns del ns_attacker 2>/dev/null
+[CMD] ip netns del ns_attacker2 2>/dev/null
+[CMD] ip netns del ns_attacker3 2>/dev/null
+[CMD] ovs-vsctl del-br ovs-br0 2>/dev/null
+[CMD] ip link delete veth_serv 2>/dev/null
+[CMD] ip link delete veth_user 2>/dev/null
+[CMD] ip link delete veth_hack 2>/dev/null
+[CMD] ip link delete veth_hack2 2>/dev/null
+[CMD] ip link delete veth_hack3 2>/dev/null
+[CMD] ip link delete veth_mon 2>/dev/null
+[CMD] ip link delete mon-cap 2>/dev/null
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/urllib3/connection.py", line 203, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/util/connection.py", line 85, in create_connection
+    raise err
+  File "/usr/lib/python3/dist-packages/urllib3/util/connection.py", line 73, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 791, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 497, in _make_request
+    conn.request(
+  File "/usr/lib/python3/dist-packages/urllib3/connection.py", line 395, in request
+    self.endheaders()
+  File "/usr/lib/python3.12/http/client.py", line 1351, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/usr/lib/python3.12/http/client.py", line 1111, in _send_output
+    self.send(msg)
+  File "/usr/lib/python3.12/http/client.py", line 1055, in send
+    self.connect()
+  File "/usr/lib/python3/dist-packages/urllib3/connection.py", line 243, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/connection.py", line 218, in _new_conn
+    raise NewConnectionError(
+urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x76a1801c4c50>: Failed to establish a new connection: [Errno 111] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/connectionpool.py", line 845, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/urllib3/util/retry.py", line 517, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='10.100.10.15', port=8000): Max retries exceeded with url: /analyze_pcap (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x76a1801c4c50>: Failed to establish a new connection: [Errno 111] Connection refused'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/yuheng/fyp/frontend/live_test.py", line 291, in <module>
+    main()
+  File "/home/yuheng/fyp/frontend/live_test.py", line 266, in main
+    resp = requests.post(f"{SERVER_URL}/analyze_pcap", files=files, data=data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/api.py", line 115, in post
+    return request("post", url, data=data, json=json, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/requests/adapters.py", line 519, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='10.100.10.15', port=8000): Max retries exceeded with url: /analyze_pcap (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x76a1801c4c50>: Failed to establish a new connection: [Errno 111] Connection refused'))

@@ -19,10 +19,10 @@ import traceback
 import io
 
 from cic_extractor import CICExtractor, FEATURE_KEYS
+import uuid  # Ensure imported here if not already present
 
-
-# =============================================================================
-# TOPOLOGY, TRAFFIC, AND ATTACK MANAGEMENT
+# Global locks and state must be defined early if used in multiple places
+# (Added for clarity, actual definitions typically follow)
 # =============================================================================
 
 # Configuration for network topology
@@ -92,66 +92,115 @@ def cleanup_topology():
     with injected_rules_lock:
         injected_rules.clear()
 
-
 # =============================================================================
 # OVS OPENFLOW RULE INJECTION FOR ACTIONS
 # =============================================================================
 
-def inject_ovs_rule(src_ip, action, dst_ip=None):
+def inject_ovs_rule(src_ip=None, action='BLOCK', dst_ip=None, dst_port=None, protocol=None, priority=None):
     """
     Inject OpenFlow rules into OVS bridge based on action type.
-    
-    Actions:
-    - ALLOW: No rule needed (default behavior)
-    - LOG: No blocking rule, just log (handled in app)
-    - RATE_LIMIT: Add meter-based rate limiting (simplified: drop excess)
-    - BLOCK: Drop all traffic from src_ip
-    - ALERT_ONLY: No rule, just alert (handled in app)
-    
-    Returns: dict with status and details
+    Supports granular 5-tuple injection (Src Port removed as it's random).
     """
-    src_ip_clean = src_ip.split('/')[0] if '/' in src_ip else src_ip
+    src_ip_clean = src_ip.split('/')[0] if src_ip and '/' in src_ip else src_ip
     
+    # Construct match parts
+    match_parts = []
+    
+    # Protocol Logic
+    # If using L4 ports, we NEED to specify protocol
+    proto_map = {6: 'tcp', 17: 'udp', 1: 'icmp'}
+    proto_name = 'ip' # default to IP generic
+    
+    if protocol:
+        try:
+            p_int = int(protocol)
+            if p_int in proto_map:
+                proto_name = proto_map[p_int]
+            else:
+                 # If user typed 'tcp' or 'udp'
+                 if str(protocol).lower() in ['tcp','udp','icmp']:
+                     proto_name = str(protocol).lower()
+        except:
+             pass
+    
+    # If ports are present, enforce L4 proto
+    if (dst_port) and proto_name == 'ip':
+         # Default to TCP if not specified but ports are present? 
+         # Or just fail? Let's default to tcp to be safe, or user must specify.
+         # Actually OVS requires protocol to use tp_src/tp_dst
+         # If mixed, we might need multiple rules? For now, assume TCP if unspecified.
+         proto_name = 'tcp'
+         
+    match_parts.append(proto_name)
+    
+    if src_ip_clean:
+        match_parts.append(f"nw_src={src_ip_clean}")
+    
+    if dst_ip:
+        match_parts.append(f"nw_dst={dst_ip}")
+        
+    if dst_port and int(dst_port) > 0:
+        match_parts.append(f"tp_dst={dst_port}")
+        
+    match_str = ",".join(match_parts)
+    
+    # Determine Priority
+    # User specified > Auto high (ALLOW) > Auto low (BLOCK)
+    if priority:
+        prio = int(priority)
+    else:
+        if action in ['ALLOW', 'SAFE', 'PERMIT']:
+            prio = 2000
+        elif action == 'BLOCK':
+            prio = 1000
+        else:
+            prio = 500
+            
+    # Check for duplicates using match string as key
     with injected_rules_lock:
-        existing = injected_rules.get(src_ip_clean)
-        if existing and existing['action'] == action:
-            return {'status': 'exists', 'action': action, 'src_ip': src_ip_clean}
+        if match_str in injected_rules:
+             # Just update action/time
+              injected_rules[match_str]['action'] = action
+              injected_rules[match_str]['priority'] = prio
+              injected_rules[match_str]['time'] = time.time()
+              return {'status': 'updated', 'match': match_str}
     
-    result = {'status': 'ok', 'action': action, 'src_ip': src_ip_clean, 'rules_added': []}
+    result = {'status': 'ok', 'action': action, 'match': match_str, 'rules_added': []}
     
     try:
+        final_rule = f"priority={prio},{match_str}"
+        
         if action == 'BLOCK':
-            # High priority drop rule for traffic FROM this IP
-            rule = f"priority=1000,ip,nw_src={src_ip_clean},actions=drop"
-            cmd_result = run_cmd(f"ovs-ofctl add-flow {BRIDGE_NAME} \"{rule}\"", sudo=True)
-            result['rules_added'].append(rule)
-            
-            # Also block traffic TO this IP (bidirectional)
-            rule2 = f"priority=1000,ip,nw_dst={src_ip_clean},actions=drop"
-            run_cmd(f"ovs-ofctl add-flow {BRIDGE_NAME} \"{rule2}\"", sudo=True)
-            result['rules_added'].append(rule2)
-            
-            print(f"[🛡️ OVS] BLOCKED traffic from/to {src_ip_clean}")
+            cmd = f"ovs-ofctl add-flow {BRIDGE_NAME} \"{final_rule},actions=drop\""
+            run_cmd(cmd, sudo=True)
+            result['rules_added'].append(cmd)
+            print(f"[🛡️ OVS] BLOCKED flow: {match_str} (Prio={prio})")
             
         elif action == 'RATE_LIMIT':
-            # For rate limiting, we use a lower priority rule that limits packet rate
-            # Simple approach: set a meter or use queue (meter requires OVS 2.0+)
-            # Fallback: Just mark but allow (actual rate limiting is complex in OVS)
-            # For demo: Add a low-priority rule that allows but logs the fact
-            rule = f"priority=500,ip,nw_src={src_ip_clean},actions=normal"
-            run_cmd(f"ovs-ofctl add-flow {BRIDGE_NAME} \"{rule}\"", sudo=True)
-            result['rules_added'].append(rule)
-            result['note'] = 'Rate limiting marked (full implementation requires OVS meters)'
-            print(f"[⚠️ OVS] RATE_LIMIT marked for {src_ip_clean}")
+            # Mark with normal actions (dummy implementation)
+            cmd = f"ovs-ofctl add-flow {BRIDGE_NAME} \"{final_rule},actions=normal\""
+            run_cmd(cmd, sudo=True)
+            result['rules_added'].append(cmd)
+            result['note'] = 'Rate limiting tag'
+            print(f"[⚠️ OVS] RATE_LIMIT flow: {match_str}")
+
+        elif action in ['ALLOW', 'SAFE', 'PERMIT']:
+             cmd = f"ovs-ofctl add-flow {BRIDGE_NAME} \"{final_rule},actions=normal\""
+             run_cmd(cmd, sudo=True)
+             result['rules_added'].append(cmd)
+             print(f"[✅ OVS] ALLOW flow: {match_str} (Prio={prio})")
             
-        elif action in ['ALLOW', 'LOG', 'ALERT_ONLY']:
-            # These don't require flow rules - handled at application level
+        elif action in ['LOG', 'ALERT_ONLY']:
             result['rules_added'] = []
-            result['note'] = f'{action} handled at application level, no OVS rule needed'
             
-        # Track injected rule
+        # Track by match string
         with injected_rules_lock:
-            injected_rules[src_ip_clean] = {'action': action, 'time': time.time()}
+            injected_rules[match_str] = {
+                'action': action, 
+                'time': time.time(),
+                'priority': prio,
+                'match_parts': match_parts # store for verification?
+            }
             
     except Exception as e:
         result['status'] = 'error'
@@ -161,22 +210,22 @@ def inject_ovs_rule(src_ip, action, dst_ip=None):
     return result
 
 
-def remove_ovs_rule(src_ip):
-    """Remove all OVS rules for a specific source IP"""
-    src_ip_clean = src_ip.split('/')[0] if '/' in src_ip else src_ip
-    
+def remove_ovs_rule(match_str):
+    """Remove OVS rule by match string"""
     try:
-        # Delete rules matching this IP
-        run_cmd(f"ovs-ofctl del-flows {BRIDGE_NAME} \"ip,nw_src={src_ip_clean}\"", sudo=True)
-        run_cmd(f"ovs-ofctl del-flows {BRIDGE_NAME} \"ip,nw_dst={src_ip_clean}\"", sudo=True)
+        # Delete using match string without --strict since we don't include priority
+        # This will delete all flows matching the given criteria
+        run_cmd(f"ovs-ofctl del-flows {BRIDGE_NAME} \"{match_str}\"", sudo=True)
         
         with injected_rules_lock:
-            injected_rules.pop(src_ip_clean, None)
+            injected_rules.pop(match_str, None)
         
-        print(f"[🔓 OVS] Removed rules for {src_ip_clean}")
-        return {'status': 'ok', 'src_ip': src_ip_clean}
+        print(f"[🔓 OVS] Removed rule: {match_str}")
+        return {'status': 'ok', 'match': match_str}
     except Exception as e:
+        print(f"[❌ OVS] Failed to remove rule: {e}")
         return {'status': 'error', 'error': str(e)}
+
 
 
 def get_ovs_flows():
@@ -232,6 +281,8 @@ def clear_all_ovs_rules():
 
 # Monitor capture interface name (host side)
 MONITOR_CAPTURE_IFACE = "mon-cap"
+# IPs that are always considered BENIGN (e.g. Server IP)
+BENIGN_IPS = ['10.0.0.10']
 
 def setup_topology():
     """Set up the OVS-based network topology"""
@@ -270,14 +321,16 @@ def setup_topology():
         if data['ip'] != "0.0.0.0":
             run_cmd(f"ip netns exec {ns} ip addr add {data['ip']} dev eth0", sudo=True)
 
-    # Create monitor as a veth pair - one end on OVS, other end for capture on host
+    # Create monitor interface for port mirroring
     print("[+] Creating Monitor Interface...")
-    mon_veth = NAMESPACES['ns_monitor']['veth']  # veth_mon - goes to OVS
+    mon_veth = NAMESPACES['ns_monitor']['veth']  # veth_mon
     # Create veth pair: veth_mon <-> mon-cap
     run_cmd(f"ip link add {mon_veth} type veth peer name {MONITOR_CAPTURE_IFACE}", sudo=True)
-    # Add veth_mon to OVS bridge
+    # Add veth_mon to OVS bridge - this will receive mirrored traffic
     run_cmd(f"ovs-vsctl add-port {BRIDGE_NAME} {mon_veth}", sudo=True)
     run_cmd(f"ip link set {mon_veth} up", sudo=True)
+    run_cmd(f"ip link set {mon_veth} promisc on", sudo=True)
+    
     # Bring up the capture interface on host
     run_cmd(f"ip link set {MONITOR_CAPTURE_IFACE} up", sudo=True)
     run_cmd(f"ip link set {MONITOR_CAPTURE_IFACE} promisc on", sudo=True)
@@ -318,11 +371,11 @@ def generate_normal_traffic_loop(duration=0):
             
             if action == 'ping':
                 subprocess.run(
-                    f"sudo ip netns exec ns_user ping -c 2 -W 1 {TARGET_IP}",
+                    f"sudo ip netns exec ns_user ping -c 1 -W 1 {TARGET_IP}",
                     shell=True,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    timeout=5
+                    timeout=2
                 )
             elif action == 'web':
                 subprocess.run(
@@ -330,10 +383,11 @@ def generate_normal_traffic_loop(duration=0):
                     shell=True,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
-                    timeout=5
+                    timeout=2
                 )
             
-            time.sleep(random.uniform(0.5, 3.0))
+            # Much faster traffic: sleep 0.01s to 0.05s
+            time.sleep(random.uniform(0.01, 0.05))
             
         except Exception as e:
             print(f"[Traffic] Error: {e}")
@@ -342,30 +396,196 @@ def generate_normal_traffic_loop(duration=0):
     traffic_state['running'] = False
     print("[Traffic] Normal traffic generation stopped.")
 
+# =============================================================================
+# CSV PLAYBACK LOOP (HYBRID MODE)
+# =============================================================================
+
+def run_attack_playback_loop(csv_path, attacker_ip, duration=0, attack_type='unknown'):
+    """
+    Replays attack traffic from a CSV file, injecting it into the live monitoring state.
+    Mimics the behavior of live_loop but uses pre-calculated features.
+    """
+    import itertools
+    import random
+
+    print(f"[Playback] Loading attack pattern from {csv_path}...")
+    
+    # 1. Load all rows into memory (files are small ~3-4MB)
+    rows = []
+    try:
+        with open(csv_path, 'r', encoding='utf-8', errors='ignore') as f:
+            reader = TrimmedDictReader(f)
+            rows = list(reader)
+    except Exception as e:
+        print(f"[Playback] Error reading CSV: {e}")
+        attack_state['running'] = False
+        return
+
+    if not rows:
+        print("[Playback] CSV is empty.")
+        attack_state['running'] = False
+        return
+
+    print(f"[Playback] Starting playback loop as {attacker_ip} (Duration: {duration}s)")
+    
+    start_time = time.time()
+    row_cycle = itertools.cycle(rows) # Loop the CSV infinitely
+
+    # 2. Playback Loop
+    while attack_state['running']:
+        if duration > 0 and (time.time() - start_time) > duration:
+            break
+
+        try:
+            row = next(row_cycle)
+            
+            # --- A. Construct Flow Key (5-tuple) ---
+            # Overwrite Source IP with the selected attacker
+            src = attacker_ip
+            # Keep destination from CSV (usually 10.0.0.10) or default
+            dst = row.get('dst_ip') or row.get('Destination IP') or TARGET_IP
+            
+            # Try to get ports/proto from CSV, default to sensible values if missing
+            try:
+                sport = int(row.get('src_port') or row.get('Source Port') or random.randint(1024, 65535))
+                dport = int(row.get('dst_port') or row.get('Destination Port') or 80)
+                proto = int(row.get('protocol') or row.get('Protocol') or 6)
+            except:
+                sport, dport, proto = 0, 80, 6
+
+            # --- B. Extract Features ---
+            # The CSV contains the features. specific feature mapping logic
+            features_dict = {}
+            for k in FEATURE_KEYS:
+                # Try exact match or flexible lookup
+                val = row.get(k)
+                if val is None:
+                    # Fallback for some CSV variations
+                    val = 0.0
+                features_dict[k] = float(val)
+
+            # --- C. Predict & Process (Same logic as live_loop) ---
+            # Initialize vars
+            final_verdict = None
+            final_action = None
+            rule_source = None
+            rule_injected = None
+            
+            # 1. Check Existing OVS Rules (Simulated)
+            existing_rule = is_flow_covered(src, dst, dport, proto)
+            if existing_rule:
+                final_action = existing_rule.get('action', 'ALLOW').upper()
+                final_verdict = 'SKIP'
+                rule_source = f"OVS Dumpflow ({existing_rule.get('match', '')})"
+                xgb_model_res = {'confidence': 1.0, 'note': 'Skipped due to active rule'}
+                gnn_model_res = {}
+                iso_forest = {}
+            else:
+                # 2. ML Prediction
+                sid = live_state.get('scaler_id', 'default')
+                mod_xgb = live_state.get('xgb_model', 'default')
+                mod_sn = live_state.get('safetynet_model', 'default')
+                mod_gnn = live_state.get('gnn_model', 'default')
+
+                pred = predict_one(features_dict, src, dst, sid, mod_xgb, mod_sn, mod_gnn)
+                
+                final_verdict = pred.get('verdict', 'UNKNOWN')
+                raw_action = pred.get('action', '').upper()
+                iso_forest = pred.get('isolation_forest', {})
+                xgb_model_res = pred.get('xgb', {})
+                gnn_model_res = pred.get('gnn', {})
+
+                # Action Logic
+                if not raw_action or raw_action.lower() in ['allow', 'block']:
+                    if raw_action == 'BLOCK':
+                        final_action = 'BLOCK'
+                    elif final_verdict not in ['BENIGN', 'UNKNOWN', 'UNAVAILABLE']:
+                        xgb_conf = xgb_model_res.get('confidence', 0)
+                        if xgb_conf >= BLOCK_THRESHOLD:
+                            final_action = 'BLOCK'
+                        elif xgb_conf >= RATE_LIMIT_THRESHOLD:
+                            final_action = 'RATE_LIMIT'
+                        elif xgb_conf >= LOG_THRESHOLD:
+                            final_action = 'LOG'
+                        else:
+                            final_action = 'ALLOW'
+                    else:
+                        final_action = 'ALLOW'
+                else:
+                    final_action = raw_action
+                
+                # 3. Inject Rule (Real injection, even in playback mode, to stop "traffic")
+                if topo_state.get('running') and final_action in ['BLOCK', 'RATE_LIMIT']:
+                     # We only block. We don't allow purely because there is no real traffic to allow.
+                     rule_injected = inject_ovs_rule(src, final_action, dst_ip=dst, dst_port=dport, protocol=proto)
+
+            # --- D. Append to Live State ---
+            record = {
+                'timestamp': time.time(), # Set to NOW
+                'src_ip': src,
+                'dst_ip': dst,
+                'src_port': sport,
+                'dst_port': dport,
+                'protocol': proto,
+                'features': features_dict,
+                'prediction': final_verdict,
+                'action': final_action,
+                'confidence': xgb_model_res.get('confidence', 0.0) if xgb_model_res else 1.0,
+                'gnn_verdict': gnn_model_res.get('flag'),
+                'gnn_confidence': gnn_model_res.get('confidence'),
+                'details': {
+                    'isolation_forest': iso_forest,
+                    'xgb': xgb_model_res,
+                    'gnn': gnn_model_res,
+                    'rule_source': rule_source
+                },
+                'latency_ms': 0.1, # Simulated latency
+                'rule_injected': rule_injected
+            }
+
+            with state_lock:
+                live_state['flows'].append(record)
+
+            # --- E. Rate Control ---
+            # Sleep to simulate traffic rate. 
+            # Randomize slightly to look natural.
+            time.sleep(random.uniform(0.02, 0.1))
+
+        except Exception as e:
+            print(f"[Playback] Error in loop: {e}")
+            time.sleep(1)
+
+    attack_state['running'] = False
+    print(f"[Playback] Stopped playback of {attack_type}")
 
 def run_attack_loop(attack_type, duration=0, attacker_ns='ns_attacker'):
     """Run attack in a loop until stopped from specified attacker namespace"""
     start_time = time.time()
     
     # Build commands with dynamic namespace
+    # Optimized commands to ensure traffic generation
     attack_commands = {
-        'syn': f"sudo ip netns exec {attacker_ns} hping3 -S -p 80 --flood {TARGET_IP}",
-        'udp': f"sudo ip netns exec {attacker_ns} timeout 10 iperf3 -c {TARGET_IP} -u -b 100M -t 10",
-        'scan': f"sudo ip netns exec {attacker_ns} nmap -sS -p 1-1000 {TARGET_IP}",
-        'web': f"sudo ip netns exec {attacker_ns} ab -n 5000 -c 20 http://{TARGET_IP}/",
-        'botnet': f"sudo ip netns exec {attacker_ns} nc -z -v -w 1 {TARGET_IP} 80"  # For single execution
+        # SYN Flood: Increased rate, faster interval
+        'syn': f"sudo ip netns exec {attacker_ns} hping3 -S -p 80 -i u100 {TARGET_IP}",
+        # UDP Flood: Use hping3 UDP mode as it's more reliable for DoS than iperf3
+        'udp': f"sudo ip netns exec {attacker_ns} hping3 --udp -p 80 -i u1000 --rand-source {TARGET_IP}",
+        # Port Scan: Faster scan, more common ports
+        'scan': f"sudo ip netns exec {attacker_ns} nmap -sS -T4 -p 21,22,23,25,53,80,110,443,3306,8080 --open {TARGET_IP}",
+        # Web Attack: Continuous curl requests (now same as normal traffic)
+        'web': f"sudo ip netns exec {attacker_ns} curl -s -o /dev/null --connect-timeout 2 http://{TARGET_IP}/",
+        # Botnet: Repeated connection attempts to varied ports
+        'botnet': f"sudo ip netns exec {attacker_ns} nc -z -v -w 1 {TARGET_IP} 80"
     }
     
     attacker_ip = NAMESPACES.get(attacker_ns, {}).get('ip', 'unknown').split('/')[0]
     print(f"[Attack] Starting {attack_type} from {attacker_ns} ({attacker_ip})")
     
+    import random
     while attack_state['running']:
         if duration > 0 and (time.time() - start_time) > duration:
             break
-        
         try:
             if attack_type == 'botnet':
-                # Beaconing simulation
                 subprocess.run(
                     attack_commands['botnet'],
                     shell=True,
@@ -374,6 +594,16 @@ def run_attack_loop(attack_type, duration=0, attacker_ns='ns_attacker'):
                     timeout=5
                 )
                 time.sleep(2)
+            elif attack_type == 'web':
+                # Loop curl for web attack (align with live_test.py/attack_generator.py)
+                subprocess.run(
+                    attack_commands['web'],
+                    shell=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=3
+                )
+                time.sleep(random.uniform(0.01, 0.05))
             else:
                 cmd = attack_commands.get(attack_type)
                 if cmd:
@@ -385,8 +615,6 @@ def run_attack_loop(attack_type, duration=0, attacker_ns='ns_attacker'):
                         preexec_fn=os.setsid
                     )
                     attack_state['process'] = proc
-                    
-                    # Wait for completion or stop signal
                     while proc.poll() is None and attack_state['running']:
                         time.sleep(0.5)
                     
@@ -1259,35 +1487,87 @@ def process_pcap():
             # Check if mapping is sufficient? 
             # For now, we assume if it's not provided, we try our best.
             # But if critical features are missing, job might fail or produce zeros.
-            # The frontend is responsible for intercepting 'mapping_needed' via other endpoints or pre-checks.
+    
+    # Create and start the job
+    job_id = str(uuid.uuid4())
+    job = OfflineJob(
+        job_id=job_id,
+        source_kind=source_kind,
+        src_path=src_path,
+        label_column=label_column,
+        benign_label=benign_label,
+        metadata=metadata,
+        scaler_id=scaler_id,
+        xgb_model=xgb_model,
+        safetynet_model=safetynet_model,
+        gnn_model=gnn_model
+    )
+    
+    with offline_jobs_lock:
+        offline_jobs[job_id] = job
+    
+    return jsonify({
+        'job_id': job_id,
+        'filename': saved_name,
+        'source_kind': source_kind,
+        'total': job.total_estimated,
+        'status': 'started'
+    })
 
-        if 'benign_label' in metadata:
-             benign_label = metadata['benign_label']
+# =============================================================================
+# SAFE ZONE RULES APIs
+# =============================================================================
 
+# =============================================================================
+# (Removed Safe Zone endpoints in favor of generic /switch/inject)
+# =============================================================================
+
+
+# =============================================================================
+# JOB MANAGEMENT
+# =============================================================================
+
+@app.route('/jobs/start', methods=['POST'])
+def start_job():
+    """Start an offline processing job (CSV or PCAP)"""
+    data = request.get_json(force=True)
+    job_type = data.get('type')  # 'csv' or 'pcap'
+    filename = data.get('filename')  
+    model_name = data.get('model', 'default')
+    scaler_id = data.get('scaler_id', 'default')
+
+    if not filename:
+         return jsonify({'error': 'filename required'}), 400
+         
     try:
-        # Don't load entries here anymore for CSV
+        source_kind, src_path = None, None
+        if job_type == 'pcap':
+            source_kind = 'pcap'
+            src_path = os.path.join(PCAP_DIR, filename)
+        else:
+            source_kind = 'csv'
+            src_path = os.path.join(CSV_DIR, filename)
+
         if source_kind == 'pcap':
-            # PCAP still pre-loads for now (or refactor later)
-            # But OfflineJob now expects src_path, not entries list for CSV
-            pass
+            # PCAP check
+            if not os.path.exists(src_path):
+                 return jsonify({'error': 'source file missing'}), 404
         else:
             # CSV: Just verify file exists
             if not os.path.exists(src_path):
                  return jsonify({'error': 'source file missing'}), 404
     except Exception as exc:
-        return jsonify({'error': f'failed to parse source: {exc}'}), 500
+        return jsonify({'error': str(exc)}), 500
 
-    job_id = uuid.uuid4().hex
-    # Pass src_path instead of entries
-    job = OfflineJob(job_id, source_kind, src_path, label_column, benign_label, metadata, scaler_id, xgb_model, safetynet_model, gnn_model)
-
+    job_id = str(uuid.uuid4())
+    job = OfflineJob(job_id, source_kind, src_path, scaler_id=scaler_id)
+    
     with offline_jobs_lock:
         offline_jobs[job_id] = job
-
-    # Return job ID immediately for async processing
+    
     return jsonify({
         'job_id': job_id,
-        'total': job.total_estimated, # Use estimated total
+        'total': job.total_estimated,
         'status': 'started'
     })
 
@@ -1435,7 +1715,15 @@ def live_loop():
     ext = live_state['extractor']
     if not ext:
         return
-    ext.start()
+    try:
+        ext.start()
+    except Exception as e:
+        print(f"[live_loop] Sniff error: {e}", file=sys.stderr)
+    finally:
+        # Mark as not running when sniff exits (error or stop)
+        with state_lock:
+            live_state['running'] = False
+            live_state['sniff_error'] = str(e) if 'e' in dir() else None
 
 
 @app.route('/start_iface', methods=['POST'])
@@ -1450,6 +1738,10 @@ def start_iface():
     if not iface:
         return jsonify({'error': 'iface required'}), 400
 
+    # Verify interface exists before starting
+    if not os.path.exists(f'/sys/class/net/{iface}'):
+        return jsonify({'error': f'Interface {iface} does not exist'}), 400
+
     with state_lock:
         if live_state['running']:
             return jsonify({'status': 'already_running'}), 200
@@ -1458,6 +1750,7 @@ def start_iface():
         live_state['xgb_model'] = xgb_model
         live_state['safetynet_model'] = safetynet_model
         live_state['gnn_model'] = gnn_model
+        live_state['sniff_error'] = None  # Clear any previous error
 
         # Create extractor that appends to live_state flows in flush
         class LiveCIC(CICExtractor):
@@ -1465,82 +1758,110 @@ def start_iface():
                 flow = self.flows.pop(key, None)
                 if not flow:
                     return
-                feats = flow.compute_features()
-                src, dst, sport, dport, proto = flow.key
-                
-                sid = live_state.get('scaler_id', 'default')
-                mod_xgb = live_state.get('xgb_model', 'default')
-                mod_sn = live_state.get('safetynet_model', 'default')
-                mod_gnn = live_state.get('gnn_model', 'default')
-                
-                # Extract 15 features for prediction and storage
-                features_dict = {kk: feats[kk] for kk in FEATURE_KEYS}
-                
-                # Track total prediction time
-                pred_start = time.time()
-                pred = predict_one(features_dict, src, dst, sid, mod_xgb, mod_sn, mod_gnn)
-                pred_end = time.time()
-                total_latency_ms = round((pred_end - pred_start) * 1000, 2)
-                
-                verdict = pred.get('verdict', 'UNKNOWN')
-                # Get action from backend (new format: ALLOW, LOG, RATE_LIMIT, BLOCK, ALERT_ONLY)
-                action = pred.get('action', '').upper()
-                
-                # Fallback for old backend responses
-                if not action or action.lower() in ['allow', 'block']:
-                    if action.lower() == 'block':
-                        action = 'BLOCK'
-                    elif verdict not in ['BENIGN', 'UNKNOWN', 'UNAVAILABLE']:
-                        # Determine action based on confidence if not provided
-                        xgb_conf = pred.get('xgb', {}).get('confidence', 0)
-                        if xgb_conf >= BLOCK_THRESHOLD:
-                            action = 'BLOCK'
-                        elif xgb_conf >= RATE_LIMIT_THRESHOLD:
-                            action = 'RATE_LIMIT'
-                        elif xgb_conf >= LOG_THRESHOLD:
-                            action = 'LOG'
-                        else:
-                            action = 'ALLOW'
-                    else:
-                        action = 'ALLOW'
-                
-                # Inject OVS rule based on action (only for BLOCK and RATE_LIMIT)
+                # Initialize variables to avoid UnboundLocalError
+                final_verdict = None
+                final_action = None
+                rule_source = None
                 rule_injected = None
-                if action in ['BLOCK', 'RATE_LIMIT'] and topo_state.get('running'):
-                    rule_result = inject_ovs_rule(src, action)
-                    rule_injected = rule_result
+                iso_forest = {}
+                xgb_model_res = {}
+                gnn_model_res = {}
+                pred_start = time.time()
+                pred_end = time.time()
 
-                iso_forest = pred.get('isolation_forest', {})
-                xgb_model = pred.get('xgb', {})
-                gnn_model = pred.get('gnn', {})
+                try:
+                    feats = flow.compute_features()
+                    src, dst, sport, dport, proto = flow.key
+                    
+                    sid = live_state.get('scaler_id', 'default')
+                    mod_xgb = live_state.get('xgb_model', 'default')
+                    mod_sn = live_state.get('safetynet_model', 'default')
+                    mod_gnn = live_state.get('gnn_model', 'default')
+                    
+                    # Extract 15 features for prediction and storage
+                    features_dict = {kk: feats[kk] for kk in FEATURE_KEYS}
+                    
+                    # GOLDEN RULE: Check Existing OVS Rules First!
+                    # If a rule exists in dumpflows (injected_rules) that matches this flow, we obey it and SKIP prediction.
+                    existing_rule = is_flow_covered(src, dst, dport, proto)
+                    if existing_rule:
+                         final_action = existing_rule.get('action', 'ALLOW').upper()
+                         final_verdict = 'SKIP' # Skip prediction as rule determines fate
+                         rule_source = 'OVS Dumpflow (' + existing_rule.get('match', '') + ')'
+                    
+                    # 3. ML Prediction (only if no prior rule)
+                    if existing_rule:
+                         # Skip ML
+                         pred_end = time.time()
+                         xgb_model_res = {'confidence': 1.0, 'note': 'Skipped due to active rule'}
+                    else:
+                         pred_start = time.time()
+                         pred = predict_one(features_dict, src, dst, sid, mod_xgb, mod_sn, mod_gnn)
+                         pred_end = time.time()
+                         
+                         final_verdict = pred.get('verdict', 'UNKNOWN')
+                         raw_action = pred.get('action', '').upper()
+                         
+                         iso_forest = pred.get('isolation_forest', {})
+                         xgb_model_res = pred.get('xgb', {})
+                         gnn_model_res = pred.get('gnn', {})
+                         
+                         # Logic to determine action from ML
+                         if not raw_action or raw_action.lower() in ['allow', 'block']:
+                            if raw_action == 'BLOCK':
+                                final_action = 'BLOCK'
+                            elif final_verdict not in ['BENIGN', 'UNKNOWN', 'UNAVAILABLE']:
+                                xgb_conf = xgb_model_res.get('confidence', 0)
+                                if xgb_conf >= BLOCK_THRESHOLD:
+                                    final_action = 'BLOCK'
+                                elif xgb_conf >= RATE_LIMIT_THRESHOLD:
+                                    final_action = 'RATE_LIMIT'
+                                elif xgb_conf >= LOG_THRESHOLD:
+                                    final_action = 'LOG'
+                                else:
+                                    final_action = 'ALLOW'
+                            else:
+                                final_action = 'ALLOW'
+                         else:
+                             final_action = raw_action
+                         
+                         # NEW: Inject Rules for EVERYTHING (including ALLOW)
+                         # This replaces "Safe Zone" with explicit 5-tuple permits
+                         if topo_state.get('running') and final_action in ['BLOCK', 'RATE_LIMIT', 'ALLOW']:
+                             rule_injected = inject_ovs_rule(src, final_action, dst_ip=dst, dst_port=dport, protocol=proto)
 
-                gnn_verdict = gnn_model.get('flag')
-                gnn_conf = gnn_model.get('confidence')
+                    total_latency_ms = round((pred_end - pred_start) * 1000, 2)
+                    
+                    details = {
+                        'isolation_forest': iso_forest,
+                        'xgb': xgb_model_res,
+                        'gnn': gnn_model_res,
+                        'rule_source': rule_source
+                    }
 
-                details = {
-                    'isolation_forest': iso_forest,
-                    'xgb': xgb_model,
-                    'gnn': gnn_model
-                }
+                    record = {
+                        'timestamp': flow.last_time,
+                        'src_ip': src,
+                        'dst_ip': dst,
+                        'src_port': sport,
+                        'dst_port': dport,
+                        'protocol': proto,
+                        'features': features_dict,
+                        'prediction': final_verdict,
+                        'action': final_action,
+                        'confidence': xgb_model_res.get('confidence', 0.0) if xgb_model_res else 1.0 if rule_source else 0.0,
+                        'gnn_verdict': gnn_model_res.get('flag'),
+                        'gnn_confidence': gnn_model_res.get('confidence'),
+                        'details': details,
+                        'latency_ms': total_latency_ms,
+                        'rule_injected': rule_injected
+                    }
+                    live_state['flows'].append(record)
+                    
+                except Exception as e:
+                    print(f"Error in flushed flow: {e}")
+                    traceback.print_exc()
 
-                record = {
-                    'timestamp': flow.last_time,
-                    'src_ip': src,
-                    'dst_ip': dst,
-                    'src_port': sport,
-                    'dst_port': dport,
-                    'protocol': proto,
-                    'features': features_dict,  # Include all 15 features
-                    'prediction': verdict,
-                    'action': action,
-                    'confidence': xgb_model.get('confidence', 0.0),
-                    'gnn_verdict': gnn_verdict,
-                    'gnn_confidence': gnn_conf,
-                    'details': details,
-                    'latency_ms': total_latency_ms,  # Total prediction time
-                    'rule_injected': rule_injected  # Track if OVS rule was added
-                }
-                live_state['flows'].append(record)
         live_state['extractor'] = LiveCIC(iface=iface, timeout=0.5, print_interval=0.1)
         live_state['flows'] = []
         live_state['running'] = True
@@ -1661,6 +1982,69 @@ def topo_status():
 
 
 # =============================================================================
+# OPTIMIZATION: CHECK EXISTING RULES
+# =============================================================================
+
+def is_flow_covered(src, dst, dport, proto):
+    """
+    Check if a flow matches any existing OVS rule locally.
+    Returns rule_data if covered, else None.
+    """
+    # Proto map for comparison (int -> str)
+    proto_map = {6: 'tcp', 17: 'udp', 1: 'icmp'}
+    # If proto is already valid string, use it, else map
+    try:
+        if isinstance(proto, int) or (isinstance(proto, str) and proto.isdigit()):
+             flow_proto_name = proto_map.get(int(proto), 'ip')
+        else:
+             flow_proto_name = str(proto).lower()
+    except:
+        flow_proto_name = 'ip'
+    
+    with injected_rules_lock:
+        for match_str, rule_data in injected_rules.items():
+            # Example match_str: "priority=2000,tcp,nw_src=10.0.0.1,tp_dst=80"
+            parts = match_str.split(',')
+            
+            match = True
+            for part in parts:
+                part = part.strip()
+                if part.startswith('priority='): continue
+                if part == 'ip': continue 
+                
+                # Protocol check (if rule specifies proto, flow MUST match)
+                if part in ['tcp', 'udp', 'icmp']:
+                    if flow_proto_name != part:
+                        match = False; break
+                
+                # IP checks
+                if part.startswith('nw_src='):
+                    rule_src = part.split('=')[1]
+                    if rule_src != src:
+                        match = False; break
+                
+                if part.startswith('nw_dst='):
+                    rule_dst = part.split('=')[1]
+                    if rule_dst != dst:
+                        match = False; break
+                        
+                # Port checks
+                if part.startswith('tp_dst='):
+                    try:
+                        rule_port = int(part.split('=')[1])
+                        # If dport is None or empty, it doesn't match a specific port rule?
+                        if not dport or int(dport) != rule_port:
+                            match = False; break
+                    except:
+                        match = False; break
+            
+            if match:
+                return rule_data
+                
+    return None
+
+
+# =============================================================================
 # OVS SWITCH FLOW MANAGEMENT ENDPOINTS
 # =============================================================================
 
@@ -1694,33 +2078,48 @@ def switch_rules():
 
 @app.route('/switch/inject', methods=['POST'])
 def switch_inject():
-    """Manually inject an OVS rule for an IP"""
+    """Manually inject an OVS rule for an IP or tuple"""
     data = request.get_json(force=True)
     src_ip = data.get('src_ip')
+    dst_ip = data.get('dst_ip')
+    dst_port = data.get('dst_port')
+    protocol = data.get('protocol')
+    priority = data.get('priority')
     action = data.get('action', 'BLOCK')
     
-    if not src_ip:
-        return jsonify({'error': 'src_ip required'}), 400
-    
-    if action not in ['ALLOW', 'LOG', 'RATE_LIMIT', 'BLOCK', 'ALERT_ONLY']:
-        return jsonify({'error': 'Invalid action. Choose: ALLOW, LOG, RATE_LIMIT, BLOCK, ALERT_ONLY'}), 400
-    
-    result = inject_ovs_rule(src_ip, action)
+    # Validation
+    if not any([src_ip, dst_ip, dst_port, protocol]):
+         return jsonify({'error': 'At least one match field required'}), 400
+
+    result = inject_ovs_rule(
+        src_ip=src_ip,
+        action=action, 
+        dst_ip=dst_ip,
+        dst_port=dst_port,
+        protocol=protocol,
+        priority=priority
+    )
     return jsonify(result)
 
 
 @app.route('/switch/remove', methods=['POST'])
 def switch_remove():
-    """Remove OVS rules for an IP"""
+    """Remove rule via match string"""
     data = request.get_json(force=True)
+    match_str = data.get('match')
     src_ip = data.get('src_ip')
     
-    if not src_ip:
-        return jsonify({'error': 'src_ip required'}), 400
+    if match_str:
+        result = remove_ovs_rule(match_str)
+    elif src_ip:
+        # Fallback
+        match_str = f"ip,nw_src={src_ip}"
+        result = remove_ovs_rule(match_str)
+    else:
+        return jsonify({'error': 'match string required'}), 400
     
-    result = remove_ovs_rule(src_ip)
     return jsonify(result)
-
+        
 
 @app.route('/switch/clear', methods=['POST'])
 def switch_clear():
@@ -1798,8 +2197,8 @@ def start_attack():
     
     data = request.get_json(force=True) if request.is_json else {}
     attack_type = data.get('attack_type')
-    attacker_ns = data.get('attacker_ns', 'ns_attacker')  # Default to first attacker
-    duration = data.get('duration', 0)  # 0 = infinite
+    attacker_ns = data.get('attacker_ns', 'ns_attacker')
+    duration = data.get('duration', 0)
     
     if not attack_type or attack_type not in ATTACK_TYPES:
         return jsonify({'error': f'Invalid attack type. Choose from: {list(ATTACK_TYPES.keys())}'}), 400
@@ -1807,7 +2206,7 @@ def start_attack():
     if attacker_ns not in ATTACKER_NS:
         return jsonify({'error': f'Invalid attacker. Choose from: {ATTACKER_NS}'}), 400
     
-    # Stop existing attack if running
+    # Stop existing attack
     if attack_state['running']:
         attack_state['running'] = False
         if attack_state['thread']:
@@ -1817,17 +2216,52 @@ def start_attack():
     attack_state['attack_type'] = attack_type
     attack_state['attacker_ns'] = attacker_ns
     
-    t = threading.Thread(target=run_attack_loop, args=(attack_type, duration, attacker_ns), daemon=True)
-    attack_state['thread'] = t
-    t.start()
+    # --- CHANGED LOGIC START ---
     
-    attacker_ip = NAMESPACES[attacker_ns]['ip'].split('/')[0]
+    # 1. Check if CSV exists for this attack type
+    # Mapping: 'web' -> 'test_attack_web.csv', 'syn' -> 'test_attack_syn.csv'
+    csv_filename = f"test_attack_{attack_type}.csv"
+    csv_path = os.path.join(CSV_DIR, csv_filename)
+    
+    if os.path.exists(csv_path):
+        # MODE A: PLAYBACK (Hybrid)
+        print(f"[Attack] Found CSV {csv_filename}. Starting PLAYBACK mode.")
+        
+        # Get Attacker IP for substitution
+        attacker_ip = NAMESPACES[attacker_ns]['ip'].split('/')[0]
+        
+        t = threading.Thread(
+            target=run_attack_playback_loop, 
+            args=(csv_path, attacker_ip, duration, attack_type), 
+            daemon=True
+        )
+        attack_state['thread'] = t
+        t.start()
+        mode_msg = "playback"
+        
+    else:
+        # MODE B: CLI GENERATION (Original Fallback)
+        print(f"[Attack] No CSV found for {attack_type}. Starting REAL TRAFFIC generation.")
+        
+        t = threading.Thread(
+            target=run_attack_loop, 
+            args=(attack_type, duration, attacker_ns), 
+            daemon=True
+        )
+        attack_state['thread'] = t
+        t.start()
+        mode_msg = "generated"
+
+    # --- CHANGED LOGIC END ---
+
+    attacker_ip_display = NAMESPACES[attacker_ns]['ip'].split('/')[0]
     return jsonify({
         'status': 'started',
+        'mode': mode_msg,
         'attack_type': attack_type,
         'attack_name': ATTACK_TYPES[attack_type],
         'attacker_ns': attacker_ns,
-        'attacker_ip': attacker_ip,
+        'attacker_ip': attacker_ip_display,
         'duration': duration
     })
 
@@ -1950,6 +2384,28 @@ def stored_files():
 @app.route('/interfaces', methods=['GET'])
 def list_interfaces_route():
     interfaces = list_network_interfaces()
+    
+    # Filter out topology-related interfaces if topology is not running
+    # These interfaces (veth_*, mon-cap, ovs-*) should only appear when topo is active
+    TOPO_INTERFACES = {'veth_mon', 'veth_serv', 'veth_user', 'veth_hack', 'veth_hack2', 'veth_hack3', 'mon-cap', 'ovs-system'}
+    
+    with topo_lock:
+        topo_running = topo_state.get('running', False)
+    
+    if not topo_running:
+        interfaces = [iface for iface in interfaces if iface['name'] not in TOPO_INTERFACES]
+    else:
+        # When topo is running, prioritize mon-cap at the top
+        def sort_key(item):
+            if item['name'] == 'mon-cap':
+                return (0, item['name'])
+            elif item['name'].startswith('veth_'):
+                # Lower priority for internal OVS ports
+                return (2, item['name'])
+            else:
+                return (1, item['name'])
+        interfaces.sort(key=sort_key)
+    
     return jsonify({'interfaces': interfaces})
 
 
@@ -2606,4 +3062,10 @@ def proxy_retrain():
 
 
 if __name__ == '__main__':
+    # Ensure clean state at startup
+    try:
+        cleanup_topology()
+    except Exception as e:
+        print(f"Warning: Startup cleanup failed: {e}")
+    
     app.run(host='0.0.0.0', port=5000)

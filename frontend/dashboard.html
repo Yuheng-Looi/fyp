@@ -266,6 +266,67 @@
                         </div>
                     </div>
 
+                    <!-- Row 3b: Manual Rule Injection -->
+                    <div class="flex flex-col gap-2 border-b border-slate-700 pb-4">
+                        <div class="flex items-center justify-between cursor-pointer" onclick="document.getElementById('manualRulePanel').classList.toggle('hidden')">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-slate-400 uppercase w-28">Manual Rules</span>
+                                <span class="text-[10px] text-slate-500">(Inject to Dumpflows)</span>
+                            </div>
+                            <span class="text-slate-500 text-xs">▼</span>
+                        </div>
+                        
+                        <div id="manualRulePanel" class="hidden pl-28 pt-2">
+                            <div class="flex flex-wrap gap-2 items-end mb-3">
+                                <div class="w-32">
+                                    <label class="block text-[10px] text-slate-500 mb-1">Source IP</label>
+                                    <input type="text" id="manual-input-ip" placeholder="10.0.0.66" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white">
+                                </div>
+                                <div class="w-32">
+                                    <label class="block text-[10px] text-slate-500 mb-1">Dest IP</label>
+                                    <input type="text" id="manual-input-dst" placeholder="10.0.0.10" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white">
+                                </div>
+                                <div class="w-20">
+                                    <label class="block text-[10px] text-slate-500 mb-1">Dst Port</label>
+                                    <input type="text" id="manual-input-dport" placeholder="80" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white">
+                                </div>
+                                <div class="w-20">
+                                    <label class="block text-[10px] text-slate-500 mb-1">Proto</label>
+                                    <input type="text" id="manual-input-proto" placeholder="6" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white">
+                                </div>
+                                <div class="w-24">
+                                     <label class="block text-[10px] text-slate-500 mb-1">Action</label>
+                                     <select id="manual-input-action" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white">
+                                         <option value="BLOCK">BLOCK</option>
+                                         <option value="ALLOW">ALLOW/PERMIT</option>
+                                         <option value="RATE_LIMIT">RATE LIMIT</option>
+                                     </select>
+                                </div>
+                                <div class="w-20">
+                                    <label class="block text-[10px] text-slate-500 mb-1">Priority</label>
+                                    <input type="text" id="manual-input-prio" placeholder="Auto" class="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white">
+                                </div>
+                                <div>
+                                    <button onclick="injectManualRule()" class="px-3 py-1 bg-slate-600 hover:bg-slate-500 rounded text-xs font-bold text-white transition-colors">
+                                        Inject Rule
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Active Rules List -->
+                            <div class="bg-slate-900/50 rounded p-2 border border-slate-700">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-[10px] text-slate-400 uppercase font-bold">Active Dumpflow Rules</span>
+                                    <button onclick="clearSwitchRules()" class="text-[10px] text-red-400 hover:text-red-300">Clear All</button>
+                                </div>
+                                <div id="activeRulesList" class="space-y-1 max-h-32 overflow-y-auto text-xs">
+                                    <div class="text-slate-500 italic text-center py-1">Fetching rules...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
                     <!-- Row 4: Capture Interface & Model Selection -->
                     <div class="flex flex-wrap gap-4 items-end">
                         <div class="flex-1 min-w-[200px] space-y-1">
@@ -315,23 +376,24 @@
             <!-- Live Metrics Panel -->
             <div id="live-metrics-panel" class="hidden grid grid-cols-5 gap-4">
                 <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
-                    <div class="text-[10px] font-bold text-slate-500 uppercase">Benign</div>
-                    <div id="live-m-benign" class="text-xl font-bold text-emerald-400">0</div>
+                    <div class="text-[10px] font-bold text-slate-500 uppercase">Passed</div>
+                    <div id="live-m-pass" class="text-xl font-bold text-emerald-400">0</div>
                 </div>
                 <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
-                    <div class="text-[10px] font-bold text-slate-500 uppercase">Attack</div>
-                    <div id="live-m-attack" class="text-xl font-bold text-red-400">0</div>
+                    <div class="text-[10px] font-bold text-slate-500 uppercase">Rate Limited</div>
+                    <div id="live-m-ratelimit" class="text-xl font-bold text-orange-400">0</div>
                 </div>
+                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
+                    <div class="text-[10px] font-bold text-slate-500 uppercase">Blocked</div>
+                    <div id="live-m-block" class="text-xl font-bold text-red-500">0</div>
+                </div>
+                <!-- Total Flows -->
                 <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
                     <div class="text-[10px] font-bold text-slate-500 uppercase">Total Flows</div>
                     <div id="live-m-total" class="text-xl font-bold text-white">0</div>
                 </div>
                 <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
-                    <div class="text-[10px] font-bold text-slate-500 uppercase">Avg Latency</div>
-                    <div id="live-m-latency" class="text-xl font-bold text-cyan-400">0ms</div>
-                </div>
-                <div class="bg-slate-800 p-3 rounded-lg border border-slate-700 text-center">
-                    <div class="text-[10px] font-bold text-slate-500 uppercase">Capture Status</div>
+                    <div class="text-[10px] font-bold text-slate-500 uppercase">Status</div>
                     <div id="live-m-status" class="text-xl font-bold text-slate-400">Idle</div>
                 </div>
             </div>
@@ -2713,6 +2775,87 @@ These are model predictions only.`;
                 trafficBtn.disabled = false;
             }
         }
+        
+        // ===================================
+        // SAFE ZONE RULES LOGIC
+        // ===================================
+        
+        async function fetchSafeRules() {
+            try {
+                const res = await fetch('/safe/rules');
+                const data = await res.json();
+                renderSafeRules(data.rules || []);
+            } catch (e) {
+                console.error("Failed to fetch safe rules", e);
+            }
+        }
+        
+        function renderSafeRules(rules) {
+             const table = document.getElementById('safe-rules-table-body');
+             if (!table) return;
+             table.innerHTML = '';
+             
+             if (rules.length === 0) {
+                 table.innerHTML = '<tr><td colspan="5" class="px-4 py-3 text-center text-slate-500 text-xs">No active rules</td></tr>';
+                 return;
+             }
+             
+             rules.forEach(rule => {
+                 const actionClass = rule.action === 'ALLOW' ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10';
+                 const row = `
+                    <tr class="border-b border-slate-700/50 hover:bg-slate-700/30">
+                        <td class="px-4 py-2 text-xs text-white font-mono">${rule.priority}</td>
+                        <td class="px-4 py-2 text-xs text-white font-mono">${rule.src_ip}</td>
+                        <td class="px-4 py-2 text-xs text-white">${rule.protocol}</td>
+                        <td class="px-4 py-2 text-xs"><span class="px-2 py-0.5 rounded ${actionClass}">${rule.action}</span></td>
+                        <td class="px-4 py-2 text-xs text-right">
+                             <button onclick="deleteSafeRule('${rule.id}')" class="text-slate-500 hover:text-red-400 transition-colors">&times;</button>
+                        </td>
+                    </tr>
+                 `;
+                 table.innerHTML += row;
+             });
+        }
+        
+        async function addSafeRule() {
+             const ip = document.getElementById('safe-input-ip').value;
+             const proto = document.getElementById('safe-input-proto').value;
+             const prio = document.getElementById('safe-input-prio').value;
+             const action = document.getElementById('safe-input-action').value;
+             
+             if (!ip) { alert('IP is required'); return; }
+             
+             try {
+                const res = await fetch('/safe/rules', {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                         src_ip: ip,
+                         protocol: proto,
+                         priority: parseInt(prio),
+                         action: action
+                     })
+                });
+                const data = await res.json();
+                if (data.status === 'added') {
+                    document.getElementById('safe-input-ip').value = '';
+                    fetchSafeRules();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+             } catch(e) { console.error(e); }
+        }
+        
+        async function deleteSafeRule(id) {
+            try {
+                await fetch('/safe/rules/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: id })
+                });
+                fetchSafeRules();
+            } catch(e) { console.error(e); }
+        }
 
         async function toggleAttack() {
             const attackBtn = document.getElementById('attackBtn');
@@ -2851,20 +2994,33 @@ These are model predictions only.`;
         }
 
         function updateLiveMetrics() {
-            let benign = 0, attack = 0, totalLatency = 0, latencyCount = 0;
+            let passed = 0, blocked = 0, ratelimited = 0, totalLatency = 0, latencyCount = 0;
+            
             for (const flow of liveFlowsData) {
-                if (flow.prediction === 'BENIGN') benign++;
-                else attack++;
+                // Determine metric category based on Action, not just Prediction
+                const action = (flow.action || 'UNKNOWN').toUpperCase();
+                
+                if (action === 'BLOCK') {
+                    blocked++;
+                } else if (action === 'RATE_LIMIT') {
+                    ratelimited++;
+                } else {
+                    // Everything else (ALLOW, LOG, ALERT_ONLY) counts as Passed
+                    passed++;
+                }
+
                 if (flow.latency_ms !== undefined && flow.latency_ms !== null) {
                     totalLatency += parseFloat(flow.latency_ms);
                     latencyCount++;
                 }
             }
-            document.getElementById('live-m-benign').innerText = benign;
-            document.getElementById('live-m-attack').innerText = attack;
+            
+            document.getElementById('live-m-pass').innerText = passed;
+            document.getElementById('live-m-ratelimit').innerText = ratelimited;
+            document.getElementById('live-m-block').innerText = blocked;
             document.getElementById('live-m-total').innerText = liveFlowsData.length;
-            const avgLatency = latencyCount > 0 ? (totalLatency / latencyCount).toFixed(1) : 0;
-            document.getElementById('live-m-latency').innerText = avgLatency + 'ms';
+            
+            // Status remains same
         }
 
         function onLiveVirtualScroll() {
@@ -2982,7 +3138,15 @@ These are model predictions only.`;
             const isoDelay = iso.delay || 'N/A';
             const xgb = details.xgb || {};
             const xgbFlag = xgb.flag !== undefined ? xgb.flag : 'N/A';
-            const xgbConf = xgb.confidence !== undefined ? Number(xgb.confidence).toFixed(3) : 'N/A';
+            
+            // Confidence Logic: Show N/A if flow.prediction is SKIP (or confidence was explicitly nullified)
+            let xgbConf = 'N/A';
+            if (flow.prediction === 'SKIP') {
+                xgbConf = 'N/A';
+            } else if (xgb.confidence !== undefined) {
+                xgbConf = Number(xgb.confidence).toFixed(3);
+            }
+
             const xgbDelay = xgb.delay || 'N/A';
             const totalLatency = flow.latency_ms !== undefined ? flow.latency_ms + 'ms' : 'N/A';
 
@@ -3080,10 +3244,11 @@ These are model predictions only.`;
             renderLiveVisibleRows();
             
             // Reset metrics
-            document.getElementById('live-m-benign').innerText = '0';
-            document.getElementById('live-m-attack').innerText = '0';
+            document.getElementById('live-m-pass').innerText = '0';
+            document.getElementById('live-m-ratelimit').innerText = '0';
+            document.getElementById('live-m-block').innerText = '0';
             document.getElementById('live-m-total').innerText = '0';
-            document.getElementById('live-m-latency').innerText = '0ms';
+            // document.getElementById('live-m-latency').innerText = '0ms';
             
             closeLiveDetail();
         }
@@ -3124,36 +3289,108 @@ These are model predictions only.`;
                     rawEl.textContent = 'No flows or bridge not running';
                 }
                 
-                // Update injected rules list
+                // Update injected rules list (Original location)
                 const rulesListEl = document.getElementById('injected-rules-list');
+                // Also update new manual panel list
+                const manualListEl = document.getElementById('activeRulesList');
+                
                 const rules = rulesData.rules || {};
                 const ruleCount = Object.keys(rules).length;
-                document.getElementById('switch-rules-count').textContent = ruleCount + ' rules';
+                const countEl = document.getElementById('switch-rules-count');
+                if(countEl) countEl.textContent = ruleCount + ' rules';
                 
                 if (ruleCount === 0) {
-                    rulesListEl.innerHTML = '<span class="text-sm text-slate-500 italic">No rules injected yet</span>';
+                    const emptyHtml = '<span class="text-sm text-slate-500 italic">No rules injected yet</span>';
+                    if(rulesListEl) rulesListEl.innerHTML = emptyHtml;
+                    if(manualListEl) manualListEl.innerHTML = emptyHtml;
                 } else {
                     let html = '';
                     for (const [ip, info] of Object.entries(rules)) {
                         const action = info.action || 'UNKNOWN';
-                        const actionColor = action === 'BLOCK' ? 'bg-red-500/20 text-red-400 border-red-500/50' :
-                                           action === 'RATE_LIMIT' ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' :
-                                           'bg-slate-700 text-slate-300 border-slate-600';
+                        let actionColor = 'bg-slate-700 text-slate-300 border-slate-600';
+                        
+                        if (action === 'BLOCK') {
+                            actionColor = 'bg-red-500/20 text-red-400 border-red-500/50';
+                        } else if (action === 'RATE_LIMIT') {
+                            actionColor = 'bg-orange-500/20 text-orange-400 border-orange-500/50';
+                        } else if (action === 'ALLOW' || action === 'SAFE') {
+                            actionColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50';
+                        }
+                        
                         html += `
                             <div class="flex items-center gap-2 px-3 py-1.5 rounded border ${actionColor}">
-                                <span class="font-mono text-sm">${ip}</span>
+                                <div class="flex flex-col">
+                                    <span class="font-mono text-xs font-bold">${ip}</span> <!-- IP is now 'match' string -->
+                                    <span class="text-[10px] opacity-70">Priority: ${info.priority || 'Auto'}</span>
+                                </div>
                                 <span class="text-xs font-bold">${action}</span>
                                 <button onclick="removeSwitchRule('${ip}')" class="text-slate-400 hover:text-red-400 text-sm ml-1" title="Remove rule">&times;</button>
                             </div>
                         `;
                     }
-                    rulesListEl.innerHTML = html;
+                    if(rulesListEl) rulesListEl.innerHTML = html;
+                    if(manualListEl) manualListEl.innerHTML = html;
                 }
             } catch (e) {
                 console.error('Failed to refresh switch flows:', e);
             }
         }
+        
+        function injectManualRule() {
+            const ip = document.getElementById('manual-input-ip').value;
+            const dst = document.getElementById('manual-input-dst').value;
+            const dport = document.getElementById('manual-input-dport').value;
+            const proto = document.getElementById('manual-input-proto').value;
+            const prio = document.getElementById('manual-input-prio').value;
+            const action = document.getElementById('manual-input-action').value;
+            
+            if (!ip && !dst && !dport && !proto) {
+                alert('At least one field (Server IP, Dst Port, etc) is required');
+                return;
+            }
+            
+            // Build 5-tuple payload (without src port)
+            const payload = {
+                src_ip: ip,
+                dst_ip: dst,
+                dst_port: dport,
+                protocol: proto,
+                priority: prio,
+                action: action
+            };
+            
+            injectSwitchRule(payload);
+            
+            // Clear inputs
+            // document.getElementById('manual-input-ip').value = '';
+        }
 
+        async function injectSwitchRule(payload) {
+            try {
+                await fetch('/switch/inject', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                await refreshSwitchFlows();
+            } catch (e) {
+                alert('Failed to inject rule: ' + e.message);
+            }
+        }
+
+        async function removeSwitchRule(matchStr) {
+            try {
+                await fetch('/switch/remove', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ match: matchStr })
+                });
+                await refreshSwitchFlows();
+            } catch (e) {
+                alert('Failed to remove rule: ' + e.message);
+            }
+        }
+        
         async function clearSwitchRules() {
             if (!confirm('Clear all injected OVS rules?')) return;
             try {
@@ -3164,31 +3401,6 @@ These are model predictions only.`;
             }
         }
 
-        async function removeSwitchRule(srcIp) {
-            try {
-                await fetch('/switch/remove', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ src_ip: srcIp })
-                });
-                await refreshSwitchFlows();
-            } catch (e) {
-                alert('Failed to remove rule: ' + e.message);
-            }
-        }
-
-        async function injectSwitchRule(srcIp, action) {
-            try {
-                await fetch('/switch/inject', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ src_ip: srcIp, action: action })
-                });
-                await refreshSwitchFlows();
-            } catch (e) {
-                alert('Failed to inject rule: ' + e.message);
-            }
-        }
 
         async function exportLiveCsv() {
             if (liveFlowsData.length === 0) {
