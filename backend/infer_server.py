@@ -13,7 +13,7 @@ import time
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import List, Dict, Any, Union, Optional
-from sklearn.metrics import accuracy_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import accuracy_score, recall_score, f1_score, confusion_matrix, precision_score, roc_auc_score
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
@@ -772,7 +772,6 @@ async def retrain_model_endpoint(
             sn.fit(X_benign_scaled)
             
             # 5. Evaluate on full data
-            from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
             X_all = df[EXPECTED_COLUMNS]
             X_all_scaled = sn.scaler.transform(X_all)
             y_true = df['norm_label'].apply(lambda x: 0 if x == benign_norm else 1)
@@ -852,7 +851,6 @@ async def retrain_model_endpoint(
             xgb_det.train_binary(X_train, y_train, X_val, y_val)
             
             # 4. Evaluate on test set
-            from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix
             y_pred = xgb_det.model.predict(X_test)
             y_proba = xgb_det.model.predict_proba(X_test)[:, 1]
             
