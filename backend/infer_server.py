@@ -14,7 +14,7 @@ from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import List, Dict, Any, Union, Optional
 from sklearn.metrics import accuracy_score, recall_score, f1_score, confusion_matrix
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
 from torch_geometric.data import Data
@@ -1009,25 +1009,16 @@ async def retrain_model_endpoint(
                 df_mix = df_user
 
             # 5) Prepare features + labels (multiclass)
-            # Use existing label encoder (preferred) if available
-            if 'label_encoder' in encoder_store:
-                le = encoder_store['label_encoder']
-            else:
-                # fallback: load from disk if exists
-                le = None
-                if os.path.exists('encoders/label_encoder.pkl'):
-                    with open('encoders/label_encoder.pkl', 'rb') as f:
-                        le = pickle.load(f)
-
-            if le is None:
-                raise HTTPException(500, "Label encoder not found for GNN retrain.")
-
-            # Filter to labels known to encoder
-            df_mix = df_mix[df_mix['norm_label'].isin(le.classes_)]
-            if df_mix.empty:
-                raise HTTPException(400, "No rows match existing label encoder classes after mixing.")
-
-            df_mix['Label_Encoded'] = le.transform(df_mix['norm_label'])
+            # Create NEW label encoder to support new attack types
+            print(f"[-] Fitting new LabelEncoder on {len(df_mix)} samples with {df_mix['norm_label'].nunique()} unique labels.")
+            le = LabelEncoder()
+            df_mix['Label_Encoded'] = le.fit_transform(df_mix['norm_label'])
+            
+            # Save the new encoder immediately so it persists
+            os.makedirs('encoders', exist_ok=True)
+            with open('encoders/label_encoder.pkl', 'wb') as f:
+                pickle.dump(le, f)
+            encoder_store['label_encoder'] = le
 
             # 6) Scale features for GNN using StandardScaler
             gnn_scaler = StandardScaler()
