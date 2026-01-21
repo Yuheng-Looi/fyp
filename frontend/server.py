@@ -2222,8 +2222,8 @@ def start_attack():
     # Mapping: 'web' -> 'test_attack_web.csv', 'syn' -> 'test_attack_syn.csv'
     csv_filename = f"test_attack_{attack_type}.csv"
     csv_path = os.path.join(CSV_DIR, csv_filename)
-    
-    if os.path.exists(csv_path):
+    print(f"This is the attack type: {attack_type}")
+    if os.path.exists(csv_path) and attack_type in ['web', 'scan']:
         # MODE A: PLAYBACK (Hybrid)
         print(f"[Attack] Found CSV {csv_filename}. Starting PLAYBACK mode.")
         

@@ -10,7 +10,7 @@ import json
 import torch
 import pickle
 import time
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Dict, Any, Union, Optional
 from sklearn.metrics import accuracy_score, recall_score, f1_score, confusion_matrix, precision_score, roc_auc_score
@@ -28,6 +28,8 @@ app = FastAPI(title="IDS Inference Engine")
 model_store = {}
 scaler_store = {}
 encoder_store = {}
+training_jobs = {} # {job_id: {status: 'running'|'completed'|'failed', result: {}, error: str}}
+
 
 
 # This list must match training features (15 features from cleaned_data15.csv)
