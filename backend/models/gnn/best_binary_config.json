@@ -1,13 +1,13 @@
 {
     "info": {
-        "model_id": "binary_hybrid_gat_h64_l2_60",
+        "model_id": "binary_hybrid_gat_h64_l2_80",
         "task": "binary",
         "strategy": "hybrid",
         "arch": "gat",
         "split": [
-            0.6,
-            0.2,
-            0.2
+            0.8,
+            0.1,
+            0.1
         ],
         "config": {
             "hidden_dim": 64,
@@ -16,11 +16,11 @@
         },
         "best_epoch": 45,
         "val_f1": -1,
-        "test_f1": 0.9985929429279496,
-        "attack_recall": 0.998348247508758,
-        "fpr": 0.004676653270003653,
-        "macro_f1": 0.9964676945905946,
-        "training_time": 1.564486026763916
+        "test_f1": 0.9984019176987615,
+        "attack_recall": 0.9979307340448704,
+        "fpr": 0.004530176823030835,
+        "macro_f1": 0.99599209070469,
+        "training_time": 1.565265417098999
     },
     "features": [
         "Fwd Header Len",

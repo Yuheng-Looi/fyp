@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.data import Data
 from torch_geometric.nn import SAGEConv, GATConv
-from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.preprocessing import StandardScaler, RobustScaler, LabelEncoder
 from sklearn.neighbors import NearestNeighbors
 from sklearn.metrics import recall_score, f1_score, confusion_matrix
 import matplotlib.pyplot as plt
@@ -15,7 +15,7 @@ import eda_utils
 
 # --- Data Loading & Graph Construction ---
 
-def load_gnn_data(raw_folder='datasets', cleaned_ref_path='01eda/cleaned_data15.csv', encoder_path='encoders/label_encoder.pkl'):
+def load_gnn_data(raw_folder='datasets', cleaned_ref_path='01eda/cleaned_data15.csv', encoder_path='encoders/label_encoder.pkl', scaler_type='standard'):
     """
     Loads raw data to recover IPs/Time, aligns with cleaned features, and prepares for GNN.
     """
@@ -82,8 +82,12 @@ def load_gnn_data(raw_folder='datasets', cleaned_ref_path='01eda/cleaned_data15.
         df['Label_Encoded'] = le.fit_transform(df['Label'])
         
     # Scale Features (Physics-normalization)
-    print("Scaling features...")
-    scaler = StandardScaler()
+    print(f"Scaling features ({scaler_type})...")
+    if scaler_type == 'robust':
+        scaler = RobustScaler()
+    else:
+        scaler = StandardScaler()
+    
     df[feature_cols] = scaler.fit_transform(df[feature_cols])
     
     return df, feature_cols, le

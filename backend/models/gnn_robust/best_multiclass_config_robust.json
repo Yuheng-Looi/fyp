@@ -1,26 +1,25 @@
 {
     "info": {
-        "model_id": "multiclass_src_ip_temporal_sage_h128_l3_70",
+        "model_id": "robust_multiclass_hybrid_sage_h64_l2_80",
         "task": "multiclass",
-        "strategy": "src_ip_temporal",
+        "strategy": "hybrid",
         "arch": "sage",
         "split": [
-            0.7,
-            0.15,
-            0.15
+            0.8,
+            0.1,
+            0.1
         ],
         "config": {
-            "hidden_dim": 128,
-            "num_layers": 3,
-            "dropout": 0.5
+            "hidden_dim": 64,
+            "num_layers": 2,
+            "dropout": 0.3
         },
         "best_epoch": 45,
-        "val_f1": -1,
-        "test_f1": 0.5983081232454193,
-        "attack_recall": 0.9990561471442401,
-        "fpr": 0.018219017926734218,
-        "macro_f1": 0.5983081232454193,
-        "training_time": 1.4316251277923584
+        "test_f1": 0.4679943986541687,
+        "attack_recall": 0.9944819574529877,
+        "fpr": 0.023966096741195382,
+        "macro_f1": 0.4679943986541687,
+        "training_time": 0.8143982887268066
     },
     "features": [
         "Fwd Header Len",
