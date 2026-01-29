@@ -1,0 +1,15 @@
+{
+  "info": {
+    "arch": "sage",
+    "encoder_path": "encoders/friday_gnn_label_encoder.pkl",
+    "config": {
+      "hidden_dim": 64,
+      "num_layers": 2,
+      "dropout": 0.3
+    }
+  },
+  "data": {
+    "feature_count": 15,
+    "num_classes": 3
+  }
+}
