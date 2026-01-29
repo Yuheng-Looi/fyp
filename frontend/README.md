@@ -1,72 +1,73 @@
-# Flow Dashboard Frontend
+# Frontend Dashboard
 
-This folder hosts the lightweight Flask + vanilla JS dashboard for offline CSV/PCAP analysis and live traffic capture.
+This directory contains the frontend component of the network anomaly detection system. It provides a web interface for monitoring traffic, visualizing network topology, and displaying detection results from the backend.
 
-## 1. Python Environment
+## Project Structure
 
-```bash
-cd /home/yuheng/fyp/frontend
-python3 -m venv venv
-source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-```
+- **server.py**: The main entry point. A Flask server that handles:
+  - Network topology management (Mininet/OVS interactions).
+  - Traffic flow monitoring and feature extraction.
+  - Communication with the ML backend for anomaly prediction.
+  - Serving the web dashboard.
+- **cic_extractor.py**: Utility for extracting network flow features (CICFlowMeter compatible).
+- **dashboard.html**: The web-based user interface.
+- **requirements.txt**: Python dependencies.
+- **attack_generator.py**: Script to simulate network attacks.
+- **live_test.py**: Integration testing script.
 
-Keep `venv/` activated while running commands below. Use `deactivate` to exit.
+## System Requirements
 
-## 2. Flask API + Dashboard
+- **Operating System**: Linux (Ubuntu 20.04 LTS or newer recommended).
+  - *Note: This application requires Linux network namespaces and Open vSwitch, so it will not run natively on Windows or macOS.*
+- **Python**: 3.8 or higher.
+- **Privileges**: Root/sudo access is required to manage network interfaces and OVS bridges.
 
-Start the Flask server (serves `dashboard.html` and all APIs on port 5000):
+## Backend Configuration
 
-```bash
-source venv/bin/activate
-python server.py
-```
+The frontend is configured to send traffic data to a Machine Learning backend.
+- **Backend IP**: `10.100.10.15`
+- **Backend Endpoint**: `http://10.100.10.15:8000/predict`
+- **Backend Documentation**: Please refer to the README in the `../backend` directory (to be written).
 
-Nginx can proxy `http://<host>/` to this service. For local testing hit `http://127.0.0.1:5000/dashboard.html`.
+## Installation
 
-## 3. Live Traffic Helper (Mininet)
+1. **Create a Virtual Environment** (Optional but recommended):
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
 
-`live.py` builds a small Mininet topology, mirrors `s1` traffic to an internal monitor interface, and generates pings/iperf.
+2. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-> ⚠ Requires root privileges because it manipulates Mininet/OVS.
+## Running the Application
 
-```bash
-source venv/bin/activate
-sudo python live.py \
-  --monitor-iface s1-snoop \
-  --ping-count 5 \
-  --iperf-duration 10
-```
+To start the web server and network monitoring system:
 
-In the dashboard’s *Live* tab, choose the mirrored interface (`s1-snoop`) and click START to classify flows in real time.
+1. Ensure your virtual environment is activated:
+   ```bash
+   source venv/bin/activate
+   ```
 
-## 4. Offline Utilities
+2. Run the server with `sudo`:
+   ```bash
+   sudo ./venv/bin/python3 server.py
+   ```
+   *Note: Using `sudo` with the absolute path to the venv python ensure it uses the installed dependencies while having root privileges.* 
+   *Alternatively, if you are in a root shell with the venv activated, just `python3 server.py` works.*
 
-- `cic_extractor.py`, `edge_extractor.py`, `flow_extractor.py` provide PCAP/packet feature extraction helpers.
-- `test_csv_analysis.py` contains lightweight regression tests for CSV ingestion.
+Once running, access the dashboard in your web browser at:
+`http://localhost:5000/dashboard.html` (or the IP address of this machine).
 
-Run any script with the venv active, e.g.:
+## Reference System Specifications
 
-```bash
-source venv/bin/activate
-python test_csv_analysis.py
-```
+The system has been tested and verified on the following hardware/software configuration:
 
-## 5. System Services
-
-- `flow-dashboard.service.sample`: sample systemd unit that runs `server.py` via `venv`.
-- `nginx.flow-dashboard.sample`: Nginx site config that serves `dashboard.html` and proxies APIs to `localhost:5000`.
-
-Copy these into `/etc/systemd/system/` or `/etc/nginx/sites-available/` as needed and reload the respective services.
-
-## 6. Assets & Uploads
-
-- CSV/PCAP uploads land under `uploads/` (auto-created by `server.py`).
-- Large capture files are ignored by git; ensure you have enough disk space.
-
-## 7. Troubleshooting
-
-- **Bad Gateway (502)**: verify `python server.py` is running; check Nginx proxy in `nginx.flow-dashboard.sample`.
-- **live.py permissions**: always run with `sudo` after activating the venv.
-- **Missing deps**: re-run `pip install -r requirements.txt` inside `venv`.
+- **OS**: Ubuntu 24.04.3 LTS (Noble Numbat)
+- **Kernel/Arch**: x86_64
+- **CPU**: Intel(R) Xeon(R) CPU D-1518 @ 2.20GHz (8 cores)
+- **RAM**: ~32GB (31Gi)
+- **Python Version**: 3.12.3
+- **Disk**: 232GB Storage
