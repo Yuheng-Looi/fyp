@@ -60,6 +60,44 @@ python infer_server.py
 
 The server will start and listen for requests from the frontend or direct API calls.
 
+## API Endpoints
+
+The `infer_server.py` provides the following REST API endpoints for the Frontend and external tools:
+
+### Inference & Analysis
+- **`POST /predict`**
+  - **Description**: Real-time prediction for a single network flow.
+  - **Input**: flow features (JSON).
+  - **Output**: Anomaly flags, attack probability, and recommended action (ALLOW, LOG, BLOCK).
+
+- **`POST /analyze_pcap`**
+  - **Description**: Batch analysis of a CSV file (converted from PCAP).
+  - **Input**: CSV file upload.
+  - **Output**: Detailed metrics (Accuracy, F1), list of flows with predictions, and summary statistics.
+
+### Model & Scaler Management
+- **`GET /models`**
+  - **Description**: Lists all available trained models (XGBoost, GNN, Isolation Forest).
+  
+- **`GET /scalers`**
+  - **Description**: Lists all available data scalers.
+
+- **`POST /refit_scaler`**
+  - **Description**: Creates a new scaler based on provided benign traffic data.
+  - **Input**: CSV file with benign traffic.
+
+- **`GET /scaler_stats`**
+  - **Description**: Retrieves statistical properties (e.g., median, IQR) of a scaler for drift detection visualization.
+
+### Training System
+- **`POST /retrain/{model_type}`**
+  - **Description**: Initiates a background training job for a specific model type (`xgb`, `gnn`, or `isolation_forest`).
+  - **Input**: Training dataset (CSV) and hyperparameters.
+  - **Output**: Job ID to track progress.
+
+- **`GET /retrain/status/{job_id}`**
+  - **Description**: Checks the status of a running or completed training job.
+
 ## Frontend
 
 For the user interface and dashboard setup, please refer to the **Frontend README** located at:
