@@ -640,12 +640,25 @@ app = Flask(__name__)
 # Increase max upload size to 2GB to avoid 413 Errors / Connection Resets on large datasets
 app.config['MAX_CONTENT_LENGTH'] = 2048 * 1024 * 1024
 
-if 'PREDICT_URL' in os.environ:
-    PREDICT_URL = os.environ['PREDICT_URL']
-else:
-    # Default to infer_server.py location
-    # If PREDICT_URL points to /predict, we strip it for the base methods
-    PREDICT_URL = 'http://10.100.10.15:8000/predict'
+def load_dotenv_file(path='.env'):
+    if not os.path.exists(path):
+        return
+    with open(path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            if '=' not in line:
+                continue
+            key, value = line.split('=', 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+load_dotenv_file(os.path.join(os.path.dirname(__file__), '.env'))
+GPU_IP_PORT = os.environ.get('GPU_IP_PORT', '10.100.10.15:9000')
+PREDICT_URL = os.environ.get('PREDICT_URL', f'http://{GPU_IP_PORT}/predict')
 
 def get_base_url():
     if '/predict' in PREDICT_URL:

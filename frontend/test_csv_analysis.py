@@ -29,7 +29,8 @@ abs_path = os.path.abspath(csv_path)
 metadata_dir = os.path.join(os.path.dirname(abs_path), "../metadata")
 metadata_path = os.path.join(metadata_dir, f"{csv_filename}.json")
 
-PREDICT_URL = "http://10.100.10.15:8000/predict"
+GPU_IP_PORT = os.environ.get('GPU_IP_PORT', '10.100.10.15:9000')
+PREDICT_URL = os.environ.get('PREDICT_URL', f"http://{GPU_IP_PORT}/predict")
 
 if not os.path.exists(abs_path):
     print(f"File not found: {abs_path}")

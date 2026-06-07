@@ -1,13 +1,15 @@
 import argparse
 import time
 import math
+import os
 import requests
 import numpy as np
 from scapy.all import sniff, IP, TCP, UDP
 import threading
 
 # CONFIGURATION
-GPU_SERVER_URL = "http://10.100.10.15:8000/predict"
+GPU_IP_PORT = os.environ.get('GPU_IP_PORT', '10.100.10.15:9000')
+GPU_SERVER_URL = f"http://{GPU_IP_PORT}/predict"
 
 # Exact feature keys required by the classifier
 FEATURE_KEYS = [
