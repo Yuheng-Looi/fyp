@@ -1,0 +1,29 @@
+timeline:
+  warmup: 5
+  baseline: 15
+  attack: 30
+  recovery: 15
+monitoring:
+  tick_interval: 1
+  sample_interval: 5
+  poll_interval: 1
+  timeout_seconds: 2
+  latency_threshold_ms: 500
+  down_threshold: 5
+  ping_enabled: false
+  monitor_host: h1
+  assets:
+    - name: internal_db
+      host: h2
+      ip: 10.0.0.2
+      port: 80
+      protocol: http
+      service: http
+    - name: web_server
+      host: h3
+      ip: 10.0.0.3
+      port: 80
+      protocol: http
+      service: http
+mode:
+  real_time: true

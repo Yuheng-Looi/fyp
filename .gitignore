@@ -11,3 +11,4 @@ venv/
 uploads/
 ryu/
 .env
+benchmarkenv/

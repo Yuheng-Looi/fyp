@@ -1,0 +1,9 @@
+name: ddos_internal_db
+target:
+  asset: internal_db
+  ip: 10.0.0.2
+attack:
+  type: ddos
+  intensity: high
+  duration: 120
+  start_offset: 0
