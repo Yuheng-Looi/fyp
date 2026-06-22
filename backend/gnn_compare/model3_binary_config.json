@@ -1,0 +1,33 @@
+{
+    "info": {
+        "task": "binary",
+        "strategy": "hybrid",
+        "arch": "gat",
+        "split": "80/10/10",
+        "hidden_dim": 64,
+        "num_layers": 2,
+        "dropout": 0.3,
+        "test_f1": 0.9985839294143277,
+        "attack_recall": 0.9984026718942859,
+        "fpr": 0.0049685810317112375,
+        "macro_f1": 0.9964444179781919,
+        "training_time": 1.7090866565704346
+    },
+    "features": [
+        "Fwd Header Len",
+        "Protocol",
+        "Init Bwd Win Byts",
+        "Tot Fwd Pkts",
+        "Pkt Len Max",
+        "Pkt Len Mean",
+        "Tot Bwd Pkts",
+        "Dst Port",
+        "Bwd Pkt Len Max",
+        "Fwd Pkts/s",
+        "Flow IAT Max",
+        "TotLen Bwd Pkts",
+        "TotLen Fwd Pkts",
+        "Bwd Pkt Len Std",
+        "Bwd Pkt Len Mean"
+    ]
+}

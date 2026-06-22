@@ -1,0 +1,33 @@
+{
+    "info": {
+        "task": "multiclass",
+        "strategy": "src_ip_temporal",
+        "arch": "sage",
+        "split": "70/15/15",
+        "hidden_dim": 128,
+        "num_layers": 3,
+        "dropout": 0.5,
+        "test_f1": 0.5892592809367514,
+        "attack_recall": 0.9992013552758955,
+        "fpr": 0.019485580670303974,
+        "macro_f1": 0.5892592809367514,
+        "training_time": 1.4235613346099854
+    },
+    "features": [
+        "Fwd Header Len",
+        "Protocol",
+        "Init Bwd Win Byts",
+        "Tot Fwd Pkts",
+        "Pkt Len Max",
+        "Pkt Len Mean",
+        "Tot Bwd Pkts",
+        "Dst Port",
+        "Bwd Pkt Len Max",
+        "Fwd Pkts/s",
+        "Flow IAT Max",
+        "TotLen Bwd Pkts",
+        "TotLen Fwd Pkts",
+        "Bwd Pkt Len Std",
+        "Bwd Pkt Len Mean"
+    ]
+}
