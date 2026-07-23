@@ -4,7 +4,6 @@ CICFlowMeter/
 logs/
 __pycache__/
 *.csv
-*.png
 *.pdf
 checkpoints/
 venv/
@@ -12,3 +11,21 @@ uploads/
 ryu/
 .env
 benchmarkenv/
+expected/
+
+# Log files and temporary execution outputs
+*.log
+*.log.bak
+*.out
+*.sqlite
+graph_snapshots.json
+backend/benchmark/results/historical_log.json
+.tempmediaStorage/
+scratch/
+
+# Images rule: ignore general png, but include benchmark/gnn figures
+*.png
+!backend/benchmark/figures/*.png
+!backend/gnn_compare/*.png
+!backend/benchmark/images/*.png
+!backend/benchmark/images/expected/*.png
