@@ -7,11 +7,11 @@
         "hidden_dim": 64,
         "num_layers": 2,
         "dropout": 0.3,
-        "test_f1": 0.9994916115912558,
-        "attack_recall": 0.999201335947143,
-        "fpr": 0.0008768084173608067,
-        "macro_f1": 0.9987240571457958,
-        "training_time": 4.8858606815338135
+        "test_f1": 0.9989462209302326,
+        "attack_recall": 0.9980033398678574,
+        "fpr": 0.00043840420868040335,
+        "macro_f1": 0.99736217728707,
+        "training_time": 4.459568977355957
     },
     "features": [
         "Fwd Header Len_log",
