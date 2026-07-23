@@ -1,0 +1,140 @@
+{
+  "metadata": {
+    "timestamp": "2026-07-23T02:57:29.875918",
+    "topologies_tested": [
+      "large"
+    ]
+  },
+  "results": {
+    "controller_4": {
+      "large": {
+        "SCS": 0.0,
+        "QPS": 0.0,
+        "UIS": 0.0,
+        "RES": 1.0,
+        "NRS": 0.2,
+        "probe_history": [
+          {
+            "timestamp": 1784746564.7722127,
+            "asset": "internal_db",
+            "state": "DEGRADED",
+            "latency_ms": null,
+            "status_code": null,
+            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1784746567.8953297,
+            "asset": "web_server",
+            "state": "DEGRADED",
+            "latency_ms": null,
+            "status_code": null,
+            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1784746589.8467042,
+            "asset": "internal_db",
+            "state": "DOWN",
+            "latency_ms": null,
+            "status_code": null,
+            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1784746592.9938595,
+            "asset": "web_server",
+            "state": "DOWN",
+            "latency_ms": null,
+            "status_code": null,
+            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "ping_loss": null
+          }
+        ],
+        "qos_history": [
+          {
+            "elapsed": 5.000108186999569,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 8.152495142998305,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 20.674302081999485,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 48.89996245399925,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          }
+        ],
+        "flow_history": [
+          {
+            "elapsed": 5.000108186999569,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 8.152495142998305,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 20.674302081999485,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 48.89996245399925,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          }
+        ]
+      }
+    }
+  },
+  "run_metadata": {
+    "controller": "controller_4",
+    "topology": "large",
+    "scenario": "credential_attack",
+    "seed": 1,
+    "timestamp": "2026-07-23T02:57:29.885059"
+  }
+}

@@ -1,0 +1,2777 @@
+{
+  "metadata": {
+    "timestamp": "2026-07-17T23:53:40Z",
+    "topologies_tested": [
+      "large"
+    ]
+  },
+  "results": {
+    "simple_13": {
+      "large": {
+        "SCS": 0.9876923076923079,
+        "QPS": 0.9666666666666667,
+        "UIS": 0.6264367816091954,
+        "RES": 0.9833446474173494,
+        "NRS": 0.8912524838601278,
+        "avg_latency": 358.2306055281944,
+        "WS": 0.0,
+        "DB": 1.0,
+        "SPS": 0.65,
+        "OFS": 0.7706262419300639,
+        "probe_history": [
+          {
+            "timestamp": 1784303554.3302634,
+            "asset": "internal_db",
+            "latency_ms": 69.96470596641302,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303554.3302846,
+            "asset": "web_server",
+            "latency_ms": 103.16536598838866,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303555.7017324,
+            "asset": "internal_db",
+            "latency_ms": 203.46598501782864,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303555.7017372,
+            "asset": "web_server",
+            "latency_ms": 349.5766679989174,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303556.2811692,
+            "asset": "internal_db",
+            "latency_ms": 61.41419301275164,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303556.2811735,
+            "asset": "web_server",
+            "latency_ms": 62.23367399070412,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303558.2635581,
+            "asset": "internal_db",
+            "latency_ms": 513.373505033087,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303558.263577,
+            "asset": "web_server",
+            "latency_ms": 605.3690470289439,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303558.5896523,
+            "asset": "internal_db",
+            "latency_ms": 68.864032975398,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303558.5896673,
+            "asset": "web_server",
+            "latency_ms": 65.83176297135651,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303559.5759714,
+            "asset": "internal_db",
+            "latency_ms": 64.57405799301341,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303559.5759747,
+            "asset": "web_server",
+            "latency_ms": 74.24747699405998,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303560.9787571,
+            "asset": "internal_db",
+            "latency_ms": 173.677536949981,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303560.9787605,
+            "asset": "web_server",
+            "latency_ms": 363.3211720152758,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303561.5930445,
+            "asset": "internal_db",
+            "latency_ms": 60.04487199243158,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303561.5930479,
+            "asset": "web_server",
+            "latency_ms": 67.48220801819116,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303563.53415,
+            "asset": "internal_db",
+            "latency_ms": 561.2958510173485,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303563.5341685,
+            "asset": "web_server",
+            "latency_ms": 518.6191250104457,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303563.8309646,
+            "asset": "internal_db",
+            "latency_ms": 59.76738897152245,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303563.83098,
+            "asset": "web_server",
+            "latency_ms": 63.258284993935376,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303564.821838,
+            "asset": "internal_db",
+            "latency_ms": 41.1194059997797,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303564.8218427,
+            "asset": "web_server",
+            "latency_ms": 72.9998440365307,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303566.1714618,
+            "asset": "internal_db",
+            "latency_ms": 142.1675059827976,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303566.1714654,
+            "asset": "web_server",
+            "latency_ms": 311.0797780100256,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303566.8899016,
+            "asset": "internal_db",
+            "latency_ms": 87.72884402424097,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303566.8899071,
+            "asset": "web_server",
+            "latency_ms": 40.49094900256023,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303568.7542558,
+            "asset": "internal_db",
+            "latency_ms": 501.77641498157755,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303568.7542715,
+            "asset": "web_server",
+            "latency_ms": 544.0409100265242,
+            "probe_type": "http",
+            "phase": "baseline"
+          },
+          {
+            "timestamp": 1784303569.0968907,
+            "asset": "internal_db",
+            "latency_ms": 61.99818098684773,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303569.096905,
+            "asset": "web_server",
+            "latency_ms": 94.01552600320429,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303572.2768147,
+            "asset": "internal_db",
+            "latency_ms": 2171.141233993694,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303572.276833,
+            "asset": "web_server",
+            "latency_ms": 81.07840700540692,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303573.2865515,
+            "asset": "internal_db",
+            "latency_ms": 173.68865001481026,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303573.2865689,
+            "asset": "web_server",
+            "latency_ms": 622.7571390336379,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303576.2316961,
+            "asset": "web_server",
+            "latency_ms": 704.1651749750599,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303576.663162,
+            "asset": "internal_db",
+            "latency_ms": 143.4763449942693,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303576.6631796,
+            "asset": "web_server",
+            "latency_ms": 158.62672199727967,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303579.2007365,
+            "asset": "internal_db",
+            "latency_ms": 1191.1242700298317,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303579.2007518,
+            "asset": "web_server",
+            "latency_ms": 563.152338960208,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303579.8753858,
+            "asset": "internal_db",
+            "latency_ms": 412.94027504045516,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303579.8754063,
+            "asset": "web_server",
+            "latency_ms": 40.918381011579186,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303581.8860722,
+            "asset": "internal_db",
+            "latency_ms": 1159.7409149981104,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303581.8860943,
+            "asset": "web_server",
+            "latency_ms": 335.38540796143934,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303584.3404474,
+            "asset": "internal_db",
+            "latency_ms": 1500.4082510131411,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303584.340451,
+            "asset": "web_server",
+            "latency_ms": 756.2896520248614,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303585.4210365,
+            "asset": "internal_db",
+            "latency_ms": 901.8550990149379,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303585.42104,
+            "asset": "web_server",
+            "latency_ms": 33.41713501140475,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303585.793684,
+            "asset": "internal_db",
+            "latency_ms": 141.7559059918858,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303585.7936993,
+            "asset": "web_server",
+            "latency_ms": 85.71125299204141,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303589.4218833,
+            "asset": "web_server",
+            "latency_ms": 741.3620399893261,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303592.2686708,
+            "asset": "web_server",
+            "latency_ms": 619.5660030352883,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303594.6541524,
+            "asset": "internal_db",
+            "latency_ms": 1457.3027650476433,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303594.6541562,
+            "asset": "web_server",
+            "latency_ms": 742.0319390366785,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303597.538461,
+            "asset": "web_server",
+            "latency_ms": 597.4538659793325,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303600.2273057,
+            "asset": "web_server",
+            "latency_ms": 521.0444640251808,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303602.8508997,
+            "asset": "web_server",
+            "latency_ms": 364.2876480007544,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303603.0381644,
+            "asset": "internal_db",
+            "latency_ms": 32.881774997804314,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303603.038179,
+            "asset": "web_server",
+            "latency_ms": 31.229492975398898,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303604.8115964,
+            "asset": "internal_db",
+            "latency_ms": 169.72210200037807,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303604.8116004,
+            "asset": "web_server",
+            "latency_ms": 667.1478520147502,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303605.4780035,
+            "asset": "internal_db",
+            "latency_ms": 212.8513500210829,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303605.478007,
+            "asset": "web_server",
+            "latency_ms": 288.46997302025557,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303606.3319318,
+            "asset": "internal_db",
+            "latency_ms": 197.19568401342258,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303606.3319364,
+            "asset": "web_server",
+            "latency_ms": 37.884903023950756,
+            "probe_type": "http",
+            "phase": "attack"
+          },
+          {
+            "timestamp": 1784303607.9957862,
+            "asset": "internal_db",
+            "latency_ms": 302.8306469786912,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303607.99579,
+            "asset": "web_server",
+            "latency_ms": 663.2435270003043,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303608.3813152,
+            "asset": "internal_db",
+            "latency_ms": 152.60338498046622,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303608.38132,
+            "asset": "web_server",
+            "latency_ms": 65.85583603009582,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303610.088219,
+            "asset": "internal_db",
+            "latency_ms": 227.48278197832406,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303610.0882225,
+            "asset": "web_server",
+            "latency_ms": 685.9792689792812,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303610.7556686,
+            "asset": "internal_db",
+            "latency_ms": 308.86705801822245,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303610.7556722,
+            "asset": "web_server",
+            "latency_ms": 189.4119090284221,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303611.5604134,
+            "asset": "internal_db",
+            "latency_ms": 208.63404602278024,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303611.560417,
+            "asset": "web_server",
+            "latency_ms": 67.75753997499123,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303613.237149,
+            "asset": "internal_db",
+            "latency_ms": 313.82648897124454,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303613.2371526,
+            "asset": "web_server",
+            "latency_ms": 652.3241779650562,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303613.6346896,
+            "asset": "internal_db",
+            "latency_ms": 204.35910200467333,
+            "probe_type": "http",
+            "phase": "recovery"
+          },
+          {
+            "timestamp": 1784303613.6346955,
+            "asset": "web_server",
+            "latency_ms": 33.782777027226985,
+            "probe_type": "http",
+            "phase": "recovery"
+          }
+        ],
+        "qos_history": [
+          {
+            "elapsed": 6.003432974976022,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 916639.9319438952,
+              "h3": 920830.9118570946
+            }
+          },
+          {
+            "elapsed": 7.000061761995312,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 950526.54898677,
+              "h3": 934281.7308968807
+            }
+          },
+          {
+            "elapsed": 8.000060380960349,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 157189.65752074347,
+              "h3": 157135.65729486174
+            }
+          },
+          {
+            "elapsed": 9.002660907979589,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 1207031.7326031222,
+              "h3": 1211620.7972904325
+            }
+          },
+          {
+            "elapsed": 10.00377946201479,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 494218.1872893072,
+              "h3": 477537.84525320533
+            }
+          },
+          {
+            "elapsed": 11.002432140987366,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 617003.6525897789,
+              "h3": 626306.206479136
+            }
+          },
+          {
+            "elapsed": 12.003433763980865,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 1212625.8349851063,
+              "h3": 1198056.4348928183
+            }
+          },
+          {
+            "elapsed": 13.000065586995333,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 32247.604676014624,
+              "h3": 24949.02424683729
+            }
+          },
+          {
+            "elapsed": 14.000058851961512,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 1066911.0248017637,
+              "h3": 1067030.0254737556
+            }
+          },
+          {
+            "elapsed": 15.001431023003533,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 792319.4953477896,
+              "h3": 779563.9708501152
+            }
+          },
+          {
+            "elapsed": 16.000443731958512,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 322776.1847458589,
+              "h3": 338755.8876329946
+            }
+          },
+          {
+            "elapsed": 17.0004372500116,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 1207132.8936465932,
+              "h3": 1185911.7197181084
+            }
+          },
+          {
+            "elapsed": 18.000060986960307,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 331371.21185696323,
+              "h3": 324469.6248520962
+            }
+          },
+          {
+            "elapsed": 19.001437113969587,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 773815.8940146973,
+              "h3": 795216.4652111857
+            }
+          },
+          {
+            "elapsed": 20.00243843201315,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1069058.009471664,
+              "h3": 1035325.6013325901
+            }
+          },
+          {
+            "elapsed": 21.002512162958737,
+            "phase": "attack",
+            "throughput": {
+              "h2": 928349.3130112512,
+              "h3": 45512.98821180964
+            }
+          },
+          {
+            "elapsed": 22.000063106010202,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1247631.9958861836,
+              "h3": 1220240.859115213
+            }
+          },
+          {
+            "elapsed": 23.000169429986272,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250184.1900310337,
+              "h3": 585846.3583571269
+            }
+          },
+          {
+            "elapsed": 24.000742300006095,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249557.3761479503,
+              "h3": 503921.61298774014
+            }
+          },
+          {
+            "elapsed": 25.00006345496513,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250152.8333029205,
+              "h3": 1189568.8916434909
+            }
+          },
+          {
+            "elapsed": 26.000087021966465,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249746.5451314915,
+              "h3": 155036.8422057675
+            }
+          },
+          {
+            "elapsed": 27.00005296897143,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249806.39255157,
+              "h3": 946640.5945218878
+            }
+          },
+          {
+            "elapsed": 28.003148395975586,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249988.551669579,
+              "h3": 897911.717809081
+            }
+          },
+          {
+            "elapsed": 29.000050939968787,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250049.3993102645,
+              "h3": 200039.84285562628
+            }
+          },
+          {
+            "elapsed": 30.00006490701344,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249875.2967420793,
+              "h3": 1199103.0158816492
+            }
+          },
+          {
+            "elapsed": 31.000069338013418,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250029.8236776812,
+              "h3": 449534.85773317196
+            }
+          },
+          {
+            "elapsed": 32.00042192300316,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250150.1462360972,
+              "h3": 648979.5095931939
+            }
+          },
+          {
+            "elapsed": 33.00004686799366,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249792.139141441,
+              "h3": 1198400.7659299332
+            }
+          },
+          {
+            "elapsed": 34.00099991395837,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249993.210423167,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.000678810989484,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250256.9431515841,
+              "h3": 1110359.4274346144
+            }
+          },
+          {
+            "elapsed": 36.000027781003155,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249762.7321996053,
+              "h3": 738078.065849417
+            }
+          },
+          {
+            "elapsed": 37.00003569095861,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249989.7900231138,
+              "h3": 355895.09303171694
+            }
+          },
+          {
+            "elapsed": 38.00022183597321,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250208.8357466324,
+              "h3": 1210908.2281900137
+            }
+          },
+          {
+            "elapsed": 39.00248796097003,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249811.9270930307,
+              "h3": 280167.5887856045
+            }
+          },
+          {
+            "elapsed": 40.00004654697841,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250136.4183340962,
+              "h3": 817196.6303947577
+            }
+          },
+          {
+            "elapsed": 41.000047051988076,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249908.9033833507,
+              "h3": 1031798.9807620212
+            }
+          },
+          {
+            "elapsed": 42.000022972992156,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249932.6455692626,
+              "h3": 80723.7874780585
+            }
+          },
+          {
+            "elapsed": 43.00350457901368,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250011.6183103803,
+              "h3": 1188418.1773971794
+            }
+          },
+          {
+            "elapsed": 44.00068380497396,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250164.0341572075,
+              "h3": 575908.245893672
+            }
+          },
+          {
+            "elapsed": 45.00006225600373,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249884.2142601765,
+              "h3": 523511.5346578994
+            }
+          },
+          {
+            "elapsed": 46.00009045697516,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249956.4899246797,
+              "h3": 1199010.855725852
+            }
+          },
+          {
+            "elapsed": 47.000101590005215,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1250086.9220950175,
+              "h3": 125544.25918749352
+            }
+          },
+          {
+            "elapsed": 48.00008699099999,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249970.4881217303,
+              "h3": 974373.1828212832
+            }
+          },
+          {
+            "elapsed": 49.00003477296559,
+            "phase": "attack",
+            "throughput": {
+              "h2": 1249989.5331996146,
+              "h3": 875388.294613971
+            }
+          },
+          {
+            "elapsed": 50.000073565985076,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 1218941.0349574334,
+              "h3": 643105.2310915556
+            }
+          },
+          {
+            "elapsed": 59.00006265001139,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 1215039.8778385622,
+              "h3": 1195107.2793959426
+            }
+          },
+          {
+            "elapsed": 60.00343728100415,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 1211013.0800278464,
+              "h3": 251604.6782163375
+            }
+          },
+          {
+            "elapsed": 61.00009370298358,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 1233765.2599768252,
+              "h3": 856000.2332685083
+            }
+          },
+          {
+            "elapsed": 62.0000611479627,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 1200992.0046444945,
+              "h3": 994684.3043846476
+            }
+          },
+          {
+            "elapsed": 63.0000638429774,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 1197729.5657238206,
+              "h3": 132250.17912658706
+            }
+          },
+          {
+            "elapsed": 64.00143554300303,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 1210597.0558229913,
+              "h3": 1177715.0885330369
+            }
+          }
+        ],
+        "flow_history": [
+          {
+            "elapsed": 6.003432974976022,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 265367.8160828248,
+              "h4": 101216.2187703716,
+              "h5": 260775.55973973186,
+              "h6": 206212.17146402283,
+              "h7": 230904.8281135587,
+              "h8": 85346.953731549,
+              "h9": 244930.3694392741,
+              "h10": 85346.953731549,
+              "h11": 211324.04091015685,
+              "h12": 101192.14403200676,
+              "h13": 210635.9046385619,
+              "h14": 98353.33113315291,
+              "h15": 188649.64982687327,
+              "h16": 149813.08438799487,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 7.000061761995312,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 1083.6728185693585,
+              "h4": 166600.64824442778,
+              "h5": 3780.814055897539,
+              "h6": 58504.28459213427,
+              "h7": 33672.12263476901,
+              "h8": 182077.1015348109,
+              "h9": 19775.022137374923,
+              "h10": 182010.8770847872,
+              "h11": 53390.95432969959,
+              "h12": 165565.13866223927,
+              "h13": 54211.73614969009,
+              "h14": 168470.98725721784,
+              "h15": 76204.27396210046,
+              "h16": 116731.6305750786,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 8.000060380960349,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 264501.82305339933,
+              "h4": 29223.980449722654,
+              "h5": 80221.94633307045,
+              "h6": 37911.97463762268,
+              "h7": 29223.980449722654,
+              "h8": 20535.986261822625,
+              "h9": 29223.980449722654,
+              "h10": 20535.986261822625,
+              "h11": 75823.94927524537,
+              "h12": 29223.980449722654,
+              "h13": 29223.980449722654,
+              "h14": 29223.980449722654,
+              "h15": 29223.980449722654,
+              "h16": 17507.98828749467,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 69.99995317138604,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 9.002660907979589,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 591.4606467746249,
+              "h4": 147591.87296310606,
+              "h5": 182874.0465196079,
+              "h6": 214238.41666880663,
+              "h7": 214176.5776129887,
+              "h8": 96899.80565842894,
+              "h9": 233961.08585821884,
+              "h10": 111473.87474893623,
+              "h11": 187416.22490984676,
+              "h12": 161463.76954884213,
+              "h13": 234030.9041470455,
+              "h14": 161393.95126001546,
+              "h15": 233961.08585821884,
+              "h16": 150336.72911812086,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 69.81828882668422,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 69.81828882668422,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 10.00377946201479,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 1523.3018550271847,
+              "h4": 89642.068900885,
+              "h5": 53.93986896489704,
+              "h6": 10941.802308175595,
+              "h7": 19686.054399262794,
+              "h8": 148580.36572319584,
+              "h9": 0.0,
+              "h10": 133984.6367358796,
+              "h11": 69.92205236190357,
+              "h12": 74784.6316604428,
+              "h13": 0.0,
+              "h14": 74784.6316604428,
+              "h15": 0.0,
+              "h16": 97429.38776107643,
+              "h17": 0.0,
+              "h18": 69.92205236190357,
+              "h19": 69.92205236190357,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 69.92205236190357,
+              "h23": 0.0,
+              "h24": 69.92205236190357,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 69.92205236190357,
+              "h29": 69.92205236190357,
+              "h30": 0.0,
+              "h99": 69.92205236190357
+            }
+          },
+          {
+            "elapsed": 11.002432140987366,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 264929.49983832677,
+              "h4": 73158.7214753948,
+              "h5": 180147.0931879199,
+              "h6": 154690.74200604903,
+              "h7": 144470.95126723326,
+              "h8": 79292.99916165635,
+              "h9": 182372.09563958054,
+              "h10": 79292.99916165635,
+              "h11": 145920.90786039465,
+              "h12": 68808.85169591062,
+              "h13": 151786.82341477275,
+              "h14": 68878.9462825966,
+              "h15": 173738.44526234467,
+              "h16": 74476.49970509122,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 70.09458668597915,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 70.09458668597915,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 70.09458668597915,
+              "h27": 70.09458668597915,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 12.003433763980865,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 971.0310518303835,
+              "h4": 192250.16221845953,
+              "h5": 83534.6445390463,
+              "h6": 109141.09301694382,
+              "h7": 119201.05463415779,
+              "h8": 187197.20433763845,
+              "h9": 81524.650221883,
+              "h10": 186380.01976932853,
+              "h11": 117754.49808780964,
+              "h12": 196927.49491873715,
+              "h13": 112100.14031686317,
+              "h14": 196927.49491873715,
+              "h15": 90269.92370719492,
+              "h16": 187369.0328776743,
+              "h17": 69.9302197820235,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 13.000065586995333,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 1149.8692710222765,
+              "h4": 1374.6255683250602,
+              "h5": 54.18232167120675,
+              "h6": 0.0,
+              "h7": 0.0,
+              "h8": 0.0,
+              "h9": 0.0,
+              "h10": 820.7618356860578,
+              "h11": 0.0,
+              "h12": 0.0,
+              "h13": 0.0,
+              "h14": 0.0,
+              "h15": 0.0,
+              "h16": 3792.7625169844728,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 14.000058851961512,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 263979.4906594313,
+              "h4": 150535.99877601766,
+              "h5": 263580.4959636626,
+              "h6": 249742.6799234433,
+              "h7": 243884.75779859832,
+              "h8": 88066.82924049956,
+              "h9": 263592.49580413685,
+              "h10": 82142.90799304625,
+              "h11": 259878.54517735736,
+              "h12": 150461.9997597598,
+              "h13": 244016.75604381505,
+              "h14": 144538.07851230647,
+              "h15": 244016.75604381505,
+              "h16": 103796.62012882516,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 15.001431023003533,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 1596.8417294635312,
+              "h4": 115691.63269223963,
+              "h5": 53.927112814903495,
+              "h6": 13831.305786785433,
+              "h7": 19681.398876965148,
+              "h8": 178125.24822857548,
+              "h9": 0.0,
+              "h10": 184041.25223441786,
+              "h11": 3708.986981380585,
+              "h12": 115286.18069589054,
+              "h13": 19681.398876965148,
+              "h14": 121202.18470173291,
+              "h15": 19681.398876965148,
+              "h16": 161823.28175467762,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 16.000443731958512,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 264759.84484165604,
+              "h4": 56302.83231375743,
+              "h5": 194635.55205662208,
+              "h6": 106467.68696167857,
+              "h7": 87625.33673635198,
+              "h8": 41112.03827319452,
+              "h9": 87625.33673635198,
+              "h10": 41112.03827319452,
+              "h11": 112331.39752372506,
+              "h12": 26485.79403751283,
+              "h13": 87625.33673635198,
+              "h14": 62853.211610109815,
+              "h15": 87625.33673635198,
+              "h16": 67003.25326088564,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 17.0004372500116,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 593.0022368228501,
+              "h4": 165454.6240999795,
+              "h5": 69126.26074640192,
+              "h6": 157298.59333517822,
+              "h7": 176056.66409120354,
+              "h8": 120848.4558441278,
+              "h9": 176056.66409120354,
+              "h10": 114924.43349853158,
+              "h11": 151374.570989582,
+              "h12": 168632.6360875394,
+              "h13": 176188.66458911353,
+              "h14": 151876.5728831487,
+              "h15": 176188.66458911353,
+              "h16": 147466.55624842903,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 18.000060986960307,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 1591.5685528223742,
+              "h4": 45396.2167989185,
+              "h5": 0.0,
+              "h6": 0.0,
+              "h7": 0.0,
+              "h8": 104551.34866730208,
+              "h9": 0.0,
+              "h10": 110477.46564211023,
+              "h11": 0.0,
+              "h12": 70905.32936772463,
+              "h13": 0.0,
+              "h14": 51190.28660278223,
+              "h15": 0.0,
+              "h16": 51190.28660278223,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 19.001437113969587,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 263427.01743749063,
+              "h4": 100838.965493747,
+              "h5": 204370.27224651736,
+              "h6": 189039.10644216777,
+              "h7": 190485.14136170258,
+              "h8": 64482.37206792945,
+              "h9": 229659.9050519726,
+              "h10": 61524.391797444594,
+              "h11": 243557.01965159018,
+              "h12": 100699.15548771464,
+              "h13": 184766.91211497865,
+              "h14": 103525.31489536897,
+              "h15": 184766.91211497865,
+              "h16": 135338.0831251345,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 20.00243843201315,
+            "phase": "attack",
+            "throughput": {
+              "h1": 1258.748163060774,
+              "h4": 163331.93104880137,
+              "h5": 58036.36679201334,
+              "h6": 73180.74218733607,
+              "h7": 71754.55491025314,
+              "h8": 198823.1136057121,
+              "h9": 33117.48688165529,
+              "h10": 201740.49393355718,
+              "h11": 19411.117994993532,
+              "h12": 162648.385489205,
+              "h13": 77524.3097922641,
+              "h14": 159796.0109350391,
+              "h15": 77524.3097922641,
+              "h16": 128289.87929185598,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 21.002512162958737,
+            "phase": "attack",
+            "throughput": {
+              "h1": 118760.36688789484,
+              "h4": 0.0,
+              "h5": 54.77829911206103,
+              "h6": 0.0,
+              "h7": 0.0,
+              "h8": 0.0,
+              "h9": 0.0,
+              "h10": 0.0,
+              "h11": 0.0,
+              "h12": 0.0,
+              "h13": 0.0,
+              "h14": 0.0,
+              "h15": 0.0,
+              "h16": 0.0,
+              "h17": 352650.5167280907,
+              "h18": 42.605343753825245,
+              "h19": 344707.66335684183,
+              "h20": 223483.28742185078,
+              "h21": 322522.4522164571,
+              "h22": 239478.5507625726,
+              "h23": 347939.58300445345,
+              "h24": 253447.01703614814,
+              "h25": 347610.91320978105,
+              "h26": 42.605343753825245,
+              "h27": 329205.40470812854,
+              "h28": 42.605343753825245,
+              "h29": 348049.13960267755,
+              "h30": 42.605343753825245,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 22.000063106010202,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74330.68496295104,
+              "h4": 151037.14502181837,
+              "h5": 164437.71948688553,
+              "h6": 138821.4507944614,
+              "h7": 149868.30377209754,
+              "h8": 85511.86446499765,
+              "h9": 152771.36059816237,
+              "h10": 106561.03132746623,
+              "h11": 150499.83892417655,
+              "h12": 151095.28635327963,
+              "h13": 130112.28031626694,
+              "h14": 148126.06870175892,
+              "h15": 135918.3939683966,
+              "h16": 161811.3352036363,
+              "h17": 449075.6247126454,
+              "h18": 42.10234347193451,
+              "h19": 428451.4910318935,
+              "h20": 385795.80247432785,
+              "h21": 442038.5187323364,
+              "h22": 411075.25241897657,
+              "h23": 445232.2822157074,
+              "h24": 379354.1439231219,
+              "h25": 451782.2039358412,
+              "h26": 42.10234347193451,
+              "h27": 418274.7531526774,
+              "h28": 42.10234347193451,
+              "h29": 433377.46521810984,
+              "h30": 112.27291592515869,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 23.000169429986272,
+            "phase": "attack",
+            "throughput": {
+              "h1": 8057.019623639991,
+              "h4": 18004.52427790116,
+              "h5": 1565.0900359102461,
+              "h6": 12444.861331459788,
+              "h7": 1581.060342399126,
+              "h8": 84253.34817039788,
+              "h9": 1511.1902515102759,
+              "h10": 90363.98669070561,
+              "h11": 47857.019682240214,
+              "h12": 11069.418685104993,
+              "h13": 21182.615269188293,
+              "h14": 16846.677057457357,
+              "h15": 25716.186023719118,
+              "h16": 1511.1902515102759,
+              "h17": 456800.6727897475,
+              "h18": 41.92205453331016,
+              "h19": 412656.7493661719,
+              "h20": 396379.0144773809,
+              "h21": 454590.78162934876,
+              "h22": 404949.08019697614,
+              "h23": 412171.6513065722,
+              "h24": 363230.6470713992,
+              "h25": 440684.6372541564,
+              "h26": 41.92205453331016,
+              "h27": 427964.28813576343,
+              "h28": 41.92205453331016,
+              "h29": 409368.8625177737,
+              "h30": 41.92205453331016,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 24.000742300006095,
+            "phase": "attack",
+            "throughput": {
+              "h1": 135110.78552911003,
+              "h4": 59886.19612847933,
+              "h5": 131855.73104457362,
+              "h6": 56855.35203894172,
+              "h7": 72930.43660894636,
+              "h8": 36762.4972656993,
+              "h9": 74445.85865371517,
+              "h10": 36828.559257082874,
+              "h11": 134754.45115134405,
+              "h12": 65947.88430755456,
+              "h13": 43881.17730691181,
+              "h14": 64366.40027140217,
+              "h15": 49872.79973754991,
+              "h16": 53035.76780985468,
+              "h17": 400137.4818103486,
+              "h18": 42.039449062278656,
+              "h19": 404083.1843866224,
+              "h20": 361707.41973184556,
+              "h21": 405558.5688608557,
+              "h22": 394732.4097880556,
+              "h23": 386354.54815350147,
+              "h24": 399434.8224474505,
+              "h25": 444096.7323798046,
+              "h26": 42.039449062278656,
+              "h27": 394300.00402627216,
+              "h28": 42.039449062278656,
+              "h29": 361545.26757117675,
+              "h30": 42.039449062278656,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 25.00006345496513,
+            "phase": "attack",
+            "throughput": {
+              "h1": 6373.5472551560915,
+              "h4": 75518.03024021369,
+              "h5": 6059.372398308523,
+              "h6": 76552.60604269899,
+              "h7": 66609.07187916033,
+              "h8": 59995.39097545833,
+              "h9": 64962.15527288295,
+              "h10": 52685.32249097318,
+              "h11": 4544.529298731392,
+              "h12": 78001.412388926,
+              "h13": 89657.89991209215,
+              "h14": 84060.78478723452,
+              "h15": 98746.95850955494,
+              "h16": 95453.12529700018,
+              "h17": 414194.523694417,
+              "h18": 42.02338849553467,
+              "h19": 445315.84454596724,
+              "h20": 397229.0814246483,
+              "h21": 386747.2476656192,
+              "h22": 413886.3521787831,
+              "h23": 429863.2442620378,
+              "h24": 402578.0584460085,
+              "h25": 464118.30922711216,
+              "h26": 42.02338849553467,
+              "h27": 441641.79972321476,
+              "h28": 112.06236932142578,
+              "h29": 418624.9895100891,
+              "h30": 42.02338849553467,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 26.000087021966465,
+            "phase": "attack",
+            "throughput": {
+              "h1": 1588.3449313283609,
+              "h4": 2066.448758264731,
+              "h5": 4596.998302509538,
+              "h6": 0.0,
+              "h7": 9019.958810276548,
+              "h8": 44663.699347315254,
+              "h9": 4542.986573106684,
+              "h10": 51971.28629207911,
+              "h11": 13632.96058816471,
+              "h12": 1514.328857702228,
+              "h13": 0.0,
+              "h14": 4542.986573106684,
+              "h15": 1514.328857702228,
+              "h16": 1514.328857702228,
+              "h17": 446340.929178648,
+              "h18": 112.02432765036298,
+              "h19": 441263.82661477977,
+              "h20": 387480.14673607156,
+              "h21": 432189.85607510037,
+              "h22": 400713.0204397707,
+              "h23": 434674.39562763163,
+              "h24": 361894.5904744976,
+              "h25": 437591.0290153857,
+              "h26": 42.00912286888612,
+              "h27": 427814.90599346923,
+              "h28": 42.00912286888612,
+              "h29": 450623.85927685205,
+              "h30": 42.00912286888612,
+              "h99": 70.01520478147685
+            }
+          },
+          {
+            "elapsed": 27.00005296897143,
+            "phase": "attack",
+            "throughput": {
+              "h1": 147215.30473666545,
+              "h4": 97962.84244731005,
+              "h5": 146618.21427089744,
+              "h6": 85907.01585707976,
+              "h7": 115201.45428646792,
+              "h8": 48385.33090942097,
+              "h9": 119480.10254870495,
+              "h10": 45356.87206462113,
+              "h11": 119414.09254746427,
+              "h12": 85841.00585583909,
+              "h13": 72873.04106664663,
+              "h14": 99539.08126481484,
+              "h15": 78929.95875624631,
+              "h16": 131487.92186530563,
+              "h17": 382041.88354426104,
+              "h18": 42.00636442588947,
+              "h19": 391629.33614870335,
+              "h20": 352403.3929871942,
+              "h21": 379341.4744025967,
+              "h22": 364771.26685601677,
+              "h23": 432215.48539638415,
+              "h24": 384430.245407333,
+              "h25": 447661.8256867041,
+              "h26": 42.00636442588947,
+              "h27": 382539.959008168,
+              "h28": 42.00636442588947,
+              "h29": 430487.223545719,
+              "h30": 42.00636442588947,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 28.003148395975586,
+            "phase": "attack",
+            "throughput": {
+              "h1": 10371.995185977557,
+              "h4": 59685.82773783894,
+              "h5": 1563.1765139958486,
+              "h6": 47341.91728101713,
+              "h7": 19647.37419504476,
+              "h8": 95698.70298757493,
+              "h9": 15320.724915234821,
+              "h10": 88287.57147925532,
+              "h11": 15316.737220046058,
+              "h12": 47272.13261521374,
+              "h13": 60329.84051082447,
+              "h14": 62365.558904688965,
+              "h15": 64857.868397667036,
+              "h16": 10499.601432018035,
+              "h17": 426998.4131177589,
+              "h18": 41.87079948203166,
+              "h19": 363970.8968117349,
+              "h20": 336084.9443567018,
+              "h21": 421292.02130263625,
+              "h22": 359341.18269757886,
+              "h23": 399612.9164089158,
+              "h24": 370969.30186801736,
+              "h25": 425975.5693018407,
+              "h26": 111.65546528541776,
+              "h27": 345182.870929869,
+              "h28": 41.87079948203166,
+              "h29": 427387.21339866344,
+              "h30": 41.87079948203166,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 29.000050939968787,
+            "phase": "attack",
+            "throughput": {
+              "h1": 148885.32174466425,
+              "h4": 22534.374104826926,
+              "h5": 62893.66878549692,
+              "h6": 20462.455239647912,
+              "h7": 54457.56932088615,
+              "h8": 16242.399777560166,
+              "h9": 54126.623906796565,
+              "h10": 14653.861789930175,
+              "h11": 38020.613754436956,
+              "h12": 23366.75196450678,
+              "h13": 14653.861789930175,
+              "h14": 26403.426855001482,
+              "h15": 20797.412113302216,
+              "h16": 23763.88646141428,
+              "h17": 378487.2271208861,
+              "h18": 42.12032542958304,
+              "h19": 366031.6451724237,
+              "h20": 339241.11246942653,
+              "h21": 380436.7964693411,
+              "h22": 373992.3866786149,
+              "h23": 434429.03648071946,
+              "h24": 362186.6611796375,
+              "h25": 435674.5946755657,
+              "h26": 42.12032542958304,
+              "h27": 354621.0484405714,
+              "h28": 42.12032542958304,
+              "h29": 435078.89293020446,
+              "h30": 42.12032542958304,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 30.00006490701344,
+            "phase": "attack",
+            "throughput": {
+              "h1": 3835.95234426962,
+              "h4": 113284.12482466757,
+              "h5": 78233.42285650694,
+              "h6": 97568.22306895329,
+              "h7": 94173.38023806643,
+              "h8": 55961.89354816081,
+              "h9": 79293.68608595303,
+              "h10": 43846.88577924461,
+              "h11": 95291.65787063316,
+              "h12": 97502.20667919531,
+              "h13": 117281.11715001344,
+              "h14": 99016.58265030984,
+              "h15": 127881.74894781511,
+              "h16": 122656.45167363923,
+              "h17": 362445.9837445013,
+              "h18": 42.01042984597759,
+              "h19": 366859.0793749883,
+              "h20": 338177.9587701416,
+              "h21": 362213.92613201874,
+              "h22": 380794.5391038968,
+              "h23": 428812.46041784924,
+              "h24": 358865.09472429653,
+              "h25": 429676.67497468076,
+              "h26": 42.01042984597759,
+              "h27": 369019.6157670671,
+              "h28": 42.01042984597759,
+              "h29": 410015.79380676325,
+              "h30": 42.01042984597759,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 31.000069338013418,
+            "phase": "attack",
+            "throughput": {
+              "h1": 3285.6727402956717,
+              "h4": 131.98685384024,
+              "h5": 3027.6984350624753,
+              "h6": 13848.620649146394,
+              "h7": 1513.8492175312376,
+              "h8": 76898.34076846589,
+              "h9": 1513.8492175312376,
+              "h10": 78412.18998599713,
+              "h11": 0.0,
+              "h12": 10952.909067924158,
+              "h13": 0.0,
+              "h14": 10952.909067924158,
+              "h15": 1513.8492175312376,
+              "h16": 8123.190913622044,
+              "h17": 428177.3526626331,
+              "h18": 364085.73631830205,
+              "h19": 391676.9881733595,
+              "h20": 365651.5803570431,
+              "h21": 428879.2827489653,
+              "h22": 389949.1602685418,
+              "h23": 442809.89523155795,
+              "h24": 400316.12769744796,
+              "h25": 390489.10648879735,
+              "h26": 386169.5367267531,
+              "h27": 395402.6170931226,
+              "h28": 359550.1880681556,
+              "h29": 432982.87402290734,
+              "h30": 375802.569297847,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 32.00042192300316,
+            "phase": "attack",
+            "throughput": {
+              "h1": 131799.7299641643,
+              "h4": 93709.14821477575,
+              "h5": 131671.78846988693,
+              "h6": 85854.73991765453,
+              "h7": 74342.00451854,
+              "h8": 35263.87436019806,
+              "h9": 72828.69653154055,
+              "h10": 36777.182347197486,
+              "h11": 72828.69653154055,
+              "h12": 56776.03717142773,
+              "h13": 72828.69653154055,
+              "h14": 56776.03717142773,
+              "h15": 74342.00451854,
+              "h16": 104999.98508475299,
+              "h17": 399741.20435453084,
+              "h18": 388514.33823169227,
+              "h19": 406650.0450455084,
+              "h20": 374588.7062139406,
+              "h21": 396556.6605985334,
+              "h22": 418200.7630757366,
+              "h23": 427214.64116474637,
+              "h24": 382631.0285807817,
+              "h25": 375452.3113003128,
+              "h26": 404545.0076474762,
+              "h27": 404598.9829653745,
+              "h28": 362120.40777944203,
+              "h29": 424947.67781301937,
+              "h30": 386139.42424416874,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 33.00004686799366,
+            "phase": "attack",
+            "throughput": {
+              "h1": 7194.021450925188,
+              "h4": 48056.863739629596,
+              "h5": 9143.110990063195,
+              "h6": 45929.67464301388,
+              "h7": 59035.00050730013,
+              "h8": 104674.51294992899,
+              "h9": 58902.92667815936,
+              "h10": 109219.05334354543,
+              "h11": 58902.92667815936,
+              "h12": 76486.75602149166,
+              "h13": 59035.00050730013,
+              "h14": 76486.75602149166,
+              "h15": 59035.00050730013,
+              "h16": 46127.78538672504,
+              "h17": 382533.83603862557,
+              "h18": 387720.73551033577,
+              "h19": 370863.31222727767,
+              "h20": 347090.0229819394,
+              "h21": 371403.6142555808,
+              "h22": 434186.70994440606,
+              "h23": 414843.89733115357,
+              "h24": 423218.5787698523,
+              "h25": 319372.5289299881,
+              "h26": 386424.0106424082,
+              "h27": 365514.32214707654,
+              "h28": 363947.4462649974,
+              "h29": 389557.7624065664,
+              "h30": 351034.2277885523,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 34.00099991395837,
+            "phase": "attack",
+            "throughput": {
+              "h1": 1586.1587424440913,
+              "h4": 0.0,
+              "h5": 9127.40465267891,
+              "h6": 1512.2445441186112,
+              "h7": 0.0,
+              "h8": 1512.2445441186112,
+              "h9": 0.0,
+              "h10": 4536.733632355833,
+              "h11": 0.0,
+              "h12": 0.0,
+              "h13": 1512.2445441186112,
+              "h14": 0.0,
+              "h15": 1512.2445441186112,
+              "h16": 1512.2445441186112,
+              "h17": 400700.8552086438,
+              "h18": 377561.7157706968,
+              "h19": 348974.90014805837,
+              "h20": 348974.90014805837,
+              "h21": 403343.7872190387,
+              "h22": 450269.3147505396,
+              "h23": 396817.36327500234,
+              "h24": 404692.22191821976,
+              "h25": 458090.2360057897,
+              "h26": 362405.3097519017,
+              "h27": 357389.13267094817,
+              "h28": 376644.7801752537,
+              "h29": 382901.5171794538,
+              "h30": 319363.27415404224,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 35.000678810989484,
+            "phase": "attack",
+            "throughput": {
+              "h1": 134079.12799597342,
+              "h4": 122568.68776719189,
+              "h5": 136333.21420584948,
+              "h6": 117952.51121670922,
+              "h7": 113674.34759388321,
+              "h8": 58450.235490167026,
+              "h9": 131737.0384203169,
+              "h10": 61478.3513036119,
+              "h11": 133185.093802704,
+              "h12": 120782.61945714812,
+              "h13": 112160.28968716078,
+              "h14": 85831.28270685149,
+              "h15": 112160.28968716078,
+              "h16": 80147.06530803358,
+              "h17": 368888.1085101265,
+              "h18": 373262.27580471296,
+              "h19": 423484.1965944096,
+              "h20": 426238.30192803807,
+              "h21": 361381.8214243546,
+              "h22": 448973.1714468147,
+              "h23": 425698.28127438546,
+              "h24": 397011.18410645955,
+              "h25": 378176.46375295206,
+              "h26": 392811.02346693893,
+              "h27": 403881.4468668183,
+              "h28": 352687.4889005469,
+              "h29": 406203.5356775247,
+              "h30": 345289.2059455056,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 36.000027781003155,
+            "phase": "attack",
+            "throughput": {
+              "h1": 1044.1842375064598,
+              "h4": 22271.258434869324,
+              "h5": 6116.937383666796,
+              "h6": 13865.725493254522,
+              "h7": 19730.376752423115,
+              "h8": 87645.40101317404,
+              "h9": 0.0,
+              "h10": 75477.60118320903,
+              "h11": 0.0,
+              "h12": 10966.437332354515,
+              "h13": 19730.376752423115,
+              "h14": 52018.99614653466,
+              "h15": 19730.376752423115,
+              "h16": 53246.38816492672,
+              "h17": 367616.92426881305,
+              "h18": 351344.4692386788,
+              "h19": 449573.87385580136,
+              "h20": 448330.4636707745,
+              "h21": 373239.3007576302,
+              "h22": 426057.20296507585,
+              "h23": 417785.8221690275,
+              "h24": 355020.638481367,
+              "h25": 441356.55437214556,
+              "h26": 379672.5969323344,
+              "h27": 433571.7253876295,
+              "h28": 350966.0400519315,
+              "h29": 436707.28150639293,
+              "h30": 374536.77225504955,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 37.00003569095861,
+            "phase": "attack",
+            "throughput": {
+              "h1": 135235.070940583,
+              "h4": 64149.559295146275,
+              "h5": 68769.52755615291,
+              "h6": 62593.569984729314,
+              "h7": 43769.69930395249,
+              "h8": 30737.788832645456,
+              "h9": 49825.65769976552,
+              "h10": 29265.798945155897,
+              "h11": 43769.69930395249,
+              "h12": 62593.569984729314,
+              "h13": 43769.69930395249,
+              "h14": 70427.51616583884,
+              "h15": 14611.8996168461,
+              "h16": 102061.29884304316,
+              "h17": 376647.4124476515,
+              "h18": 371625.4469483495,
+              "h19": 447548.92535715207,
+              "h20": 452732.8897435283,
+              "h21": 372327.44212567125,
+              "h22": 437708.99295708595,
+              "h23": 465746.8003384938,
+              "h24": 371031.4510290772,
+              "h25": 461264.8311294393,
+              "h26": 408453.19394323096,
+              "h27": 445874.9368573847,
+              "h28": 355587.55712799786,
+              "h29": 434481.01513316185,
+              "h30": 372975.4376739683,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 38.00022183597321,
+            "phase": "attack",
+            "throughput": {
+              "h1": 181.94052763657294,
+              "h4": 83192.80609843736,
+              "h5": 70562.93452612712,
+              "h6": 69181.3861239637,
+              "h7": 88065.21341547393,
+              "h8": 45335.18092482738,
+              "h9": 89446.76181763737,
+              "h10": 45335.18092482738,
+              "h11": 87933.25654927597,
+              "h12": 69181.3861239637,
+              "h13": 88065.21341547393,
+              "h14": 90040.56771552816,
+              "h15": 117213.68542001896,
+              "h16": 49113.945729586965,
+              "h17": 425920.7758507597,
+              "h18": 324325.9849570804,
+              "h19": 385110.1159593561,
+              "h20": 395798.62212139036,
+              "h21": 412317.2225536252,
+              "h22": 418957.0521391313,
+              "h23": 453343.8118624436,
+              "h24": 316012.7023866093,
+              "h25": 458364.17081733845,
+              "h26": 373881.7862537847,
+              "h27": 438876.5408956497,
+              "h28": 381547.28057201137,
+              "h29": 452264.1647753694,
+              "h30": 400333.1398871019,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 39.00248796097003,
+            "phase": "attack",
+            "throughput": {
+              "h1": 181.61715920271374,
+              "h4": 6767.733921498926,
+              "h5": 1510.8152694115856,
+              "h6": 0.0,
+              "h7": 0.0,
+              "h8": 59141.33273246171,
+              "h9": 1510.8152694115856,
+              "h10": 59141.33273246171,
+              "h11": 0.0,
+              "h12": 1510.8152694115856,
+              "h13": 0.0,
+              "h14": 1510.8152694115856,
+              "h15": 1510.8152694115856,
+              "h16": 7554.076347057929,
+              "h17": 378228.71090092184,
+              "h18": 340400.45116984233,
+              "h19": 414709.81038516806,
+              "h20": 427373.1167054012,
+              "h21": 375534.3904072552,
+              "h22": 438096.5122701944,
+              "h23": 457441.73341472086,
+              "h24": 349399.48161868885,
+              "h25": 431576.25667552114,
+              "h26": 356997.46541082877,
+              "h27": 378282.59731079516,
+              "h28": 346866.82035464223,
+              "h29": 427265.3438856545,
+              "h30": 377366.5283429485,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 40.00004654697841,
+            "phase": "attack",
+            "throughput": {
+              "h1": 132102.7080790671,
+              "h4": 84932.04292515542,
+              "h5": 118195.15617891839,
+              "h6": 77348.10920637383,
+              "h7": 133557.38070253748,
+              "h8": 54534.1939297432,
+              "h9": 118032.85799365515,
+              "h10": 43916.686723449,
+              "h11": 87502.76603247291,
+              "h12": 77348.10920637383,
+              "h13": 72996.11342375995,
+              "h14": 87502.76603247291,
+              "h15": 72996.11342375995,
+              "h16": 81766.22647187275,
+              "h17": 393681.2980534965,
+              "h18": 377613.7777124372,
+              "h19": 445238.0215721144,
+              "h20": 421314.06685553526,
+              "h21": 399740.43030332355,
+              "h22": 439287.0881124628,
+              "h23": 429969.9700695739,
+              "h24": 386269.6809264759,
+              "h25": 462050.9113566048,
+              "h26": 405745.4631580629,
+              "h27": 441937.95847176213,
+              "h28": 362628.24527313275,
+              "h29": 434580.44073982927,
+              "h30": 372095.6394134876,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 41.000047051988076,
+            "phase": "attack",
+            "throughput": {
+              "h1": 2075.8701029874464,
+              "h4": 56609.72802296272,
+              "h5": 13951.847930729122,
+              "h6": 54614.89188544129,
+              "h7": 0.0,
+              "h8": 90041.7410839914,
+              "h9": 13921.835350926895,
+              "h10": 88527.10622330561,
+              "h11": 44342.58623846534,
+              "h12": 54614.89188544129,
+              "h13": 59026.74111636883,
+              "h14": 45965.26638643914,
+              "h15": 59026.74111636883,
+              "h16": 51651.649839634636,
+              "h17": 419755.9411139628,
+              "h18": 352875.9082826776,
+              "h19": 423591.5488126876,
+              "h20": 426928.9476866953,
+              "h21": 415164.0164042219,
+              "h22": 417541.01272455836,
+              "h23": 451197.119714777,
+              "h24": 345744.9193216682,
+              "h25": 462271.76166179916,
+              "h26": 415001.94847328984,
+              "h27": 424726.0243292118,
+              "h28": 385505.58504366,
+              "h29": 459246.4936177346,
+              "h30": 389557.28331696085,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 42.000022972992156,
+            "phase": "attack",
+            "throughput": {
+              "h1": 131834.56116989692,
+              "h4": 552.1196134150426,
+              "h5": 1610.3488724605409,
+              "h6": 0.0,
+              "h7": 0.0,
+              "h8": 1514.32807012749,
+              "h9": 1556.3371711481998,
+              "h10": 1514.32807012749,
+              "h11": 0.0,
+              "h12": 0.0,
+              "h13": 0.0,
+              "h14": 1514.32807012749,
+              "h15": 0.0,
+              "h16": 4542.98421038247,
+              "h17": 429609.0722383613,
+              "h18": 340435.7533716861,
+              "h19": 431877.56369347963,
+              "h20": 425168.1101304577,
+              "h21": 441653.68163101334,
+              "h22": 407302.23959636444,
+              "h23": 438899.08486408397,
+              "h24": 332009.9279669609,
+              "h25": 444990.4045120869,
+              "h26": 401090.8939454452,
+              "h27": 439547.2252798321,
+              "h28": 398120.2503732664,
+              "h29": 434686.17216172133,
+              "h30": 403791.47901106224,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 43.00350457901368,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.74191171402893,
+              "h4": 113347.29737838522,
+              "h5": 131326.37266412182,
+              "h6": 120356.7650404998,
+              "h7": 131272.560998817,
+              "h8": 58244.152106237336,
+              "h9": 116069.76903788153,
+              "h10": 59752.871759413545,
+              "h11": 131272.560998817,
+              "h12": 111764.83581349497,
+              "h13": 111764.83581349497,
+              "h14": 120422.53485365016,
+              "h15": 111764.83581349497,
+              "h16": 134092.69086571838,
+              "h17": 422313.9493123209,
+              "h18": 351443.98610585724,
+              "h19": 444215.2970913875,
+              "h20": 432753.41238145827,
+              "h21": 418816.1910675068,
+              "h22": 407623.3646841018,
+              "h23": 440394.6688547444,
+              "h24": 345040.39793458226,
+              "h25": 450726.5085932721,
+              "h26": 388089.7301784478,
+              "h27": 441201.8438343169,
+              "h28": 382331.88199083076,
+              "h29": 444322.92042199714,
+              "h30": 393040.40338649234,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 44.00068380497396,
+            "phase": "attack",
+            "throughput": {
+              "h1": 616.6600420548052,
+              "h4": 20168.292822585936,
+              "h5": 54.14575979017801,
+              "h6": 10983.567643363147,
+              "h7": 0.0,
+              "h8": 83185.93562431015,
+              "h9": 15381.406577432052,
+              "h10": 72625.5070667147,
+              "h11": 1518.0866726357317,
+              "h12": 19761.196924904227,
+              "h13": 19761.196924904227,
+              "h14": 10983.567643363147,
+              "h15": 19761.196924904227,
+              "h16": 1518.0866726357317,
+              "h17": 371602.3494399917,
+              "h18": 336353.4598165858,
+              "h19": 405226.86626969225,
+              "h20": 408746.34065605386,
+              "h21": 376475.4678211077,
+              "h22": 449139.07745952666,
+              "h23": 446323.49795043736,
+              "h24": 336136.8767774251,
+              "h25": 470622.91170516284,
+              "h26": 384164.165711313,
+              "h27": 416922.3503843707,
+              "h28": 352543.04199384904,
+              "h29": 451034.1790521829,
+              "h30": 392773.34151795134,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 45.00006225600373,
+            "phase": "attack",
+            "throughput": {
+              "h1": 132596.16977126623,
+              "h4": 57393.02915385872,
+              "h5": 131821.64306754744,
+              "h6": 62636.59495164474,
+              "h7": 72911.58228211553,
+              "h8": 41364.12897276396,
+              "h9": 75743.50808511829,
+              "h10": 29243.886808110456,
+              "h11": 72911.58228211553,
+              "h12": 39386.78431314083,
+              "h13": 72911.58228211553,
+              "h14": 50978.667176032686,
+              "h15": 72911.58228211553,
+              "h16": 39386.78431314083,
+              "h17": 408019.466702456,
+              "h18": 362748.6810742423,
+              "h19": 453854.6361302787,
+              "h20": 441966.5518406417,
+              "h21": 410787.3489537301,
+              "h22": 429592.136830065,
+              "h23": 466499.23487471085,
+              "h24": 378905.6683587944,
+              "h25": 463623.2791298946,
+              "h26": 388416.13579050405,
+              "h27": 430348.6512848601,
+              "h28": 380472.7340151557,
+              "h29": 461689.96441208496,
+              "h30": 386903.1068809139,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 46.00009045697516,
+            "phase": "attack",
+            "throughput": {
+              "h1": 861.8118854496348,
+              "h4": 75459.52884709586,
+              "h5": 0.0,
+              "h6": 69188.89758776859,
+              "h7": 58857.152780069606,
+              "h8": 61462.58407181177,
+              "h9": 56027.77037192289,
+              "h10": 58435.24487327175,
+              "h11": 58857.152780069606,
+              "h12": 92483.81282091996,
+              "h13": 58989.12397366514,
+              "h14": 88338.71760389656,
+              "h15": 58989.12397366514,
+              "h16": 93865.51122659445,
+              "h17": 422445.7893899278,
+              "h18": 354378.64694772125,
+              "h19": 385583.8355424475,
+              "h20": 376513.8153280634,
+              "h21": 417922.7766639717,
+              "h22": 437142.58140397613,
+              "h23": 460507.4813610039,
+              "h24": 344012.9095598537,
+              "h25": 426236.9618604905,
+              "h26": 393034.20928997727,
+              "h27": 385205.9180335148,
+              "h28": 393790.0443078426,
+              "h29": 455822.5039883624,
+              "h30": 386663.59985368367,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 47.000101590005215,
+            "phase": "attack",
+            "throughput": {
+              "h1": 535.9408047937856,
+              "h4": 1513.8327956302078,
+              "h5": 53.99403630385153,
+              "h6": 1513.8327956302078,
+              "h7": 0.0,
+              "h8": 53732.065238821735,
+              "h9": 0.0,
+              "h10": 44649.06846504049,
+              "h11": 0.0,
+              "h12": 0.0,
+              "h13": 1513.8327956302078,
+              "h14": 1513.8327956302078,
+              "h15": 0.0,
+              "h16": 0.0,
+              "h17": 439727.4316585669,
+              "h18": 353336.9735724044,
+              "h19": 386975.2581897039,
+              "h20": 387245.2283712232,
+              "h21": 429900.5170512659,
+              "h22": 418669.7575000648,
+              "h23": 443656.9976340139,
+              "h24": 332495.2755591177,
+              "h25": 456615.5663469382,
+              "h26": 403227.4631171632,
+              "h27": 390106.91229532735,
+              "h28": 398745.95810394356,
+              "h29": 430440.45741430443,
+              "h30": 418777.7455726725,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 48.00008699099999,
+            "phase": "attack",
+            "throughput": {
+              "h1": 132076.37658961292,
+              "h4": 86057.23152464144,
+              "h5": 133323.59733891243,
+              "h6": 72874.89834439488,
+              "h7": 117902.86797828713,
+              "h8": 60500.70819978104,
+              "h9": 117968.8796618908,
+              "h10": 43843.76003712352,
+              "h11": 117902.86797828713,
+              "h12": 83012.69266267857,
+              "h13": 96179.02301053636,
+              "h14": 85843.19364144169,
+              "h15": 113690.1223519443,
+              "h16": 131491.27303039865,
+              "h17": 334913.2772942549,
+              "h18": 370775.6246774811,
+              "h19": 426027.40385374665,
+              "h20": 407178.06765382807,
+              "h21": 337073.6596667384,
+              "h22": 437045.3539534125,
+              "h23": 377310.78135424363,
+              "h24": 396430.1653507227,
+              "h25": 400264.84406188084,
+              "h26": 385520.234369681,
+              "h27": 420194.3714480412,
+              "h28": 323571.26983871654,
+              "h29": 391245.24765676225,
+              "h30": 377472.8100321799,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 49.00003477296559,
+            "phase": "attack",
+            "throughput": {
+              "h1": 8198.446009300787,
+              "h4": 46664.23045137703,
+              "h5": 54.00952598539008,
+              "h6": 59012.40837388862,
+              "h7": 13852.443238845419,
+              "h8": 94562.67858916093,
+              "h9": 15300.698676379583,
+              "h10": 88505.61026754015,
+              "h11": 13852.443238845419,
+              "h12": 48808.608668278444,
+              "h13": 35708.298087599935,
+              "h14": 47426.36487361531,
+              "h15": 19711.476631853104,
+              "h16": 0.0,
+              "h17": 411228.5308527601,
+              "h18": 367318.78622663795,
+              "h19": 419762.0359584517,
+              "h20": 415279.24530166434,
+              "h21": 405125.454416411,
+              "h22": 450277.4181401971,
+              "h23": 429861.81731771963,
+              "h24": 374394.03413072403,
+              "h25": 451141.5705559633,
+              "h26": 394161.5206413768,
+              "h27": 419545.99785451015,
+              "h28": 372827.7578771477,
+              "h29": 424244.8266152391,
+              "h30": 404385.32387512975,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 50.000073565985076,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 77977.92399912946,
+              "h4": 45851.040876465,
+              "h5": 45361.47001856688,
+              "h6": 45373.85840953524,
+              "h7": 220025.8531108904,
+              "h8": 253542.64487581156,
+              "h9": 45336.69323663014,
+              "h10": 75939.0013189188,
+              "h11": 45337.152065925264,
+              "h12": 67701.4095688964,
+              "h13": 45399.78226470979,
+              "h14": 50199.36610636236,
+              "h15": 45382.11733684749,
+              "h16": 45472.506707987064,
+              "h17": 213383.84023466436,
+              "h18": 249304.43867674412,
+              "h19": 252506.37891277228,
+              "h20": 246557.1982721846,
+              "h21": 166165.25864408,
+              "h22": 247614.7997974472,
+              "h23": 252390.75393040082,
+              "h24": 248525.34653362227,
+              "h25": 251286.58123168309,
+              "h26": 243089.8252889268,
+              "h27": 249891.05193056114,
+              "h28": 211228.71903546335,
+              "h29": 247520.05154800392,
+              "h30": 238828.218795808,
+              "h99": 8.02951266468333
+            }
+          },
+          {
+            "elapsed": 59.00006265001139,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 253596.90509268563,
+              "h4": 103173.74193978566,
+              "h5": 102789.99346283276,
+              "h6": 102799.35318178283,
+              "h7": 460484.13276504434,
+              "h8": 159732.96360190344,
+              "h9": 170106.65210489827,
+              "h10": 132095.27349550356,
+              "h11": 102696.39627333207,
+              "h12": 177858.059348715,
+              "h13": 102850.83163600822,
+              "h14": 186021.29422633484,
+              "h15": 102850.83163600822,
+              "h16": 150700.8348150854,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 32.75901632524681,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 54.59836054207802,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 60.00343728100415,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 533525.6047950236,
+              "h4": 0.0,
+              "h5": 1562.7031877642687,
+              "h6": 0.0,
+              "h7": 0.0,
+              "h8": 59065.79536099308,
+              "h9": 217259.5944641961,
+              "h10": 149134.50575066655,
+              "h11": 0.0,
+              "h12": 90110.5685107743,
+              "h13": 0.0,
+              "h14": 90068.71038967348,
+              "h15": 0.0,
+              "h16": 84164.7220705947,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 61.00009370298358,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 576288.9648686921,
+              "h4": 78105.0610488915,
+              "h5": 132231.36064578523,
+              "h6": 77466.91173583305,
+              "h7": 250457.55130466845,
+              "h8": 176161.31854566664,
+              "h9": 315944.11272931006,
+              "h10": 100518.55060093458,
+              "h11": 86780.2795405633,
+              "h12": 141199.56592898702,
+              "h13": 73108.23152211316,
+              "h14": 141199.56592898702,
+              "h15": 73108.23152211316,
+              "h16": 186927.57975497018,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 270.91244422292215,
+              "h24": 0.0,
+              "h25": 54.18248884458443,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 270.91244422292215,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 62.0000611479627,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 603804.5593431197,
+              "h4": 54857.50446733983,
+              "h5": 54.00148099089162,
+              "h6": 54593.497226939915,
+              "h7": 13850.379846737944,
+              "h8": 88492.42690525924,
+              "h9": 261535.17260344265,
+              "h10": 128513.52448406447,
+              "h11": 80068.19587068015,
+              "h12": 88888.43776585913,
+              "h13": 59003.618174529394,
+              "h14": 88888.43776585913,
+              "h15": 59003.618174529394,
+              "h16": 48907.34128408418,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 54.00148099089162,
+              "h20": 0.0,
+              "h21": 54.00148099089162,
+              "h22": 162.00444297267487,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 63.0000638429774,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 176851.6183288224,
+              "h4": 0.0,
+              "h5": 53.99866213052658,
+              "h6": 69.99826572475668,
+              "h7": 0.0,
+              "h8": 0.0,
+              "h9": 491923.81210819865,
+              "h10": 91955.72170738822,
+              "h11": 132626.71404392112,
+              "h12": 90371.76095155944,
+              "h13": 0.0,
+              "h14": 88993.79509200637,
+              "h15": 0.0,
+              "h16": 85961.87021089977,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 69.99826572475668,
+              "h20": 69.99826572475668,
+              "h21": 53.99866213052658,
+              "h22": 0.0,
+              "h23": 69.99826572475668,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 69.99826572475668,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          },
+          {
+            "elapsed": 64.00143554300303,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 100305.33877707485,
+              "h4": 121095.42781193291,
+              "h5": 131555.385183011,
+              "h6": 120681.98286715287,
+              "h7": 263176.68187895796,
+              "h8": 189925.02318423035,
+              "h9": 441015.9303730234,
+              "h10": 111614.15654202503,
+              "h11": 286155.8320707191,
+              "h12": 172546.3542734512,
+              "h13": 112005.6309824931,
+              "h14": 175504.38308127373,
+              "h15": 127978.18761730527,
+              "h16": 179710.7359977317,
+              "h17": 0.0,
+              "h18": 0.0,
+              "h19": 0.0,
+              "h20": 0.0,
+              "h21": 0.0,
+              "h22": 0.0,
+              "h23": 0.0,
+              "h24": 0.0,
+              "h25": 0.0,
+              "h26": 0.0,
+              "h27": 0.0,
+              "h28": 0.0,
+              "h29": 0.0,
+              "h30": 0.0,
+              "h99": 0.0
+            }
+          }
+        ]
+      }
+    }
+  },
+  "run_metadata": {
+    "controller": "simple_13",
+    "topology": "large",
+    "scenario": "probe",
+    "seed": 1,
+    "timestamp": "2026-07-17T23:53:40.609060",
+    "display_name": "Simple Switch 13"
+  }
+}
