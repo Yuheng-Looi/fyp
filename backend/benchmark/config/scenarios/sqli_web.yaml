@@ -1,0 +1,9 @@
+name: sqli_web
+target:
+  asset: web_server
+  ip: 10.0.0.3
+attack:
+  type: sqli
+  intensity: medium
+  duration: 120
+  start_offset: 0

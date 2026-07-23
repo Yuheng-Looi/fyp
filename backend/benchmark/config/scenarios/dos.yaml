@@ -1,0 +1,9 @@
+name: dos
+target:
+  asset: internal_db
+  ip: 10.0.0.2
+attack:
+  type: dos
+  intensity: high
+  duration: 120
+  start_offset: 0

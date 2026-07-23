@@ -1,0 +1,9 @@
+name: probe
+target:
+  asset: internal_db
+  ip: 10.0.0.2
+attack:
+  type: probe
+  intensity: medium
+  duration: 120
+  start_offset: 0

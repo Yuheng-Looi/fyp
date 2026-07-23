@@ -7,7 +7,7 @@ monitoring:
   tick_interval: 1
   sample_interval: 5
   poll_interval: 1
-  timeout_seconds: 2
+  timeout_seconds: 5
   latency_threshold_ms: 500
   down_threshold: 5
   ping_enabled: false

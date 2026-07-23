@@ -3,6 +3,12 @@
 import builtins
 builtins.buffer = memoryview
 
+import collections
+import collections.abc
+for _attr in ('MutableMapping', 'Mapping', 'Sequence', 'Callable', 'Iterable', 'MutableSequence'):
+    if not hasattr(collections, _attr) and hasattr(collections.abc, _attr):
+        setattr(collections, _attr, getattr(collections.abc, _attr))
+
 try:
     import threading
     from mininet.node import Node
@@ -15,26 +21,43 @@ try:
 except ImportError:
     pass
 
-import ryu.utils
-ryu.utils.round_up = lambda x, y: ((x + y - 1) // y) * y
+try:
+    import eventlet.wsgi
+    if not hasattr(eventlet.wsgi, 'ALREADY_HANDLED'):
+        eventlet.wsgi.ALREADY_HANDLED = object()
+except Exception:
+    pass
 
-import ryu.lib.addrconv
-_orig_text_to_bin = ryu.lib.addrconv.AddressConverter.text_to_bin
-def _patched_text_to_bin(self, text):
-    if isinstance(text, bytes):
-        text = text.decode('ascii')
-    return _orig_text_to_bin(self, text)
-ryu.lib.addrconv.AddressConverter.text_to_bin = _patched_text_to_bin
+try:
+    import ryu.utils
+    ryu.utils.round_up = lambda x, y: ((x + y - 1) // y) * y
+except Exception:
+    pass
 
-import ryu.ofproto.oxm_fields
-def _patched_from_user(self, i):
-    res = []
-    for _ in range(self.size):
-        res.append(i & 255)
-        i //= 256
-    res.reverse()
-    return bytes(res)
-ryu.ofproto.oxm_fields.IntDescr.from_user = _patched_from_user
+try:
+    import ryu.lib.addrconv
+    _orig_text_to_bin = ryu.lib.addrconv.AddressConverter.text_to_bin
+    def _patched_text_to_bin(self, text):
+        if isinstance(text, bytes):
+            text = text.decode('ascii')
+        return _orig_text_to_bin(self, text)
+    ryu.lib.addrconv.AddressConverter.text_to_bin = _patched_text_to_bin
+except Exception:
+    pass
+
+try:
+    import ryu.ofproto.oxm_fields
+    if hasattr(ryu.ofproto.oxm_fields, 'IntDescr'):
+        def _patched_from_user(self, i):
+            res = []
+            for _ in range(self.size):
+                res.append(i & 255)
+                i //= 256
+            res.reverse()
+            return bytes(res)
+        ryu.ofproto.oxm_fields.IntDescr.from_user = _patched_from_user
+except Exception:
+    pass
 
 import importlib.abc
 import importlib.machinery
@@ -54,11 +77,15 @@ def _patch_app_manager(module):
             module.LOG.info("instantiating app %s", app_name)
 
             if hasattr(cls, "OFP_VERSIONS"):
-                for version in list(module.Datapath.supported_ofp_version.keys()):
-                    if version not in cls.OFP_VERSIONS:
-                        del module.Datapath.supported_ofp_version[version]
+                supp = getattr(module.Datapath, "supported_ofp_version", None)
+                if isinstance(supp, dict):
+                    for version in list(supp.keys()):
+                        if version not in cls.OFP_VERSIONS:
+                            del supp[version]
 
-            assert len(module.Datapath.supported_ofp_version), "No OpenFlow version is available"
+            supp = getattr(module.Datapath, "supported_ofp_version", None)
+            if isinstance(supp, dict):
+                assert len(supp), "No OpenFlow version is available"
             assert app_name not in self.applications
             app = cls(*args, **kwargs)
             module.register_app(app)
@@ -78,12 +105,12 @@ def _patch_app_manager(module):
                     if method.ev_cls in brick._EVENTS:
                         brick.register_observer(method.ev_cls, service.name, method.dispatchers)
 
-        for brick, service in list(module.SERVICE_BRICKS.items()):
-            module.LOG.debug("BRICK %s" % brick)
-            for ev_cls, observers in list(service.observers.items()):
-                module.LOG.debug("  PROVIDES %s TO %s" % (ev_cls.__name__, observers))
-            for ev_cls in list(service.event_handlers.keys()):
-                module.LOG.debug("  CONSUMES %s" % (ev_cls.__name__,))
+        services = []
+        for app in list(self.applications.values()):
+            t = app.start()
+            if t is not None:
+                services.append(t)
+        return services
 
     app_manager.instantiate_apps = instantiate_apps
     app_manager._benchmark_py311_patched = True

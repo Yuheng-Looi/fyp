@@ -20,12 +20,18 @@ class AssetMonitor:
         self._running = False
         self._thread = None
         self._lock = threading.Lock()
+        self._probe_history = []
         self._state_history = []
         self._current_state = {}
         self._failure_counts = {}
 
     def set_monitor_host(self, host):
         self._monitor_host = host
+
+    @property
+    def probe_history(self):
+        with self._lock:
+            return list(self._probe_history)
 
     @property
     def state_history(self):
@@ -167,7 +173,19 @@ class AssetMonitor:
 
         self._failure_counts[name] = failures
 
+        probe_entry = {
+            "timestamp": time.time(),
+            "asset": name,
+            "probe_type": "http",
+            "state": state,
+            "latency_ms": latency_ms if latency_ms is not None else 2000.0,
+            "status_code": status_code,
+            "error": error,
+            "ping_loss": ping_loss,
+        }
+
         with self._lock:
+            self._probe_history.append(probe_entry)
             previous = self._current_state.get(name)
             self._current_state[name] = state
             if previous != state:

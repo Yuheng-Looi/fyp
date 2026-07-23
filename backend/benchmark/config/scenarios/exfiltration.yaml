@@ -1,0 +1,9 @@
+name: exfiltration
+target:
+  asset: internal_db
+  ip: 10.0.0.2
+attack:
+  type: exfiltration
+  intensity: low
+  duration: 120
+  start_offset: 0

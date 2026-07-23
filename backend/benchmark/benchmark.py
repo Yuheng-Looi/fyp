@@ -43,6 +43,7 @@ def main():
 		choices=["small", "large", "both"],
 		help="Topology module name under benchmark/topology",
 	)
+	parser.add_argument("--nobase", action="store_true", help="Do not run simple_switch_13 as comparison baseline")
 	parser.add_argument("--real-time", action="store_true", help="Run in real time")
 	parser.add_argument("--dry-run", action="store_true", help="Run simulated timeline")
 
@@ -59,7 +60,12 @@ def main():
 	controller_paths_raw = args.controller
 	controller_paths = []
 	for p in controller_paths_raw:
-		controller_paths.append(_resolve_path("controllers", p))
+		if os.path.isabs(p):
+			controller_paths.append(p)
+		elif os.path.isfile(p):
+			controller_paths.append(os.path.abspath(p))
+		else:
+			controller_paths.append(_resolve_path("controllers", p))
 	controller_names = [os.path.splitext(os.path.basename(p))[0] for p in controller_paths]
 
 	if args.topology == "both":
@@ -128,6 +134,29 @@ def main():
 		title = f"{args.topology.upper()} NETWORK RESULTS"
 		nrs_label = f"NRS ({args.topology.capitalize()})"
 		print_results_table(title, controller_names, scores_list, nrs_label)
+
+		# Save latest_benchmark.json for benchmark_runner
+		import json
+		from datetime import datetime
+		results_dict = {}
+		for p, sc in zip(controller_paths, scores_list):
+			c_name = os.path.splitext(os.path.basename(p))[0]
+			results_dict[c_name] = {args.topology: sc}
+
+		out_data = {
+			"metadata": {
+				"timestamp": datetime.now().isoformat(),
+				"topologies_tested": [args.topology],
+			},
+			"results": results_dict,
+		}
+
+		results_dir = _resolve_path("results")
+		os.makedirs(results_dir, exist_ok=True)
+		latest_json_path = os.path.join(results_dir, "latest_benchmark.json")
+		with open(latest_json_path, "w") as f:
+			json.dump(out_data, f, indent=2)
+		print(f"[eval] Scorecard generated successfully. Detailed results saved to {latest_json_path}")
 
 
 def print_results_table(title, controller_names, list_of_scores, nrs_label):
