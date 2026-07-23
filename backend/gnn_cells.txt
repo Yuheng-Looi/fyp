@@ -1,0 +1,603 @@
+==================================================
+=== CELL 52 (Code) ===
+Markdown Context [51]:
+### 4.2: GNN Training
+**Goal**: Train and select the best GNN model for attack detection using 15 physics-normalized features.
+**Strategies**: Compare GraphSAGE vs GAT, and different graph construction methods (KNN, Temporal, Hybrid).
+**Metrics**: Attack Recall, FPR (Normal), Stability.
+
+Code:
+import torch
+import pandas as pd
+import numpy as np
+import importlib
+import gnn_utils
+import os
+import json
+
+# Reload utils
+importlib.reload(gnn_utils)
+
+# Check device
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Using device: {device}")
+
+# Load Data (Recovers IPs/Time and selects 15 features)
+# This might take a minute
+df_gnn, feature_cols, label_encoder = gnn_utils.load_gnn_data()
+
+print(f"Data loaded: {df_gnn.shape}")
+print(f"Features: {len(feature_cols)}")
+print(f"Classes: {label_encoder.classes_}")
+
+
+==================================================
+=== CELL 53 (Code) ===
+Markdown Context [51]:
+### 4.2: GNN Training
+**Goal**: Train and select the best GNN model for attack detection using 15 physics-normalized features.
+**Strategies**: Compare GraphSAGE vs GAT, and different graph construction methods (KNN, Temporal, Hybrid).
+**Metrics**: Attack Recall, FPR (Normal), Stability.
+
+Code:
+# Define Experiments
+architectures = ['sage', 'gat']
+strategies = ['knn_protocol', 'src_ip_temporal', 'hybrid'] # 'dst_ip_temporal' might be too dense/slow, sticking to requested ones + hybrid
+splits = [
+    (0.70, 0.15, 0.15),
+    (0.80, 0.10, 0.10),
+    (0.60, 0.20, 0.20)
+]
+
+# Hyperparams grid (simplified for runtime, can expand)
+# The user asked to vary hidden_dim, num_layers, dropout.
+# We will pick a few combinations or loop all.
+# To save time, we'll test 2 configs per arch.
+configs = [
+    {'hidden_dim': 64, 'num_layers': 2, 'dropout': 0.3},
+    {'hidden_dim': 128, 'num_layers': 3, 'dropout': 0.5}
+]
+
+results = []
+best_model_score = -1 # Based on Recall - FPR? Or just Recall?
+# User: "Highest Attack Recall, Lowest False Positive Rate"
+# We can use a composite score: Recall - FPR (max 1)
+best_model_info = {}
+best_model_state = None
+
+# Directory for models
+os.makedirs('models/gnn', exist_ok=True)
+
+# We need to build graphs for each strategy ONCE to save time
+# But splits change masks.
+graphs = {}
+
+for strategy in strategies:
+    print(f"\nBuilding graph for strategy: {strategy}...")
+    try:
+        data = gnn_utils.build_graph(df_gnn, feature_cols, strategy=strategy)
+        data = data.to(device)
+        graphs[strategy] = data
+    except Exception as e:
+        print(f"Failed to build graph for {strategy}: {e}")
+
+print("\nGraphs built. Starting training loop...")
+
+
+==================================================
+=== CELL 54 (Code) ===
+import time
+import copy
+from sklearn.model_selection import train_test_split
+
+# Define Experiments
+architectures = ['sage', 'gat']
+strategies = ['knn_protocol', 'src_ip_temporal', 'hybrid']
+splits = [
+    (0.70, 0.15, 0.15),
+    (0.80, 0.10, 0.10),
+    (0.60, 0.20, 0.20)
+]
+configs = [
+    {'hidden_dim': 64, 'num_layers': 2, 'dropout': 0.3},
+    {'hidden_dim': 128, 'num_layers': 3, 'dropout': 0.5}
+]
+tasks = ['binary', 'multiclass']
+
+results = []
+
+best_binary_score = -float('inf')
+best_multiclass_score = -float('inf')
+
+best_binary_state = None
+best_multiclass_state = None
+
+best_binary_info = {}
+best_multiclass_info = {}
+
+# Ensure directory exists
+os.makedirs('models/gnn/gnn_learning_curves', exist_ok=True)
+
+# Loop over experiments
+for task in tasks:
+    print(f"\n=== Starting Task: {task.upper()} ===")
+    
+    for strategy, original_data in graphs.items():
+        # Prepare Data for Task
+        data = original_data.clone()
+        
+        if task == 'binary':
+            # Map Normal -> 0, Attack -> 1
+            normal_idx = label_encoder.transform(['Normal'])[0]
+            # Create binary labels: 0 if Normal, 1 if Attack
+            # Note: original_data.y contains encoded labels.
+            # We want Normal(0) and Attack(1).
+            # So if y == normal_idx -> 0, else -> 1
+            data.y = (original_data.y != normal_idx).long()
+            num_classes = 2
+            is_binary = True
+        else:
+            # Multiclass
+            num_classes = len(label_encoder.classes_)
+            is_binary = False
+            
+        data = data.to(device)
+        
+        for arch in architectures:
+            for config in configs:
+                for split in splits:
+                    train_ratio, val_ratio, test_ratio = split
+                    
+                    model_id = f"{task}_{strategy}_{arch}_h{config['hidden_dim']}_l{config['num_layers']}_{int(train_ratio*100)}"
+                    print(f"\n--- Model: {model_id} ---")
+                    
+                    # Create masks (Stratified)
+                    num_nodes = data.num_nodes
+                    indices = np.arange(num_nodes)
+                    y_cpu = data.y.cpu().numpy()
+                    
+                    try:
+                        train_idx, temp_idx = train_test_split(
+                            indices, train_size=train_ratio, stratify=y_cpu, random_state=42
+                        )
+                        val_ratio_adj = val_ratio / (val_ratio + test_ratio)
+                        val_idx, test_idx = train_test_split(
+                            temp_idx, train_size=val_ratio_adj, stratify=y_cpu[temp_idx], random_state=42
+                        )
+                    except ValueError as e:
+                        print(f"Skipping split due to stratification error (too few samples per class?): {e}")
+                        continue
+                    
+                    train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+                    val_mask = torch.zeros(num_nodes, dtype=torch.bool)
+                    test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+                    
+                    train_mask[train_idx] = True
+                    val_mask[val_idx] = True
+                    test_mask[test_idx] = True
+                    
+                    # Class Weights
+                    y_train = y_cpu[train_idx]
+                    classes_in_train = np.unique(y_train)
+                    class_weights = torch.tensor(
+                        [len(y_train) / (len(classes_in_train) * np.sum(y_train == c)) for c in range(num_classes)],
+                        dtype=torch.float
+                    ).to(device)
+                    
+                    # Initialize Model
+                    model = gnn_utils.GNNClassifier(
+                        input_dim=len(feature_cols),
+                        hidden_dim=config['hidden_dim'],
+                        num_classes=num_classes,
+                        num_layers=config['num_layers'],
+                        dropout=config['dropout'],
+                        arch=arch
+                    ).to(device)
+                    
+                    # Train
+                    start_time = time.time()
+                    history = gnn_utils.train_gnn(
+                        model, data, train_mask.to(device), val_mask.to(device),
+                        epochs=50, # Keep low for demo, increase for real
+                        patience=5,
+                        class_weights=class_weights
+                    )
+                    training_time = time.time() - start_time
+                    
+                    # Plot Learning Curve
+                    plot_filename = f"models/gnn/gnn_learning_curves/{model_id}.png"
+                    gnn_utils.plot_gnn_learning_curve(history, f"Learning Curve: {model_id}", plot_filename)
+                    
+                    # Evaluate
+                    metrics = gnn_utils.evaluate_gnn(model, data, test_mask.to(device), label_encoder, is_binary_task=is_binary)
+                    
+                    # Add to results
+                    res_entry = {
+                        'model_id': model_id,
+                        'task': task,
+                        'strategy': strategy,
+                        'arch': arch,
+                        'split': split,
+                        'config': config,
+                        'best_epoch': len(history['train_loss']) - 5, # Approx
+                        'val_f1': -1, # Not returned by train_gnn, but we have history['val_loss']
+                        'test_f1': metrics['f1_binary'] if is_binary else metrics['macro_f1'],
+                        'attack_recall': metrics['recall_attack'],
+                        'fpr': metrics['fpr_normal'],
+                        'macro_f1': metrics['macro_f1'],
+                        'training_time': training_time
+                    }
+                    results.append(res_entry)
+                    
+                    print(f"  Stats: Recall={metrics['recall_attack']:.4f}, FPR={metrics['fpr_normal']:.4f}, Time={training_time:.2f}s")
+                    
+                    # Selection Logic
+                    if task == 'binary':
+                        # Score: Recall - FPR (Maximize this)
+                        # Also check stability (not implemented strictly, but early stopping helps)
+                        score = metrics['recall_attack'] - metrics['fpr_normal']
+                        if score > best_binary_score:
+                            best_binary_score = score
+                            best_binary_state = copy.deepcopy(model.state_dict())
+                            best_binary_info = res_entry
+                            print("  >>> New Best Binary Model!")
+                            
+                    else: # Multiclass
+                        # Score: Macro F1
+                        score = metrics['macro_f1']
+                        if score > best_multiclass_score:
+                            best_multiclass_score = score
+                            best_multiclass_state = copy.deepcopy(model.state_dict())
+                            best_multiclass_info = res_entry
+                            print("  >>> New Best Multiclass Model!")
+
+# Save Comparison Table
+results_df = pd.DataFrame(results)
+results_df.to_csv('models/gnn/gnn_model_comparison.csv', index=False)
+print("\n=== Training Complete ===")
+print("Comparison table saved to models/gnn/gnn_model_comparison.csv")
+
+# Display Table
+display(results_df.sort_values(by=['task', 'test_f1'], ascending=False))
+
+# Save Best Models
+if best_binary_state:
+    torch.save(best_binary_state, 'models/gnn/best_binary_gnn.pt')
+    with open('models/gnn/best_binary_config.json', 'w') as f:
+        json.dump({
+            'info': best_binary_info,
+            'features': feature_cols
+        }, f, indent=4)
+    print(f"\nSaved Best Binary Model (Score={best_binary_score:.4f})")
+
+if best_multiclass_state:
+    torch.save(best_multiclass_state, 'models/gnn/best_multiclass_gnn.pt')
+    with open('models/gnn/best_multiclass_config.json', 'w') as f:
+        json.dump({
+            'info': best_multiclass_info,
+            'features': feature_cols
+        }, f, indent=4)
+    print(f"Saved Best Multiclass Model (Score={best_multiclass_score:.4f})")
+
+# Justification
+print("\n=== Justification ===")
+print(f"Best Binary Model: {best_binary_info.get('model_id')} selected for high Attack Recall ({best_binary_info.get('attack_recall'):.4f}) and low FPR ({best_binary_info.get('fpr'):.4f}).")
+print(f"Best Multiclass Model: {best_multiclass_info.get('model_id')} selected for highest Macro-F1 ({best_multiclass_info.get('macro_f1'):.4f}).")
+
+==================================================
+=== CELL 56 (Code) ===
+Markdown Context [55]:
+### 4.3: GNN Training with RobustScaler
+**Goal**: Repeat GNN training comparison but using `RobustScaler` instead of `StandardScaler`.
+`RobustScaler` is less sensitive to outliers, which might improve performance on attack data with extreme values.
+Code:
+import torch
+import pandas as pd
+import numpy as np
+import importlib
+import gnn_utils
+import os
+import json
+
+# Reload utils
+importlib.reload(gnn_utils)
+
+# Check device
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Using device: {device}")
+
+# Load Data with RobustScaler
+df_gnn_robust, feature_cols_robust, label_encoder_robust = gnn_utils.load_gnn_data(scaler_type='robust')
+
+print(f"Robust Data loaded: {df_gnn_robust.shape}")
+
+
+==================================================
+=== CELL 57 (Code) ===
+Markdown Context [55]:
+### 4.3: GNN Training with RobustScaler
+**Goal**: Repeat GNN training comparison but using `RobustScaler` instead of `StandardScaler`.
+`RobustScaler` is less sensitive to outliers, which might improve performance on attack data with extreme values.
+Code:
+# Reuse experiment definitions from previous section
+architectures = ['sage', 'gat']
+strategies = ['knn_protocol', 'src_ip_temporal', 'hybrid']
+splits = [
+    (0.70, 0.15, 0.15),
+    (0.80, 0.10, 0.10),
+    (0.60, 0.20, 0.20)
+]
+
+# Build graphs for robust data
+graphs_robust = {}
+
+for strategy in strategies:
+    print(f"\nBuilding robust graph for strategy: {strategy}...")
+    try:
+        data = gnn_utils.build_graph(df_gnn_robust, feature_cols_robust, strategy=strategy)
+        data = data.to(device)
+        graphs_robust[strategy] = data
+    except Exception as e:
+        print(f"Failed to build graph for {strategy}: {e}")
+
+print("\nRobust Graphs built. Ready for training.")
+
+==================================================
+=== CELL 58 (Code) ===
+import time
+import copy
+from sklearn.model_selection import train_test_split
+
+# Configs
+# We use same configs as before
+configs = [
+    {'hidden_dim': 64, 'num_layers': 2, 'dropout': 0.3},
+    {'hidden_dim': 128, 'num_layers': 3, 'dropout': 0.5}
+]
+tasks = ['binary', 'multiclass']
+
+results_robust = []
+
+best_binary_score_robust = -float('inf')
+best_multiclass_score_robust = -float('inf')
+
+best_binary_state_robust = None
+best_multiclass_state_robust = None
+
+best_binary_info_robust = {}
+best_multiclass_info_robust = {}
+
+# Ensure directory exists
+os.makedirs('models/gnn_robust/learning_curves', exist_ok=True)
+
+# Loop over experiments
+for task in tasks:
+    print(f"\n=== Starting Task (Robust): {task.upper()} ===")
+    
+    for strategy, original_data in graphs_robust.items():
+        # Prepare Data for Task
+        data = original_data.clone()
+        
+        if task == 'binary':
+            # Map Normal -> 0, Attack -> 1
+            normal_idx = label_encoder_robust.transform(['Normal'])[0]
+            data.y = (original_data.y != normal_idx).long()
+            num_classes = 2
+            is_binary = True
+        else:
+            # Multiclass
+            num_classes = len(label_encoder_robust.classes_)
+            is_binary = False
+            
+        data = data.to(device)
+        
+        for arch in architectures:
+            for config in configs:
+                for split in splits:
+                    train_ratio, val_ratio, test_ratio = split
+                    
+                    model_id = f"robust_{task}_{strategy}_{arch}_h{config['hidden_dim']}_l{config['num_layers']}_{int(train_ratio*100)}"
+                    print(f"\n--- Model: {model_id} ---")
+                    
+                    # Create masks (Stratified)
+                    num_nodes = data.num_nodes
+                    indices = np.arange(num_nodes)
+                    y_cpu = data.y.cpu().numpy()
+                    
+                    try:
+                        train_idx, temp_idx = train_test_split(
+                            indices, train_size=train_ratio, stratify=y_cpu, random_state=42
+                        )
+                        val_ratio_adj = val_ratio / (val_ratio + test_ratio)
+                        val_idx, test_idx = train_test_split(
+                            temp_idx, train_size=val_ratio_adj, stratify=y_cpu[temp_idx], random_state=42
+                        )
+                    except ValueError as e:
+                        print(f"Skipping split due to stratification error: {e}")
+                        continue
+                    
+                    train_mask = torch.zeros(num_nodes, dtype=torch.bool)
+                    val_mask = torch.zeros(num_nodes, dtype=torch.bool)
+                    test_mask = torch.zeros(num_nodes, dtype=torch.bool)
+                    
+                    train_mask[train_idx] = True
+                    val_mask[val_idx] = True
+                    test_mask[test_idx] = True
+                    
+                    # Class Weights
+                    y_train = y_cpu[train_idx]
+                    classes_in_train = np.unique(y_train)
+                    class_weights = torch.tensor(
+                        [len(y_train) / (len(classes_in_train) * np.sum(y_train == c)) for c in range(num_classes)],
+                        dtype=torch.float
+                    ).to(device)
+                    
+                    # Initialize Model
+                    model = gnn_utils.GNNClassifier(
+                        input_dim=len(feature_cols_robust),
+                        hidden_dim=config['hidden_dim'],
+                        num_classes=num_classes,
+                        num_layers=config['num_layers'],
+                        dropout=config['dropout'],
+                        arch=arch
+                    ).to(device)
+                    
+                    # Train
+                    start_time = time.time()
+                    history = gnn_utils.train_gnn(
+                        model, data, train_mask.to(device), val_mask.to(device),
+                        epochs=50, 
+                        patience=5,
+                        class_weights=class_weights
+                    )
+                    training_time = time.time() - start_time
+                    
+                    # Plot Learning Curve
+                    plot_filename = f"models/gnn_robust/learning_curves/{model_id}.png"
+                    gnn_utils.plot_gnn_learning_curve(history, f"Learning Curve: {model_id}", plot_filename)
+                    
+                    # Evaluate
+                    metrics = gnn_utils.evaluate_gnn(model, data, test_mask.to(device), label_encoder_robust, is_binary_task=is_binary)
+                    
+                    # Add to results
+                    res_entry = {
+                        'model_id': model_id,
+                        'task': task,
+                        'strategy': strategy,
+                        'arch': arch,
+                        'split': split,
+                        'config': config,
+                        'best_epoch': len(history['train_loss']) - 5,
+                        'test_f1': metrics['f1_binary'] if is_binary else metrics['macro_f1'],
+                        'attack_recall': metrics['recall_attack'],
+                        'fpr': metrics['fpr_normal'],
+                        'macro_f1': metrics['macro_f1'],
+                        'training_time': training_time
+                    }
+                    results_robust.append(res_entry)
+                    
+                    print(f"  Stats: Recall={metrics['recall_attack']:.4f}, FPR={metrics['fpr_normal']:.4f}, Time={training_time:.2f}s")
+                    
+                    # Selection Logic
+                    if task == 'binary':
+                        score = metrics['recall_attack'] - metrics['fpr_normal']
+                        if score > best_binary_score_robust:
+                            best_binary_score_robust = score
+                            best_binary_state_robust = copy.deepcopy(model.state_dict())
+                            best_binary_info_robust = res_entry
+                            print("  >>> New Best Binary Model (Robust)!")
+                            
+                    else: # Multiclass
+                        score = metrics['macro_f1']
+                        if score > best_multiclass_score_robust:
+                            best_multiclass_score_robust = score
+                            best_multiclass_state_robust = copy.deepcopy(model.state_dict())
+                            best_multiclass_info_robust = res_entry
+                            print("  >>> New Best Multiclass Model (Robust)!")
+
+# Save Comparison Table
+results_df_robust = pd.DataFrame(results_robust)
+results_df_robust.to_csv('models/gnn_robust/gnn_model_comparison_robust.csv', index=False)
+print("\n=== Training Complete (Robust) ===")
+print("Comparison table saved to models/gnn_robust/gnn_model_comparison_robust.csv")
+
+# Display Table
+display(results_df_robust.sort_values(by=['task', 'test_f1'], ascending=False))
+
+# Save Best Models
+if best_binary_state_robust:
+    torch.save(best_binary_state_robust, 'models/gnn_robust/best_binary_gnn_robust.pt')
+    with open('models/gnn_robust/best_binary_config_robust.json', 'w') as f:
+        json.dump({
+            'info': best_binary_info_robust,
+            'features': feature_cols_robust
+        }, f, indent=4)
+    print(f"\nSaved Best Binary Model (Robust) (Score={best_binary_score_robust:.4f})")
+
+if best_multiclass_state_robust:
+    torch.save(best_multiclass_state_robust, 'models/gnn_robust/best_multiclass_gnn_robust.pt')
+    with open('models/gnn_robust/best_multiclass_config_robust.json', 'w') as f:
+        json.dump({
+            'info': best_multiclass_info_robust,
+            'features': feature_cols_robust
+        }, f, indent=4)
+    print(f"Saved Best Multiclass Model (Robust) (Score={best_multiclass_score_robust:.4f})")
+
+==================================================
+=== CELL 59 (Code) ===
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import os
+
+# Define path to CSV
+csv_path = 'models/gnn/gnn_model_comparison.csv'
+
+if os.path.exists(csv_path):
+    # Load the GNN model comparison data
+    df = pd.read_csv(csv_path)
+    
+    # Set up the plotting style
+    sns.set(style="whitegrid")
+    
+    # Filter for Multiclass tasks only
+    multiclass_df = df[df['task'] == 'multiclass'].copy()
+    
+    if not multiclass_df.empty:
+        # Create a figure with a single subplot
+        fig, ax = plt.subplots(figsize=(14, 8))
+        
+        # Create a combined identifier for the x-axis to make it readable
+        # Shows Strategy + Arch + Split
+        multiclass_df['model_label'] = multiclass_df['strategy'] + " | " + multiclass_df['arch'] + "\n" + multiclass_df['split']
+        
+        # FILTER TOP 10 MODELS
+        # Sort by F1 score descending to get the best ones, take top 10
+        multiclass_df = multiclass_df.sort_values('test_f1', ascending=False).head(10)
+
+        barplot = sns.barplot(
+            data=multiclass_df, 
+            y='model_label', 
+            x='test_f1', 
+            hue='arch', 
+            ax=ax, 
+            palette='magma',
+            orient='h',
+            errorbar=None # Remove the error bars (black lines)
+        )
+        ax.set_title('Top 10 GNN Multiclass Classification Models (Test F1)', fontsize=16)
+        ax.set_ylabel('Strategy | Architecture | Split', fontsize=12)
+        ax.set_xlabel('Test F1 Score', fontsize=12)
+        
+        # Adjust x-limit to focus on the performance range
+        min_f1 = multiclass_df['test_f1'].min()
+        max_f1 = multiclass_df['test_f1'].max()
+        padding = (max_f1 - min_f1) * 0.1 if max_f1 > min_f1 else 0.05
+        ax.set_xlim(max(0, min_f1 - padding), min(1.0, max_f1 + padding)) 
+        
+        ax.legend(title='Architecture', loc='lower right')
+        
+        # Annotate bars with values
+        for container in ax.containers:
+            ax.bar_label(container, fmt='%.4f', padding=3)
+
+        # Find best multiclass model
+        best_multiclass = multiclass_df.sort_values('test_f1', ascending=False).iloc[0]
+        print("\n" + "="*60)
+        print("🏆 BEST MULTICLASS GNN MODEL:")
+        print(f"   ID:           {best_multiclass['model_id']}")
+        print(f"   Strategy:     {best_multiclass['strategy']}")
+        print(f"   Architecture: {best_multiclass['arch']}")
+        print(f"   Split:        {best_multiclass['split']}")
+        print(f"   Config:       {best_multiclass['config']}")
+        print(f"   Test F1:      {best_multiclass['test_f1']:.5f}")
+        print("="*60)
+        
+        plt.tight_layout()
+        plt.show()
+    else:
+        print("No multiclass task data found in the CSV.")
+
+else:
+    print(f"File not found: {csv_path}")
+

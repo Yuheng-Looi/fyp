@@ -1,0 +1,168 @@
+=== CELL 35 (code) ===
+import pandas as pd
+import os
+
+# Use balanced dataset from Part 2
+DATA_PATH = "02ctgan/balanced_15features.csv"
+SCALER_PATH = "scalers/trichannel_scaler.pkl"
+
+if not os.path.exists(DATA_PATH):
+    raise FileNotFoundError(f"Balanced dataset not found at {DATA_PATH}. Run Part 2 first.")
+
+df = pd.read_csv(DATA_PATH)
+print("Label distribution:")
+print(df["Label"].value_counts())
+==================================================
+=== CELL 37 (code) ===
+from scaler_utils import TriChannelScaler
+
+FEATURE_COLS = [c for c in df.columns if c != "Label"]
+
+scaler = TriChannelScaler(
+    benign_label="Normal",  # Fit on benign traffic only
+    epsilon=1e-6
+)
+
+scaler.fit(
+    df[FEATURE_COLS],
+    labels=df["Label"]
+)
+==================================================
+=== CELL 42 (markdown) ===
+## End of Part 3
+---
+**Completed:**
+- ✅ Fitted Tri-Channel scaler on benign (Normal) traffic using balanced data
+- ✅ Saved scaler artifact for reuse
+- ✅ Verified tri-channel output shape (15 features -> 45 channels)
+
+**Saved to `scalers/`:**
+- `trichannel_scaler.pkl` — Tri-Channel scaler for training/inference
+
+> Load `02ctgan/balanced_15features.csv` and `scalers/trichannel_scaler.pkl` for downstream training
+
+==================================================
+=== CELL 45 (markdown) ===
+**Note:** We use the pre-trained `TriChannelScaler` to convert the 15 raw features into 45 tri-channel features (Log, Ratio, Delta) before training. This ensures the models learn environment-agnostic patterns.
+==================================================
+=== CELL 46 (code) ===
+# --- STEP 1: LOAD & SCALE (Tri-Channel) ---
+import pandas as pd
+import joblib
+from scaler_utils import TriChannelScaler
+
+# Load raw datasets
+df_orig = pd.read_csv('01eda/cleaned_data15.csv')
+df_balanced = pd.read_csv('02ctgan/balanced_15features.csv')
+
+# Load EXISTING Tri-Channel Scaler (DO NOT FIT NEW ONE)
+try:
+    scaler = joblib.load('scalers/trichannel_scaler.pkl')
+    print("Loaded existing TriChannelScaler from scalers/trichannel_scaler.pkl")
+except FileNotFoundError:
+    raise RuntimeError("TriChannelScaler not found in scalers/trichannel_scaler.pkl. Please ensure it exists.")
+
+# Transform to tri-channel (15 -> 45) and keep labels attached
+print("Transforming datasets to 45 features...")
+X_orig_scaled = scaler.transform(df_orig.drop(columns=['Label']))
+df_orig_scaled = pd.concat([X_orig_scaled, df_orig['Label']], axis=1)
+
+X_bal_scaled = scaler.transform(df_balanced.drop(columns=['Label']))
+df_bal_scaled = pd.concat([X_bal_scaled, df_balanced['Label']], axis=1)
+
+print(f"Transformation complete. Shapes: {df_orig_scaled.shape}, {df_bal_scaled.shape}")
+==================================================
+=== CELL 48 (code) ===
+import pandas as pd
+import joblib
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+from sklearn.metrics import roc_auc_score
+
+# Evaluate SafetyNet (trained on tri-channel data) against CTGAN-balanced dataset
+df_ctgan = pd.read_csv('02ctgan/balanced_15features.csv')
+y_binary = (df_ctgan['Label'] != 'Normal').astype(int)
+
+if 'safety_net' not in globals():
+    raise RuntimeError("SafetyNet not found in memory. Run the SafetyNet training cell first.")
+
+# Ensure scaler is available
+if 'scaler' not in globals():
+    scaler = joblib.load('scalers/trichannel_scaler.pkl')
+
+# Tri-channel scale the CTGAN set
+X_ctgan_scaled = scaler.transform(df_ctgan.drop(columns=['Label']))
+df_ctgan_scaled = pd.concat([X_ctgan_scaled, df_ctgan['Label']], axis=1)
+feat_cols = getattr(safety_net, 'features', [c for c in df_ctgan_scaled.columns if c != 'Label'])
+
+# Score CTGAN-balanced set (higher score -> more anomalous)
+scores = safety_net.model.score_samples(df_ctgan_scaled[feat_cols])
+anomaly_scores = -scores  # lower raw score = more anomalous -> invert for intuition
+
+# AUC using anomaly scores
+auc_sn = roc_auc_score(y_binary, anomaly_scores)
+print(f"SafetyNet anomaly-score AUC on CTGAN-balanced: {auc_sn:.4f}")
+
+# Plot score distributions
+plt.figure(figsize=(8,4))
+sns.kdeplot(anomaly_scores[y_binary==0], label='Normal', fill=True, alpha=0.4)
+sns.kdeplot(anomaly_scores[y_binary==1], label='Attack', fill=True, alpha=0.4)
+plt.xlabel('Anomaly score (higher = more anomalous)')
+plt.title('SafetyNet score separation on CTGAN-balanced data')
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.show()
+==================================================
+=== CELL 49 (code) ===
+import pandas as pd
+import importlib
+import joblib
+import xgb_utils
+import os
+
+# Reload to pick up latest code
+importlib.reload(xgb_utils)
+XGBDetector = xgb_utils.XGBDetector
+
+# Ensure tri-channel scaled balanced dataset is available
+if 'df_bal_scaled' not in globals():
+    scaler = joblib.load('scalers/trichannel_scaler.pkl')
+    df_balanced = pd.read_csv('02ctgan/balanced_15features.csv')
+    X_bal_scaled = scaler.transform(df_balanced.drop(columns=['Label']))
+    df_bal_scaled = pd.concat([X_bal_scaled, df_balanced['Label']], axis=1)
+
+X = df_bal_scaled.drop(columns=['Label'])
+y = (df_bal_scaled['Label'] != 'Normal').astype(int)
+
+# Splits to compare (train, val, test)
+split_grid = [
+    (0.70, 0.15, 0.15),
+    (0.60, 0.20, 0.20),
+    (0.50, 0.25, 0.25),
+    (0.40, 0.30, 0.30),
+]
+
+xgb_det = XGBDetector()
+search_info_xgb = xgb_det.train_with_split_search(
+    X,
+    y,
+    seeds=(42, 52, 62),
+    val_size=0.15,  # ignored when split_grid is provided
+    test_size=0.15, # ignored when split_grid is provided
+    patience=30,
+    metric='auc',
+    stratify_labels=df_bal_scaled['Label'],
+    split_grid=split_grid,
+    )
+print('XGB best split:', search_info_xgb)
+
+# Evaluate on the best split's test set
+if getattr(xgb_det, 'best_data', None) is not None:
+    X_test, y_test = xgb_det.best_data
+    xgb_det.evaluate(X_test, y_test)
+
+# Save the best model
+os.makedirs('models/xgb', exist_ok=True)
+xgb_det.save('models/xgb/xgb_binary_v1.json')
+==================================================
