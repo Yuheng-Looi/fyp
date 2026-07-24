@@ -1,0 +1,192 @@
+{
+  "metadata": {
+    "timestamp": "2026-07-24T21:48:14.502404",
+    "topologies_tested": [
+      "small"
+    ]
+  },
+  "results": {
+    "simple_13": {
+      "small": {
+        "SCS": 0.4166666666666667,
+        "QPS": 0.0,
+        "UIS": 0.0,
+        "RES": 0.0,
+        "NRS": 0.125,
+        "WS": 0.5,
+        "DB": 0.3333333333333333,
+        "SPS": 0.41666666666666663,
+        "OFS": 0.2708333333333333,
+        "probe_history": [
+          {
+            "timestamp": 1784900829.040578,
+            "asset": "internal_db",
+            "state": "DEGRADED",
+            "latency_ms": null,
+            "status_code": null,
+            "error": "HTTP error (code 0)",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1784900834.059892,
+            "asset": "web_server",
+            "state": "DEGRADED",
+            "latency_ms": null,
+            "status_code": null,
+            "error": "HTTP error (code 0)",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1784900869.1760292,
+            "asset": "internal_db",
+            "state": "DOWN",
+            "latency_ms": null,
+            "status_code": null,
+            "error": "HTTP error (code 0)",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1784900874.1982753,
+            "asset": "web_server",
+            "state": "DOWN",
+            "latency_ms": null,
+            "status_code": null,
+            "error": "HTTP error (code 0)",
+            "ping_loss": null
+          }
+        ],
+        "qos_history": [
+          {
+            "elapsed": 5.000166622019606,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 15.038111279020086,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 25.073182942025596,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.10565107801813,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 45.13862383100786,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 50.160131165001076,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 55.18273892000434,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 60.204377558024134,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          }
+        ],
+        "flow_history": [
+          {
+            "elapsed": 5.000166622019606,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 15.038111279020086,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 25.073182942025596,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 35.10565107801813,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 45.13862383100786,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 50.160131165001076,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 55.18273892000434,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 60.204377558024134,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0
+            }
+          }
+        ]
+      }
+    }
+  },
+  "run_metadata": {
+    "controller": "simple_13",
+    "topology": "small",
+    "scenario": "sqli_web",
+    "seed": 2,
+    "timestamp": "2026-07-24T21:48:14.522883"
+  }
+}

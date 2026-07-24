@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-07-23T02:31:57.560304",
+    "timestamp": "2026-07-24T22:03:29.017060",
     "topologies_tested": [
       "large"
     ]
@@ -8,53 +8,121 @@
   "results": {
     "simple_13": {
       "large": {
-        "SCS": 1.0,
+        "SCS": 0.4583333333333333,
         "QPS": 0.0,
         "UIS": 0.0,
-        "RES": 1.0,
-        "NRS": 0.5,
+        "RES": 0.0,
+        "NRS": 0.13749999999999998,
+        "WS": 0.5,
+        "DB": 0.4166666666666667,
+        "SPS": 0.45833333333333337,
+        "OFS": 0.29791666666666666,
         "probe_history": [
           {
-            "timestamp": 1784744819.3005574,
+            "timestamp": 1784901743.3410978,
             "asset": "internal_db",
             "state": "DEGRADED",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           },
           {
-            "timestamp": 1784744822.423062,
+            "timestamp": 1784901748.355422,
             "asset": "web_server",
             "state": "DEGRADED",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           },
           {
-            "timestamp": 1784744844.3750684,
+            "timestamp": 1784901783.554725,
             "asset": "internal_db",
             "state": "DOWN",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           },
           {
-            "timestamp": 1784744847.5169017,
+            "timestamp": 1784901788.5862114,
             "asset": "web_server",
             "state": "DOWN",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           }
         ],
         "qos_history": [
           {
-            "elapsed": 5.000102252999568,
+            "elapsed": 5.000162173004355,
             "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 25.07558137900196,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 30.111304360005306,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.131209760991624,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 40.1680605210131,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 45.198802660015645,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 45.21603396901628,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 50.24768448501709,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 55.278972116997465,
+            "phase": "recovery",
             "throughput": {
               "h2": 0.0,
               "h3": 0.0
@@ -63,8 +131,88 @@
         ],
         "flow_history": [
           {
-            "elapsed": 5.000102252999568,
+            "elapsed": 5.000162173004355,
             "phase": "baseline",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 25.07558137900196,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 30.111304360005306,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 35.131209760991624,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 40.1680605210131,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 45.198802660015645,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 45.21603396901628,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 50.24768448501709,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 55.278972116997465,
+            "phase": "recovery",
             "throughput": {
               "h1": 0.0,
               "h4": 0.0,
@@ -81,6 +229,6 @@
     "topology": "large",
     "scenario": "dos",
     "seed": 1,
-    "timestamp": "2026-07-23T02:31:57.574033"
+    "timestamp": "2026-07-24T22:03:29.025955"
   }
 }

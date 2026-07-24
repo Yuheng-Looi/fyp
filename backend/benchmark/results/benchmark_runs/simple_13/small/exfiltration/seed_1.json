@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-07-23T02:24:11.320480",
+    "timestamp": "2026-07-24T21:54:56.960877",
     "topologies_tested": [
       "small"
     ]
@@ -8,52 +8,56 @@
   "results": {
     "simple_13": {
       "small": {
-        "SCS": 0.0,
+        "SCS": 0.4807692307692308,
         "QPS": 0.0,
         "UIS": 0.0,
-        "RES": 1.0,
-        "NRS": 0.2,
+        "RES": 0.0,
+        "NRS": 0.14423076923076922,
+        "WS": 0.5,
+        "DB": 0.46153846153846156,
+        "SPS": 0.4807692307692308,
+        "OFS": 0.3125,
         "probe_history": [
           {
-            "timestamp": 1784744578.966825,
+            "timestamp": 1784901231.3345985,
             "asset": "internal_db",
             "state": "DEGRADED",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           },
           {
-            "timestamp": 1784744582.102924,
+            "timestamp": 1784901236.3579032,
             "asset": "web_server",
             "state": "DEGRADED",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           },
           {
-            "timestamp": 1784744604.055916,
+            "timestamp": 1784901271.5800285,
             "asset": "internal_db",
             "state": "DOWN",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           },
           {
-            "timestamp": 1784744607.1919208,
+            "timestamp": 1784901276.6018825,
             "asset": "web_server",
             "state": "DOWN",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           }
         ],
         "qos_history": [
           {
-            "elapsed": 5.000223888999244,
+            "elapsed": 5.000159849994816,
             "phase": "baseline",
             "throughput": {
               "h2": 0.0,
@@ -61,7 +65,7 @@
             }
           },
           {
-            "elapsed": 17.520553258998916,
+            "elapsed": 15.039877009985503,
             "phase": "baseline",
             "throughput": {
               "h2": 0.0,
@@ -69,15 +73,7 @@
             }
           },
           {
-            "elapsed": 17.524455106999085,
-            "phase": "baseline",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 26.931491990999348,
+            "elapsed": 25.080419865989825,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -85,7 +81,7 @@
             }
           },
           {
-            "elapsed": 39.47430802999952,
+            "elapsed": 35.11681140901055,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -93,7 +89,7 @@
             }
           },
           {
-            "elapsed": 39.47920057400006,
+            "elapsed": 35.12539294999442,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -101,7 +97,7 @@
             }
           },
           {
-            "elapsed": 39.48611419900044,
+            "elapsed": 35.13378676099819,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -109,8 +105,136 @@
             }
           },
           {
-            "elapsed": 39.49449024099886,
+            "elapsed": 35.14212922198931,
             "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.150728856999194,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.159363704995485,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.167905845999485,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.17643193301046,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.185583724000026,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.194010425999295,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 40.221808768983465,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 45.24345172799076,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 50.26786895201076,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 55.28973300999496,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 55.29860563200782,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 55.30740542899002,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 55.31637732699164,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 55.32454638500349,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 55.33342155101127,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 55.34209002400166,
+            "phase": "recovery",
             "throughput": {
               "h2": 0.0,
               "h3": 0.0
@@ -119,57 +243,162 @@
         ],
         "flow_history": [
           {
-            "elapsed": 5.000223888999244,
+            "elapsed": 5.000159849994816,
             "phase": "baseline",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 17.520553258998916,
+            "elapsed": 15.039877009985503,
             "phase": "baseline",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 17.524455106999085,
-            "phase": "baseline",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 26.931491990999348,
+            "elapsed": 25.080419865989825,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 39.47430802999952,
+            "elapsed": 35.11681140901055,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 39.47920057400006,
+            "elapsed": 35.12539294999442,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 39.48611419900044,
+            "elapsed": 35.13378676099819,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 39.49449024099886,
+            "elapsed": 35.14212922198931,
             "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 35.150728856999194,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 35.159363704995485,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 35.167905845999485,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 35.17643193301046,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 35.185583724000026,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 35.194010425999295,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 40.221808768983465,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 45.24345172799076,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 50.26786895201076,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 55.28973300999496,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 55.29860563200782,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 55.30740542899002,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 55.31637732699164,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 55.32454638500349,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 55.33342155101127,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 55.34209002400166,
+            "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
@@ -183,6 +412,6 @@
     "topology": "small",
     "scenario": "exfiltration",
     "seed": 1,
-    "timestamp": "2026-07-23T02:24:11.330327"
+    "timestamp": "2026-07-24T21:54:56.980955"
   }
 }

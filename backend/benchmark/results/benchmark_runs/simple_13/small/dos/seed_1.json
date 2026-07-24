@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-07-23T02:17:45.191612",
+    "timestamp": "2026-07-24T21:38:45.170528",
     "topologies_tested": [
       "small"
     ]
@@ -8,52 +8,56 @@
   "results": {
     "simple_13": {
       "small": {
-        "SCS": 0.1,
+        "SCS": 0.45,
         "QPS": 0.0,
         "UIS": 0.0,
         "RES": 0.0,
-        "NRS": 0.03,
+        "NRS": 0.135,
+        "WS": 0.5,
+        "DB": 0.4,
+        "SPS": 0.45,
+        "OFS": 0.2925,
         "probe_history": [
           {
-            "timestamp": 1784744192.7269924,
+            "timestamp": 1784900249.6458302,
             "asset": "internal_db",
             "state": "DEGRADED",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           },
           {
-            "timestamp": 1784744195.8762457,
+            "timestamp": 1784900254.6646702,
             "asset": "web_server",
             "state": "DEGRADED",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           },
           {
-            "timestamp": 1784744217.8149955,
+            "timestamp": 1784900289.8061152,
             "asset": "internal_db",
             "state": "DOWN",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           },
           {
-            "timestamp": 1784744220.9551063,
+            "timestamp": 1784900294.8320363,
             "asset": "web_server",
             "state": "DOWN",
             "latency_ms": null,
             "status_code": null,
-            "error": "ERR <urlopen error [Errno 113] No route to host>",
+            "error": "HTTP error (code 0)",
             "ping_loss": null
           }
         ],
         "qos_history": [
           {
-            "elapsed": 5.000155711999469,
+            "elapsed": 5.000165570003446,
             "phase": "baseline",
             "throughput": {
               "h2": 0.0,
@@ -61,7 +65,15 @@
             }
           },
           {
-            "elapsed": 20.706639162999636,
+            "elapsed": 15.035911857004976,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 20.057932420022553,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -69,7 +81,7 @@
             }
           },
           {
-            "elapsed": 20.710993807000705,
+            "elapsed": 25.079686668002978,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -77,7 +89,7 @@
             }
           },
           {
-            "elapsed": 26.977634963001037,
+            "elapsed": 30.1046666430193,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -85,7 +97,7 @@
             }
           },
           {
-            "elapsed": 36.38963221499944,
+            "elapsed": 35.12587808500393,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -93,7 +105,7 @@
             }
           },
           {
-            "elapsed": 36.3952350870004,
+            "elapsed": 45.161167289013974,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -101,47 +113,7 @@
             }
           },
           {
-            "elapsed": 36.40264442199987,
-            "phase": "attack",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 36.411311466999905,
-            "phase": "attack",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 39.601574309999705,
-            "phase": "attack",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 39.60589584400077,
-            "phase": "attack",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 39.612155311000606,
-            "phase": "attack",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 55.270543548000205,
+            "elapsed": 50.18281630400452,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -149,7 +121,7 @@
             }
           },
           {
-            "elapsed": 64.67355164100081,
+            "elapsed": 55.209207967011025,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -157,7 +129,7 @@
             }
           },
           {
-            "elapsed": 64.67752241900052,
+            "elapsed": 55.21758032499929,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -165,7 +137,7 @@
             }
           },
           {
-            "elapsed": 64.68155200600086,
+            "elapsed": 55.22584852401633,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -173,7 +145,7 @@
             }
           },
           {
-            "elapsed": 64.68775816000016,
+            "elapsed": 55.23400772700552,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -181,7 +153,7 @@
             }
           },
           {
-            "elapsed": 64.69625314000041,
+            "elapsed": 55.23552889001439,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -189,7 +161,7 @@
             }
           },
           {
-            "elapsed": 64.7047244940004,
+            "elapsed": 55.236778120015515,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -197,39 +169,7 @@
             }
           },
           {
-            "elapsed": 64.7134862010007,
-            "phase": "recovery",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 64.72195322100015,
-            "phase": "recovery",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 64.73077871700116,
-            "phase": "recovery",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 64.73969256800046,
-            "phase": "recovery",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 64.74813668800016,
+            "elapsed": 55.23805356500088,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -239,161 +179,105 @@
         ],
         "flow_history": [
           {
-            "elapsed": 5.000155711999469,
+            "elapsed": 5.000165570003446,
             "phase": "baseline",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 20.706639162999636,
+            "elapsed": 15.035911857004976,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 20.057932420022553,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 20.710993807000705,
+            "elapsed": 25.079686668002978,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 26.977634963001037,
+            "elapsed": 30.1046666430193,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 36.38963221499944,
+            "elapsed": 35.12587808500393,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 36.3952350870004,
+            "elapsed": 45.161167289013974,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 36.40264442199987,
-            "phase": "attack",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 36.411311466999905,
-            "phase": "attack",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 39.601574309999705,
-            "phase": "attack",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 39.60589584400077,
-            "phase": "attack",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 39.612155311000606,
-            "phase": "attack",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 55.270543548000205,
+            "elapsed": 50.18281630400452,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 64.67355164100081,
+            "elapsed": 55.209207967011025,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 64.67752241900052,
+            "elapsed": 55.21758032499929,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 64.68155200600086,
+            "elapsed": 55.22584852401633,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 64.68775816000016,
+            "elapsed": 55.23400772700552,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 64.69625314000041,
+            "elapsed": 55.23552889001439,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 64.7047244940004,
+            "elapsed": 55.236778120015515,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 64.7134862010007,
-            "phase": "recovery",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 64.72195322100015,
-            "phase": "recovery",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 64.73077871700116,
-            "phase": "recovery",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 64.73969256800046,
-            "phase": "recovery",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 64.74813668800016,
+            "elapsed": 55.23805356500088,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
@@ -408,6 +292,6 @@
     "topology": "small",
     "scenario": "dos",
     "seed": 1,
-    "timestamp": "2026-07-23T02:17:45.203589"
+    "timestamp": "2026-07-24T21:38:45.185216"
   }
 }

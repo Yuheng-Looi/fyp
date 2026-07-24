@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-23T02:15:00.313016",
+  "generated_at": "2026-07-24T21:32:40.896949",
   "hostname": "fyp2025",
   "os": "Linux 6.8.0-90-generic",
   "python_version": "Python 3.11.15",
@@ -21,6 +21,6 @@
     "credential_attack",
     "exfiltration"
   ],
-  "seeds_per_combo": 1,
-  "total_runs": 24
+  "seeds_per_combo": 3,
+  "total_runs": 72
 }
