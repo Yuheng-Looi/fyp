@@ -841,13 +841,13 @@ class MLReactiveController(app_manager.RyuApp):
                           cookie=cookie_mac, flags=ofproto.OFPFF_SEND_FLOW_REM)
 
         elif action == "DEST_SUBNET_METER":
-            self.logger.warning(f"[🛡️ MITIGATION] DEST_SUBNET_METER. Dst IP: {ip_dst}")
+            self.logger.warning(f"[🛡️ MITIGATION] DEST_SUBNET_METER. Src IP: {ip_src} → Dst IP: {ip_dst}")
             out_port = self.mac_to_port.get(dpid, {}).get(dst_mac, ofproto.OFPP_FLOOD)
             actions  = [parser.OFPActionOutput(out_port, 0)]
             cookie   = self.next_cookie; self.next_cookie += 1
             self.cookie_to_state[cookie] = state
-            match_dst = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP, ipv4_dst=ip_dst)
-            self.add_flow(datapath, 100, match_dst, actions, idle_timeout=60,
+            match_fields = {'eth_type': ether.ETH_TYPE_IP, 'ipv4_src': ip_src, 'ipv4_dst': ip_dst}
+            self.add_flow(datapath, 100, parser.OFPMatch(**match_fields), actions, idle_timeout=60,
                           cookie=cookie, flags=ofproto.OFPFF_SEND_FLOW_REM, meter_id=2)
 
         elif action == "TARPIT_MIRROR":
@@ -862,15 +862,7 @@ class MLReactiveController(app_manager.RyuApp):
                 actions.append(parser.OFPActionOutput(monitor_port, 0))
             cookie = self.next_cookie; self.next_cookie += 1
             self.cookie_to_state[cookie] = state
-            match_fields = {'eth_type': ether.ETH_TYPE_IP, 'ipv4_src': ip_src, 'ipv4_dst': ip_dst}
-            if proto == 6:
-                match_fields['ip_proto'] = 6
-                if sport: match_fields['tcp_src'] = sport
-                if dport: match_fields['tcp_dst'] = dport
-            elif proto == 17:
-                match_fields['ip_proto'] = 17
-                if sport: match_fields['udp_src'] = sport
-                if dport: match_fields['udp_dst'] = dport
+            match_fields = {'eth_type': ether.ETH_TYPE_IP, 'ipv4_src': ip_src}
             self.add_flow(datapath, 100, parser.OFPMatch(**match_fields), actions,
                           idle_timeout=60, cookie=cookie,
                           flags=ofproto.OFPFF_SEND_FLOW_REM, meter_id=1)
@@ -881,15 +873,7 @@ class MLReactiveController(app_manager.RyuApp):
             actions  = [parser.OFPActionOutput(out_port, 0)]
             cookie   = self.next_cookie; self.next_cookie += 1
             self.cookie_to_state[cookie] = state
-            match_fields = {'eth_type': ether.ETH_TYPE_IP, 'ipv4_src': ip_src, 'ipv4_dst': ip_dst}
-            if proto == 6:
-                match_fields['ip_proto'] = 6
-                if sport: match_fields['tcp_src'] = sport
-                if dport: match_fields['tcp_dst'] = dport
-            elif proto == 17:
-                match_fields['ip_proto'] = 17
-                if sport: match_fields['udp_src'] = sport
-                if dport: match_fields['udp_dst'] = dport
+            match_fields = {'eth_type': ether.ETH_TYPE_IP, 'ipv4_src': ip_src}
             self.add_flow(datapath, 100, parser.OFPMatch(**match_fields), actions,
                           idle_timeout=60, cookie=cookie,
                           flags=ofproto.OFPFF_SEND_FLOW_REM, meter_id=3)
@@ -907,15 +891,7 @@ class MLReactiveController(app_manager.RyuApp):
             ]
             cookie = self.next_cookie; self.next_cookie += 1
             self.cookie_to_state[cookie] = state
-            match_fields = {'eth_type': ether.ETH_TYPE_IP, 'ipv4_src': ip_src, 'ipv4_dst': ip_dst}
-            if proto == 6:
-                match_fields['ip_proto'] = 6
-                if sport: match_fields['tcp_src'] = sport
-                if dport: match_fields['tcp_dst'] = dport
-            elif proto == 17:
-                match_fields['ip_proto'] = 17
-                if sport: match_fields['udp_src'] = sport
-                if dport: match_fields['udp_dst'] = dport
+            match_fields = {'eth_type': ether.ETH_TYPE_IP, 'ipv4_src': ip_src}
             self.add_flow(datapath, 100, parser.OFPMatch(**match_fields), actions,
                           idle_timeout=60, cookie=cookie, flags=ofproto.OFPFF_SEND_FLOW_REM)
 
@@ -927,15 +903,7 @@ class MLReactiveController(app_manager.RyuApp):
             actions  = [parser.OFPActionOutput(out_port, 0)]
             cookie   = self.next_cookie; self.next_cookie += 1
             self.cookie_to_state[cookie] = state
-            match_fields = {'eth_type': ether.ETH_TYPE_IP, 'ipv4_src': ip_src, 'ipv4_dst': ip_dst}
-            if proto == 6:
-                match_fields['ip_proto'] = 6
-                if sport: match_fields['tcp_src'] = sport
-                if dport: match_fields['tcp_dst'] = dport
-            elif proto == 17:
-                match_fields['ip_proto'] = 17
-                if sport: match_fields['udp_src'] = sport
-                if dport: match_fields['udp_dst'] = dport
+            match_fields = {'eth_type': ether.ETH_TYPE_IP, 'ipv4_src': ip_src}
             self.add_flow(datapath, 100, parser.OFPMatch(**match_fields), actions,
                           idle_timeout=60, cookie=cookie,
                           flags=ofproto.OFPFF_SEND_FLOW_REM, meter_id=1)

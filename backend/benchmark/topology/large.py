@@ -30,6 +30,7 @@ def create_network(controller_ip="127.0.0.1", controller_port=6653):
 
 
 def start_services(net, assets):
+    import time
     for asset in assets:
         if asset.get("service") != "http":
             continue
@@ -38,4 +39,6 @@ def start_services(net, assets):
             continue
         host = net.get(host_name)
         port = int(asset.get("port", 80))
-        host.cmd(f"python3 -m http.server {port} >/tmp/{host_name}_http.log 2>&1 &")
+        host.cmd("pkill -9 -f 'http.server'")
+        host.cmd(f"nohup python3 -m http.server {port} >/tmp/{host_name}_http.log 2>&1 &")
+        time.sleep(0.5)

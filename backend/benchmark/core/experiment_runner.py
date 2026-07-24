@@ -145,6 +145,7 @@ class ExperimentRunner:
         self._start_ryu_controller()
         self._net = self._build_topology()
         self._net.start()
+        self._net.staticArp()
         self._configure_monitor_host()
         self._start_asset_services()
 

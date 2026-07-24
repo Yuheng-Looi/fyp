@@ -76,13 +76,36 @@ class ScoringEngine:
 
         # 5. NRS (Network Resilience Score)
         nrs = (0.30 * scs) + (0.25 * qps) + (0.25 * uis) + (0.20 * res)
-        
+
+        # 6. WS (Web Server Survival) & DB (Database Preservation)
+        ws_scores = []
+        db_scores = []
+        for t in attack_ticks:
+            st = t.get("states", {})
+            if "web_server" in st:
+                ws_scores.append(state_map.get(st["web_server"], 1.0))
+            if "internal_db" in st:
+                db_scores.append(state_map.get(st["internal_db"], 1.0))
+
+        ws_score = sum(ws_scores) / len(ws_scores) if ws_scores else 1.0
+        db_score = sum(db_scores) / len(db_scores) if db_scores else 1.0
+
+        # 7. SPS (Security Preservation Score)
+        sps = (0.50 * ws_score) + (0.50 * db_score)
+
+        # 8. OFS (Overall Framework Score)
+        ofs = (0.50 * nrs) + (0.50 * sps)
+
         self.scores = {
             "SCS": scs,
             "QPS": qps,
             "UIS": uis,
             "RES": res,
-            "NRS": nrs
+            "NRS": nrs,
+            "WS": ws_score,
+            "DB": db_score,
+            "SPS": sps,
+            "OFS": ofs,
         }
         print("[eval] Scoring evaluation complete")
         return self.scores

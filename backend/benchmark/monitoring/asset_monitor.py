@@ -103,25 +103,20 @@ class AssetMonitor:
             return None, None, str(err)
 
     def _probe_http_via_host(self, url):
-        cmd = (
-            "python3 -c \"import sys,time,urllib.request; "
-            "start=time.perf_counter(); "
-            "code=0; "
-            "exec(\\\"try:\\\\n  resp=urllib.request.urlopen(\\\'%s\\\', timeout=%s)\\\\n  code=resp.getcode()\\\\nexcept Exception as exc:\\\\n  print(\\\'ERR\\\', exc); sys.exit(1)\\\"); "
-            "lat=(time.perf_counter()-start)*1000; "
-            "print(code, lat)\""
-        ) % (url, self._timeout_seconds)
-
+        timeout = int(max(5, self._timeout_seconds))
+        cmd = f"curl -s -o /dev/null -w '%{{http_code}} %{{time_total}}' --max-time {timeout} '{url}'"
         output = self._monitor_host.cmd(cmd).strip()
         if not output:
             return None, None, "no-output"
-        if output.startswith("ERR"):
-            return None, None, output
-
         parts = output.split()
         if len(parts) >= 2:
             try:
-                return int(parts[0]), float(parts[1]), None
+                code = int(parts[0])
+                lat_sec = float(parts[1])
+                lat_ms = lat_sec * 1000.0
+                if code > 0:
+                    return code, lat_ms, None
+                return code if code > 0 else None, None, f"HTTP error (code {code})"
             except ValueError:
                 return None, None, output
         return None, None, output

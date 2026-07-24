@@ -134,18 +134,20 @@ class TriChannelScaler:
             # -------------------------------
             # Channel 2: Ratio (scale)
             # -------------------------------
-            ratio_vals = x / stats["p95"]
-            ratio_vals = ratio_vals.clip(upper=self.ratio_clip)
-            ratio_feat = ratio_vals.rename(f"{col}_ratio")
+            x_ratio_pos = np.clip(x.to_numpy(), a_min=0.0, a_max=None)
+            ratio_vals = np.clip(x_ratio_pos / stats["p95"], 0.0, self.ratio_clip)
+            ratio_feat = pd.Series(
+                ratio_vals, index=X.index, name=f"{col}_ratio"
+            )
 
             # -------------------------------
             # Channel 3: Delta (deviation)
             # -------------------------------
-            delta_vals = (x - stats["median"]) / stats["iqr"]
-            delta_vals = delta_vals.clip(
-                lower=-self.delta_clip, upper=self.delta_clip
+            delta_raw = (x.to_numpy() - stats["median"]) / stats["iqr"]
+            delta_vals = np.clip(delta_raw, -self.delta_clip, self.delta_clip)
+            delta_feat = pd.Series(
+                delta_vals, index=X.index, name=f"{col}_delta"
             )
-            delta_feat = delta_vals.rename(f"{col}_delta")
 
             outputs.extend([log_feat, ratio_feat, delta_feat])
 
