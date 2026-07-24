@@ -1,0 +1,108 @@
+[
+  {
+    "claim": "ATDM completely eliminates user-perceived latency spikes during DDoS attacks in small networks, achieving a 100.1% reduction in latency increase.",
+    "value": 100.1,
+    "unit": "% reduction in latency increase",
+    "comparison": "ATDM (-0.33 ms latency change) vs Simple Switch 13 (+307.10 ms latency spike)",
+    "dataset_or_scenario": "ddos",
+    "topology": "small",
+    "mean_or_single_run": "single_run",
+    "sample_size": 1,
+    "standard_deviation": 0.0,
+    "source_files": [
+      "backend/benchmark/results/final_atdm_runs/atdm_small_ddos_seed_1.json",
+      "backend/benchmark/results/final_atdm_runs/simple_switch_13_small_ddos_seed_1.json"
+    ],
+    "calculation": "(SS_lat_inc - ATDM_lat_inc) / SS_lat_inc * 100 = (307.10 - (-0.33)) / 307.10 * 100 = 100.1%",
+    "confidence_level": "Empirical single-run measurement",
+    "limitations": "Single seed run (Seed 1); measured on Small Topology (6-host SDN network)."
+  },
+  {
+    "claim": "ATDM suppresses peak link bandwidth utilization by 40.2% during DDoS attacks, preventing link saturation.",
+    "value": 40.2,
+    "unit": "% reduction in peak bandwidth utilization",
+    "comparison": "ATDM (58.48% peak utilization) vs Simple Switch 13 (97.79% peak utilization)",
+    "dataset_or_scenario": "ddos",
+    "topology": "small",
+    "mean_or_single_run": "single_run",
+    "sample_size": 1,
+    "standard_deviation": 0.0,
+    "source_files": [
+      "backend/benchmark/results/final_atdm_runs/atdm_small_ddos_seed_1.json",
+      "backend/benchmark/results/final_atdm_runs/simple_switch_13_small_ddos_seed_1.json"
+    ],
+    "calculation": "(SS_peak_bw - ATDM_peak_bw) / SS_peak_bw * 100 = (97.79 - 58.48) / 97.79 * 100 = 40.2%",
+    "confidence_level": "Empirical single-run measurement",
+    "limitations": "In Large Topology, high overall traffic volume saturates edge links under both controllers (96.4% vs 96.9%)."
+  },
+  {
+    "claim": "ATDM improves web server protection (WS score) by +0.3500 under SQL injection attacks compared to unmanaged forwarding.",
+    "value": 0.35,
+    "unit": "WS score points gain (0 to 1 scale)",
+    "comparison": "ATDM (WS = 0.3500) vs Simple Switch 13 (WS = 0.0000)",
+    "dataset_or_scenario": "sqli_web",
+    "topology": "small",
+    "mean_or_single_run": "single_run",
+    "sample_size": 1,
+    "standard_deviation": 0.0,
+    "source_files": [
+      "backend/benchmark/results/final_atdm_runs/atdm_small_sqli_web_seed_1.json",
+      "backend/benchmark/results/final_atdm_runs/simple_switch_13_small_sqli_web_seed_1.json"
+    ],
+    "calculation": "ATDM_WS - SS_WS = 0.3500 - 0.0000 = +0.3500 (+100.0% relative improvement over 0 baseline)",
+    "confidence_level": "Empirical single-run measurement",
+    "limitations": "Database preservation (DB) score remains 1.0000 across both controllers because SQL payload did not corrupt DB state during test duration."
+  },
+  {
+    "claim": "StandardScaler feature rescaling achieves a +92.93% relative F1 score improvement on DNS data without full model retraining.",
+    "value": 92.93,
+    "unit": "% relative F1 score improvement",
+    "comparison": "StandardScaler Rescaled GNN (F1 = 0.6463) vs Original GNN (F1 = 0.3350)",
+    "dataset_or_scenario": "DNS",
+    "topology": "N/A (GNN Dataset Evaluation)",
+    "mean_or_single_run": "multi_run_average",
+    "sample_size": 3,
+    "standard_deviation": 0.1537,
+    "source_files": [
+      "backend/gnn_compare/fig1_f1_raw.csv"
+    ],
+    "calculation": "(Rescale_F1 - Original_F1) / Original_F1 * 100 = (0.6463 - 0.3350) / 0.3350 * 100 = +92.93%",
+    "confidence_level": "95% Confidence Interval [0.4724, 0.8202]",
+    "limitations": "StandardScaler rescaling recovers 46.81% of the performance gap to full retraining (F1 = 0.9999)."
+  },
+  {
+    "claim": "Full model retraining achieves near-perfect F1 score (99.99%) under severe distribution shifts where feature rescaling alone fails.",
+    "value": 99.99,
+    "unit": "% Retrained F1 score",
+    "comparison": "Retrained GNN (F1 = 0.9999) vs Rescaled GNN (F1 = 0.0409 to 0.6463)",
+    "dataset_or_scenario": "DNS",
+    "topology": "N/A (GNN Dataset Evaluation)",
+    "mean_or_single_run": "multi_run_average",
+    "sample_size": 3,
+    "standard_deviation": 5e-05,
+    "source_files": [
+      "backend/gnn_compare/fig1_f1_raw.csv"
+    ],
+    "calculation": "Mean Retrained F1 across seeds = 0.999950 (StandardScaler), 0.999754 (RobustScaler), 0.999883 (Tri-Channel)",
+    "confidence_level": "95% Confidence Interval [0.9998, 1.0000]",
+    "limitations": "Full retraining requires labelled retraining samples and compute time, whereas rescaling is instantaneous."
+  },
+  {
+    "claim": "ATDM preserves a Service Continuity Score (SCS) of 0.5487 during DDoS attacks where Simple Switch 13 suffers a complete outage (SCS = 0.0000).",
+    "value": 0.5487,
+    "unit": "SCS score gain",
+    "comparison": "ATDM (SCS = 0.5487) vs Simple Switch 13 (SCS = 0.0000)",
+    "dataset_or_scenario": "ddos",
+    "topology": "small",
+    "mean_or_single_run": "single_run",
+    "sample_size": 1,
+    "standard_deviation": 0.0,
+    "source_files": [
+      "backend/benchmark/results/final_atdm_runs/atdm_small_ddos_seed_1.json",
+      "backend/benchmark/results/final_atdm_runs/simple_switch_13_small_ddos_seed_1.json"
+    ],
+    "calculation": "ATDM_SCS - SS_SCS = 0.5487 - 0.0000 = +0.5487",
+    "confidence_level": "Empirical single-run measurement",
+    "limitations": "In DoS attacks, Simple Switch 13 maintains SCS = 0.2721 by forwarding uninspected traffic without rate-limit drops."
+  }
+]
