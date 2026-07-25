@@ -38,7 +38,8 @@ def start_services(net, assets):
         if not host_name:
             continue
         host = net.get(host_name)
-        port = int(asset.get("port", 80))
-        host.cmd("pkill -9 -f 'http.server'")
+        port = int(asset.get("port", 8080))
+        host.cmd(f"fuser -k -9 {port}/tcp 2>/dev/null || true")
+        host.cmd("pkill -9 -f 'http.server' 2>/dev/null || true")
         host.cmd(f"nohup python3 -m http.server {port} >/tmp/{host_name}_http.log 2>&1 &")
-        time.sleep(0.5)
+        time.sleep(1.5)

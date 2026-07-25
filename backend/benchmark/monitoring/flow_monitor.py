@@ -29,8 +29,10 @@ class FlowMonitor:
         current_bytes = {}
         for c in clients:
             try:
-                # Read tx_bytes for eth0 interface
-                out = c.cmd("cat /sys/class/net/eth0/statistics/tx_bytes").strip()
+                intf = f"{c.name}-eth0"
+                out = c.cmd(f"cat /sys/class/net/{intf}/statistics/tx_bytes").strip()
+                if not out.isdigit():
+                    out = c.cmd("cat /sys/class/net/eth0/statistics/tx_bytes").strip()
                 current_bytes[c.name] = int(out) if out.isdigit() else 0
             except Exception:
                 current_bytes[c.name] = 0

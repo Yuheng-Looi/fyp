@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-07-24T21:37:16.665619",
+    "timestamp": "2026-07-26T02:18:41.644696",
     "topologies_tested": [
       "small"
     ]
@@ -8,56 +8,1228 @@
   "results": {
     "simple_13": {
       "small": {
-        "SCS": 0.4791666666666667,
-        "QPS": 0.0,
+        "SCS": 0.0,
+        "QPS": 2.147720481895608e-06,
         "UIS": 0.0,
         "RES": 0.0,
-        "NRS": 0.14375,
-        "WS": 0.5,
-        "DB": 0.4583333333333333,
-        "SPS": 0.47916666666666663,
-        "OFS": 0.3114583333333333,
+        "NRS": 5.36930120473902e-07,
+        "WS": 0.0,
+        "DB": 0.0,
+        "SPS": 0.0,
+        "OFS": 2.68465060236951e-07,
         "probe_history": [
           {
-            "timestamp": 1784900130.880758,
+            "timestamp": 1785003461.4956682,
             "asset": "internal_db",
+            "probe_type": "http",
             "state": "DEGRADED",
-            "latency_ms": null,
+            "latency_ms": 2000.0,
             "status_code": null,
-            "error": "HTTP error (code 0)",
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
             "ping_loss": null
           },
           {
-            "timestamp": 1784900135.904978,
+            "timestamp": 1785003461.554618,
             "asset": "web_server",
+            "probe_type": "http",
             "state": "DEGRADED",
-            "latency_ms": null,
+            "latency_ms": 2000.0,
             "status_code": null,
-            "error": "HTTP error (code 0)",
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
             "ping_loss": null
           },
           {
-            "timestamp": 1784900171.1161757,
+            "timestamp": 1785003462.4944563,
             "asset": "internal_db",
-            "state": "DOWN",
-            "latency_ms": null,
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
             "status_code": null,
-            "error": "HTTP error (code 0)",
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
             "ping_loss": null
           },
           {
-            "timestamp": 1784900176.131621,
+            "timestamp": 1785003462.5536156,
             "asset": "web_server",
-            "state": "DOWN",
-            "latency_ms": null,
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
             "status_code": null,
-            "error": "HTTP error (code 0)",
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003463.4994237,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003463.5585406,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003464.4972324,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003464.557377,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003465.497524,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003465.5573215,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003466.5003638,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003466.5606449,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003467.5011234,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003467.5616448,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003468.5214515,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003468.5816517,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003469.4988089,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003469.5582829,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003470.5191417,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003470.5787132,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003471.4954622,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003471.555042,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003472.502482,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003472.562008,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003473.5009227,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003473.560593,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003474.5022643,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003474.5630271,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003475.5077803,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003475.5671744,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003476.520022,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003476.5792663,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003477.4984488,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003477.5589962,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003478.4923031,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003478.5524688,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003479.4994059,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003479.5586047,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003480.5035048,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003480.563172,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003481.5011513,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003481.5606837,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003482.507137,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003482.568235,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003483.4976127,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003483.556897,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003484.500612,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003484.5643415,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003485.5067124,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003485.566435,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003486.5034153,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003486.562904,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003487.501032,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003487.5610166,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003488.5011697,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003488.5610535,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003489.5021882,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003489.5619438,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003490.503696,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003490.5632246,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003491.5001385,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003491.5610054,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003492.5017846,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003492.5610058,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003493.5058556,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003493.5653915,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003494.5023909,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003494.5622358,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003495.500533,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003495.560806,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003496.4995337,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003496.558885,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003497.5002456,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003497.559873,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003498.5033364,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003498.5626352,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003499.5002978,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003499.560172,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003500.5001974,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003500.5596755,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003501.5014422,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003501.5625184,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003502.5026162,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003502.562451,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003503.5018113,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003503.5617306,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003504.5076935,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003504.5674152,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003505.4977086,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003505.5634422,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003506.5154965,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003506.5749488,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003507.5047865,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003507.564185,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003508.502466,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003508.5627773,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003509.5138438,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003509.5733395,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003510.5034275,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003510.5628653,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003511.4972115,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003511.559923,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003512.5236254,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003512.5836496,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003513.5110042,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003513.5708005,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003514.4976695,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003514.5571868,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003515.5095072,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003515.571738,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003516.503867,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003516.563466,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003517.50439,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003517.5738046,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003518.5037715,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003518.5636923,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003519.502535,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003519.5623608,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003520.5157309,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785003520.5787318,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "no-output:   File \"<string>\", line 4\n    s.settimeout(5)\n                   ^\nIndentationEr",
             "ping_loss": null
           }
         ],
         "qos_history": [
           {
-            "elapsed": 5.000178880000021,
+            "elapsed": 5.000164488039445,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 16296232.494522596,
+              "h3": 16296232.494522596
+            }
+          },
+          {
+            "elapsed": 6.000160699011758,
             "phase": "baseline",
             "throughput": {
               "h2": 0.0,
@@ -65,7 +1237,7 @@
             }
           },
           {
-            "elapsed": 10.022609976003878,
+            "elapsed": 7.000161345000379,
             "phase": "baseline",
             "throughput": {
               "h2": 0.0,
@@ -73,7 +1245,7 @@
             }
           },
           {
-            "elapsed": 15.046828964987071,
+            "elapsed": 8.000143386016134,
             "phase": "baseline",
             "throughput": {
               "h2": 0.0,
@@ -81,7 +1253,95 @@
             }
           },
           {
-            "elapsed": 25.07484798898804,
+            "elapsed": 9.000155944027938,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 10.000156685011461,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 11.000155742047355,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 70.00036932199005,
+              "h3": 70.00036932199005
+            }
+          },
+          {
+            "elapsed": 12.000155195011757,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 13.000155382032972,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 14.000162026030011,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 15.000160491035786,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 16.000156649039127,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 17.0001535610063,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 18.0001609660103,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 19.00015835900558,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 20.00015706103295,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -89,7 +1349,7 @@
             }
           },
           {
-            "elapsed": 30.103024129988626,
+            "elapsed": 21.00015971402172,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -97,7 +1357,7 @@
             }
           },
           {
-            "elapsed": 35.124918149987934,
+            "elapsed": 22.000043499050662,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -105,7 +1365,7 @@
             }
           },
           {
-            "elapsed": 35.13359657599358,
+            "elapsed": 23.000152489054017,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -113,7 +1373,7 @@
             }
           },
           {
-            "elapsed": 35.14258750298177,
+            "elapsed": 24.000152459018864,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -121,7 +1381,7 @@
             }
           },
           {
-            "elapsed": 35.15160959298373,
+            "elapsed": 25.00013961404329,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -129,7 +1389,7 @@
             }
           },
           {
-            "elapsed": 35.16038198498427,
+            "elapsed": 26.00013893202413,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -137,7 +1397,23 @@
             }
           },
           {
-            "elapsed": 35.16918207399431,
+            "elapsed": 27.00014437601203,
+            "phase": "attack",
+            "throughput": {
+              "h2": 69.99990430964665,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 28.000144098012242,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 69.99970628013679
+            }
+          },
+          {
+            "elapsed": 29.000143099052366,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -145,7 +1421,7 @@
             }
           },
           {
-            "elapsed": 35.17756327299867,
+            "elapsed": 30.000145421014167,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -153,7 +1429,7 @@
             }
           },
           {
-            "elapsed": 40.19868553298875,
+            "elapsed": 31.00014389801072,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -161,7 +1437,7 @@
             }
           },
           {
-            "elapsed": 45.22050988400588,
+            "elapsed": 32.00013471604325,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -169,7 +1445,7 @@
             }
           },
           {
-            "elapsed": 45.22926290699979,
+            "elapsed": 33.00012564600911,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -177,7 +1453,135 @@
             }
           },
           {
-            "elapsed": 50.25196439598221,
+            "elapsed": 34.00015307200374,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.000158984039444,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 36.00016213802155,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 37.00015748903388,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 38.00015297101345,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 39.00016019999748,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 40.000159314018674,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 41.00015949102817,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 42.000164058001246,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 43.00016896100715,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 44.000158229027875,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 45.00004339404404,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 46.00016917701578,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 47.00016043899814,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 48.00016030401457,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 49.00008102704305,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 50.00014605704928,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -185,7 +1589,7 @@
             }
           },
           {
-            "elapsed": 55.27328308898723,
+            "elapsed": 51.00014841603115,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -193,7 +1597,7 @@
             }
           },
           {
-            "elapsed": 55.28252897100174,
+            "elapsed": 52.000164124998264,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -201,7 +1605,7 @@
             }
           },
           {
-            "elapsed": 55.29165494599147,
+            "elapsed": 53.000178207003046,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -209,7 +1613,7 @@
             }
           },
           {
-            "elapsed": 55.300371391000226,
+            "elapsed": 54.00015987199731,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -217,7 +1621,7 @@
             }
           },
           {
-            "elapsed": 55.30881596298423,
+            "elapsed": 55.000113625021186,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -225,7 +1629,7 @@
             }
           },
           {
-            "elapsed": 55.31746536199353,
+            "elapsed": 56.000153861998115,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -233,7 +1637,7 @@
             }
           },
           {
-            "elapsed": 55.32589638399077,
+            "elapsed": 57.00015648204135,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -241,7 +1645,7 @@
             }
           },
           {
-            "elapsed": 60.35357879498042,
+            "elapsed": 58.000152074033394,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -249,7 +1653,23 @@
             }
           },
           {
-            "elapsed": 60.361878394993255,
+            "elapsed": 59.00015587505186,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 69.99858504809532,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 60.00015762500698,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 69.99989422927294
+            }
+          },
+          {
+            "elapsed": 61.000158440030646,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -257,7 +1677,7 @@
             }
           },
           {
-            "elapsed": 60.37018785299733,
+            "elapsed": 62.000172372034285,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -265,7 +1685,7 @@
             }
           },
           {
-            "elapsed": 60.378877818002366,
+            "elapsed": 63.000269721029326,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -273,23 +1693,7 @@
             }
           },
           {
-            "elapsed": 60.387565240991535,
-            "phase": "recovery",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 60.395512393006356,
-            "phase": "recovery",
-            "throughput": {
-              "h2": 0.0,
-              "h3": 0.0
-            }
-          },
-          {
-            "elapsed": 60.40437801700318,
+            "elapsed": 64.00015918904683,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -299,210 +1703,420 @@
         ],
         "flow_history": [
           {
-            "elapsed": 5.000178880000021,
+            "elapsed": 5.000164488039445,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 119199.33378754744
+            }
+          },
+          {
+            "elapsed": 6.000160699011758,
             "phase": "baseline",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 10.022609976003878,
+            "elapsed": 7.000161345000379,
             "phase": "baseline",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 15.046828964987071,
+            "elapsed": 8.000143386016134,
             "phase": "baseline",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 25.07484798898804,
+            "elapsed": 9.000155944027938,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 10.000156685011461,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 11.000155742047355,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 12.000155195011757,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 70.0249900264099
+            }
+          },
+          {
+            "elapsed": 13.000155382032972,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 14.000162026030011,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 15.000160491035786,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 16.000156649039127,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 17.0001535610063,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 18.0001609660103,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 19.00015835900558,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 20.00015706103295,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 30.103024129988626,
+            "elapsed": 21.00015971402172,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 35.124918149987934,
+            "elapsed": 22.000043499050662,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 35.13359657599358,
+            "elapsed": 23.000152489054017,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 35.14258750298177,
+            "elapsed": 24.000152459018864,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 35.15160959298373,
+            "elapsed": 25.00013961404329,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 35.16038198498427,
+            "elapsed": 26.00013893202413,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 35.16918207399431,
+            "elapsed": 27.00014437601203,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 35.17756327299867,
+            "elapsed": 28.000144098012242,
+            "phase": "attack",
+            "throughput": {
+              "h1": 69.97615758114432
+            }
+          },
+          {
+            "elapsed": 29.000143099052366,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 40.19868553298875,
+            "elapsed": 30.000145421014167,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 45.22050988400588,
+            "elapsed": 31.00014389801072,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 45.22926290699979,
+            "elapsed": 32.00013471604325,
             "phase": "attack",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 50.25196439598221,
+            "elapsed": 33.00012564600911,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 34.00015307200374,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 35.000158984039444,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 36.00016213802155,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 37.00015748903388,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 38.00015297101345,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 39.00016019999748,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 40.000159314018674,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 41.00015949102817,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 42.000164058001246,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 43.00016896100715,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 44.000158229027875,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 45.00004339404404,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 46.00016917701578,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 47.00016043899814,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 48.00016030401457,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 49.00008102704305,
+            "phase": "attack",
+            "throughput": {
+              "h1": 0.0
+            }
+          },
+          {
+            "elapsed": 50.00014605704928,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 55.27328308898723,
+            "elapsed": 51.00014841603115,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 55.28252897100174,
+            "elapsed": 52.000164124998264,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 55.29165494599147,
+            "elapsed": 53.000178207003046,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 55.300371391000226,
+            "elapsed": 54.00015987199731,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 55.30881596298423,
+            "elapsed": 55.000113625021186,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 55.31746536199353,
+            "elapsed": 56.000153861998115,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 55.32589638399077,
+            "elapsed": 57.00015648204135,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 60.35357879498042,
+            "elapsed": 58.000152074033394,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 60.361878394993255,
+            "elapsed": 59.00015587505186,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 60.37018785299733,
+            "elapsed": 60.00015762500698,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 70.00219974827232
+            }
+          },
+          {
+            "elapsed": 61.000158440030646,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 60.378877818002366,
+            "elapsed": 62.000172372034285,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 60.387565240991535,
+            "elapsed": 63.000269721029326,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
             }
           },
           {
-            "elapsed": 60.395512393006356,
-            "phase": "recovery",
-            "throughput": {
-              "h1": 0.0
-            }
-          },
-          {
-            "elapsed": 60.40437801700318,
+            "elapsed": 64.00015918904683,
             "phase": "recovery",
             "throughput": {
               "h1": 0.0
@@ -517,6 +2131,6 @@
     "topology": "small",
     "scenario": "probe",
     "seed": 3,
-    "timestamp": "2026-07-24T21:37:16.679094"
+    "timestamp": "2026-07-26T02:18:41.654628"
   }
 }

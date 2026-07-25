@@ -46,7 +46,7 @@ SCENARIOS = [
     ("exfiltration",     "config/scenarios/exfiltration.yaml"),
 ]
 
-NUM_SEEDS = 1
+NUM_SEEDS = 3
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -112,7 +112,7 @@ def run_single_benchmark(controller_name, controller_path, topology, scenario_na
 
     # Build command
     cmd = [
-        "sudo", PYTHON_BIN, BENCHMARK_SCRIPT,
+        "sudo", "-E", PYTHON_BIN, BENCHMARK_SCRIPT,
         "--topology", topology,
         "--controller", controller_path,
         "--scenario", scenario_path,
@@ -120,7 +120,7 @@ def run_single_benchmark(controller_name, controller_path, topology, scenario_na
     ]
 
     # Clean mininet state before each run
-    subprocess.run(["sudo", "mn", "-c"], capture_output=True)
+    subprocess.run(["sudo", "-E", "mn", "-c"], capture_output=True)
 
     # Run benchmark
     try:

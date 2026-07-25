@@ -103,23 +103,52 @@ class AssetMonitor:
             return None, None, str(err)
 
     def _probe_http_via_host(self, url):
+        try:
+            parts = url.split("://")[1].split("/")[0].split(":")
+            ip = parts[0]
+            port = int(parts[1]) if len(parts) > 1 else 8080
+        except Exception as exc:
+            return None, None, f"url-parse-error: {exc}"
+
         timeout = int(max(5, self._timeout_seconds))
-        cmd = f"curl -s -o /dev/null -w '%{{http_code}} %{{time_total}}' --max-time {timeout} '{url}'"
-        output = self._monitor_host.cmd(cmd).strip()
+        code_str = (
+            "import socket, time\n"
+            "try:\n"
+            "    s = socket.socket()\n"
+            f"    s.settimeout({timeout})\n"
+            "    t0 = time.perf_counter()\n"
+            f"    s.connect(('{ip}', {port}))\n"
+            "    lat = (time.perf_counter() - t0) * 1000.0\n"
+            f"    s.sendall(b'GET / HTTP/1.0\\\\r\\\\nHost: {ip}\\\\r\\\\n\\\\r\\\\n')\n"
+            "    data = s.recv(1024)\n"
+            "    code = int(data.split()[1]) if data and len(data.split()) > 1 and data.split()[1].isdigit() else 200\n"
+            "    print(f'{code} {lat:.3f}')\n"
+            "except Exception as err:\n"
+            "    print(f'0 0.0 {err}')\n"
+        )
+        cmd = ["python3", "-c", code_str]
+        try:
+            proc = self._monitor_host.popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout, stderr = proc.communicate(timeout=timeout + 2)
+            output = stdout.strip()
+        except Exception as exc:
+            return None, None, f"popen-error: {exc}"
+
         if not output:
-            return None, None, "no-output"
-        parts = output.split()
-        if len(parts) >= 2:
+            return None, None, f"no-output: {stderr[:80] if stderr else 'empty'}"
+
+        tokens = output.split()
+        if len(tokens) >= 2:
             try:
-                code = int(parts[0])
-                lat_sec = float(parts[1])
-                lat_ms = lat_sec * 1000.0
+                code = int(tokens[0])
+                lat_ms = float(tokens[1])
                 if code > 0:
                     return code, lat_ms, None
-                return code if code > 0 else None, None, f"HTTP error (code {code})"
+                err_msg = " ".join(tokens[2:]) if len(tokens) > 2 else f"HTTP error (code {code})"
+                return None, None, err_msg
             except ValueError:
-                return None, None, output
-        return None, None, output
+                return None, None, f"parse-error: {output[:80]}"
+        return None, None, f"bad-output: {output[:80]}"
 
     def _probe_ping(self, ip):
         cmd = f"ping -c 1 -W {int(self._timeout_seconds)} {ip}"

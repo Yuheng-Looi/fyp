@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": "2026-07-24T21:59:22.704303",
+    "timestamp": "2026-07-26T02:37:30.519186",
     "topologies_tested": [
       "large"
     ]
@@ -8,56 +8,148 @@
   "results": {
     "simple_13": {
       "large": {
-        "SCS": 0.4,
-        "QPS": 0.0,
+        "SCS": 0.5,
+        "QPS": 2.1452653341180313e-06,
         "UIS": 0.0,
-        "RES": 0.0,
-        "NRS": 0.12,
-        "WS": 0.4,
-        "DB": 0.4,
-        "SPS": 0.4,
-        "OFS": 0.26,
+        "RES": 1.0,
+        "NRS": 0.35000053631633354,
+        "WS": 0.5,
+        "DB": 0.5,
+        "SPS": 0.5,
+        "OFS": 0.42500026815816677,
         "probe_history": [
           {
-            "timestamp": 1784901486.9514,
+            "timestamp": 1785004594.8033652,
             "asset": "internal_db",
+            "probe_type": "http",
             "state": "DEGRADED",
-            "latency_ms": null,
+            "latency_ms": 2000.0,
             "status_code": null,
-            "error": "HTTP error (code 0)",
+            "error": "timed out",
             "ping_loss": null
           },
           {
-            "timestamp": 1784901491.9702604,
+            "timestamp": 1785004599.8477619,
             "asset": "web_server",
+            "probe_type": "http",
             "state": "DEGRADED",
-            "latency_ms": null,
+            "latency_ms": 2000.0,
             "status_code": null,
-            "error": "HTTP error (code 0)",
+            "error": "timed out",
             "ping_loss": null
           },
           {
-            "timestamp": 1784901527.1682436,
+            "timestamp": 1785004604.8757699,
             "asset": "internal_db",
-            "state": "DOWN",
-            "latency_ms": null,
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
             "status_code": null,
-            "error": "HTTP error (code 0)",
+            "error": "timed out",
             "ping_loss": null
           },
           {
-            "timestamp": 1784901532.1872754,
+            "timestamp": 1785004609.9097667,
             "asset": "web_server",
-            "state": "DOWN",
-            "latency_ms": null,
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
             "status_code": null,
-            "error": "HTTP error (code 0)",
+            "error": "timed out",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785004614.9436967,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "timed out",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785004619.9854085,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "timed out",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785004625.008048,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "timed out",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785004630.0325065,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DEGRADED",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "timed out",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785004635.0837965,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "timed out",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785004640.1174977,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "timed out",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785004645.1525133,
+            "asset": "internal_db",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "timed out",
+            "ping_loss": null
+          },
+          {
+            "timestamp": 1785004650.18037,
+            "asset": "web_server",
+            "probe_type": "http",
+            "state": "DOWN",
+            "latency_ms": 2000.0,
+            "status_code": null,
+            "error": "timed out",
             "ping_loss": null
           }
         ],
         "qos_history": [
           {
-            "elapsed": 5.000159073009854,
+            "elapsed": 5.000164726981893,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 16315096.656908732,
+              "h3": 16315096.656908732
+            }
+          },
+          {
+            "elapsed": 6.000160974974278,
             "phase": "baseline",
             "throughput": {
               "h2": 0.0,
@@ -65,7 +157,7 @@
             }
           },
           {
-            "elapsed": 15.044957369012991,
+            "elapsed": 7.00016279600095,
             "phase": "baseline",
             "throughput": {
               "h2": 0.0,
@@ -73,7 +165,103 @@
             }
           },
           {
-            "elapsed": 20.07683228701353,
+            "elapsed": 8.000166216981597,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 9.000154853973072,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 10.000159067974892,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 69.99932464805549,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 11.000161745992955,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 12.000160623982083,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 70.00042678990309
+            }
+          },
+          {
+            "elapsed": 13.000154030974954,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 14.000159235962201,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 15.000154210953042,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 16.000164608005434,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 17.000153479981236,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 18.000163250952028,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 19.000157388974912,
+            "phase": "baseline",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 20.000161590985954,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -81,7 +269,7 @@
             }
           },
           {
-            "elapsed": 35.139424619002966,
+            "elapsed": 21.00016491295537,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -89,7 +277,7 @@
             }
           },
           {
-            "elapsed": 40.16959698102437,
+            "elapsed": 22.000156148977112,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -97,7 +285,7 @@
             }
           },
           {
-            "elapsed": 40.18701516400324,
+            "elapsed": 23.000157192000188,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -105,7 +293,7 @@
             }
           },
           {
-            "elapsed": 45.217723998008296,
+            "elapsed": 24.00015945895575,
             "phase": "attack",
             "throughput": {
               "h2": 0.0,
@@ -113,7 +301,319 @@
             }
           },
           {
-            "elapsed": 55.261528277012985,
+            "elapsed": 25.000163255957887,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 26.000160146970302,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 27.000152466993313,
+            "phase": "attack",
+            "throughput": {
+              "h2": 70.00097217340691,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 28.00016000395408,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 29.00015534297563,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 70.00047362322532
+            }
+          },
+          {
+            "elapsed": 30.00016236200463,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 31.0001615450019,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 32.00007312296657,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 33.000160394993145,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 34.00015447998885,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 35.0001600299729,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 36.000162991986144,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 37.00016147195129,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 38.000157269998454,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 39.00015870999778,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 40.00016188499285,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 41.000162348966114,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 42.000084584986325,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 43.00016111199511,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 44.00015454296954,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 45.00016274797963,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 46.00015962996986,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 47.00015497696586,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 48.00016018899623,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 49.00016295700334,
+            "phase": "attack",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 50.00016344100004,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 51.00015631498536,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 52.00015388795873,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 53.000159960007295,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 54.00015919998987,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 55.00008972897194,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 56.00015914597316,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 57.00015690998407,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 58.00015895400429,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 59.000157182978,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 70.00006117921548,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 60.00015674997121,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 61.00026100495597,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 62.00015562796034,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 63.000143865006976,
+            "phase": "recovery",
+            "throughput": {
+              "h2": 0.0,
+              "h3": 0.0
+            }
+          },
+          {
+            "elapsed": 64.00015602697385,
             "phase": "recovery",
             "throughput": {
               "h2": 0.0,
@@ -123,80 +623,600 @@
         ],
         "flow_history": [
           {
-            "elapsed": 5.000159073009854,
+            "elapsed": 5.000164726981893,
             "phase": "baseline",
             "throughput": {
-              "h1": 0.0,
-              "h4": 0.0,
-              "h5": 0.0,
-              "h6": 0.0
+              "h1": 119332.7557713635,
+              "h4": 119332.7557713635,
+              "h5": 119332.7557713635,
+              "h6": 119332.7557713635
             }
           },
           {
-            "elapsed": 15.044957369012991,
+            "elapsed": 6.000160974974278,
             "phase": "baseline",
             "throughput": {
-              "h1": 0.0,
+              "h1": 74.07464094466225,
               "h4": 0.0,
               "h5": 0.0,
               "h6": 0.0
             }
           },
           {
-            "elapsed": 20.07683228701353,
+            "elapsed": 7.00016279600095,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 74.00822771412876,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 8.000166216981597,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 73.98642164408658,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 9.000154853973072,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 74.00816117642049,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 10.000159067974892,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 144.0001478820695,
+              "h4": 0.0,
+              "h5": 70.00007188711713,
+              "h6": 70.00007188711713
+            }
+          },
+          {
+            "elapsed": 11.000161745992955,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 74.00488299394382,
+              "h4": 70.00461904832524,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 12.000160623982083,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 74.00232182114289,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 13.000154030974954,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 73.9992482428907,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 14.000159235962201,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 73.9920870631571,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 15.000154210953042,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 74.00061997743528,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 16.000164608005434,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 74.00804112105244,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 17.000153479981236,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 73.99584787098635,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 18.000163250952028,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 74.00423348791885,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 19.000157388974912,
+            "phase": "baseline",
+            "throughput": {
+              "h1": 73.98807770810313,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 20.000161590985954,
             "phase": "attack",
             "throughput": {
-              "h1": 0.0,
+              "h1": 74.00308311769828,
               "h4": 0.0,
               "h5": 0.0,
               "h6": 0.0
             }
           },
           {
-            "elapsed": 35.139424619002966,
+            "elapsed": 21.00016491295537,
             "phase": "attack",
             "throughput": {
-              "h1": 0.0,
+              "h1": 73.98713777648217,
               "h4": 0.0,
               "h5": 0.0,
               "h6": 0.0
             }
           },
           {
-            "elapsed": 40.16959698102437,
+            "elapsed": 22.000156148977112,
             "phase": "attack",
             "throughput": {
-              "h1": 0.0,
+              "h1": 74.0126136030953,
               "h4": 0.0,
               "h5": 0.0,
               "h6": 0.0
             }
           },
           {
-            "elapsed": 40.18701516400324,
+            "elapsed": 23.000157192000188,
             "phase": "attack",
             "throughput": {
-              "h1": 0.0,
+              "h1": 74.00072305890356,
               "h4": 0.0,
               "h5": 0.0,
               "h6": 0.0
             }
           },
           {
-            "elapsed": 45.217723998008296,
+            "elapsed": 24.00015945895575,
             "phase": "attack",
             "throughput": {
-              "h1": 0.0,
+              "h1": 74.00040507992351,
               "h4": 0.0,
               "h5": 0.0,
               "h6": 0.0
             }
           },
           {
-            "elapsed": 55.261528277012985,
+            "elapsed": 25.000163255957887,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.00988268639749,
+              "h4": 0.0,
+              "h5": 70.00934848713275,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 26.000160146970302,
+            "phase": "attack",
+            "throughput": {
+              "h1": 143.96837935892017,
+              "h4": 69.98462885503064,
+              "h5": 0.0,
+              "h6": 69.98462885503064
+            }
+          },
+          {
+            "elapsed": 27.000152466993313,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.01284966770717,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 28.00016000395408,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.99542197864406,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 29.00015534297563,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.99469716712056,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 30.00016236200463,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.99738870788843,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 31.0001615450019,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.99568664315197,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 32.00007312296657,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.35333687099657,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 33.000160394993145,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.65589168215345,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 34.00015447998885,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.01777373726883,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 35.0001600299729,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.99355116741489,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 36.000162991986144,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.991608611513,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 37.00016147195129,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.00232848505824,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 38.000157269998454,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.00364179087968,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 39.00015870999778,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.97065865176154,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 40.00016188499285,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.03562897828942,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 41.000162348966114,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.98940974795919,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 42.000084584986325,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.01518125396345,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 43.00016111199511,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.97632912973856,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 44.00015454296954,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.02247781177805,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 45.00016274797963,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.99982129208594,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 46.00015962996986,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.98398113601057,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 47.00015497696586,
+            "phase": "attack",
+            "throughput": {
+              "h1": 73.98915037749147,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 48.00016018899623,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.02310460944837,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 49.00016295700334,
+            "phase": "attack",
+            "throughput": {
+              "h1": 74.00610972472575,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 50.00016344100004,
             "phase": "recovery",
             "throughput": {
-              "h1": 0.0,
+              "h1": 73.97115701830627,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 51.00015631498536,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 74.02556021230357,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 52.00015388795873,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 74.00896425974057,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 53.000159960007295,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 73.99001238342039,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 54.00015919998987,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 73.98594237872702,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 55.00008972897194,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 74.01172967329506,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 56.00015914597316,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 73.98706210520584,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 69.9877614508704
+            }
+          },
+          {
+            "elapsed": 57.00015690998407,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 144.02129945371675,
+              "h4": 0.0,
+              "h5": 70.01035390111231,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 58.00015895400429,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 73.98298517049514,
+              "h4": 69.98390489100892,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 59.000157182978,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 73.99721607690232,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 60.00015674997121,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 74.01080772373675,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 61.00026100495597,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 73.98351344086677,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 62.00015562796034,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 73.99481813960782,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 63.000143865006976,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 74.14591560324682,
+              "h4": 0.0,
+              "h5": 0.0,
+              "h6": 0.0
+            }
+          },
+          {
+            "elapsed": 64.00015602697385,
+            "phase": "recovery",
+            "throughput": {
+              "h1": 73.858685955657,
               "h4": 0.0,
               "h5": 0.0,
               "h6": 0.0
@@ -211,6 +1231,6 @@
     "topology": "large",
     "scenario": "probe",
     "seed": 1,
-    "timestamp": "2026-07-24T21:59:22.720227"
+    "timestamp": "2026-07-26T02:37:30.534796"
   }
 }

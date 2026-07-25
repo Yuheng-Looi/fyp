@@ -69,7 +69,7 @@ class ExperimentRunner:
             self._setup_network()
             self._timeline.run(real_time=real_time)
             scores = self._scoring.get_scores()
-            scores["probe_history"] = self._asset_monitor.state_history
+            scores["probe_history"] = self._asset_monitor.probe_history
             scores["qos_history"] = self._qos_monitor.history
             scores["flow_history"] = self._flow_monitor.history
             return scores
