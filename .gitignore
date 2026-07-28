@@ -11,6 +11,8 @@ uploads/
 ryu/
 .env
 benchmarkenv/
+remote_ui_venv/
+Caddyfile
 
 # Log files and temporary execution outputs
 *.log
@@ -18,9 +20,12 @@ benchmarkenv/
 *.out
 *.sqlite
 graph_snapshots.json
-backend/benchmark/results/historical_log.json
 .tempmediaStorage/
 scratch/
+
+# Benchmark raw execution JSON data and diagnostics
+backend/benchmark/results/
+diagnostic_test_results.json
 
 # Images rule: ignore general png, but include benchmark/gnn figures
 *.png
@@ -28,3 +33,4 @@ scratch/
 !backend/gnn_compare/*.png
 !backend/benchmark/images/*.png
 !backend/benchmark/images/expected/*.png
+remote_app/
