@@ -1,3 +1,8 @@
+> [!WARNING]
+> **SUPERSEDED REPORT — DO NOT USE FOR FINAL PRESENTATION OR EVIDENCE**
+> This document contains outdated single-seed (N=1) or 24-run benchmark statistics.
+> Refer strictly to the canonical 72-run multi-seed (N=3) report: [FINAL_ATDM_RESULTS_REPORT.md](file:///home/fyp2025/fyp/FINAL_ATDM_RESULTS_REPORT.md).
+
 # Before and After Experimental Results Comparison
 
 **Project**: Adaptive Threat Detection & Mitigation (ATDM) System  
