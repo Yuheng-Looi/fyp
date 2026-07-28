@@ -327,6 +327,10 @@ class MLReactiveController(app_manager.RyuApp):
         self._evidence_aggregator = EvidenceAggregator(window_seconds=5.0)
         self._adaptive_rescaler   = AdaptiveRescaler(self)
 
+        # Mitigation rule deduplication state
+        self.active_mitigations = set()
+        self.duplicate_mitigation_count = 0
+
         # Register self as observer for custom ML complete event
         self.register_observer(EventMLInferenceComplete, self.name)
 
@@ -704,6 +708,7 @@ class MLReactiveController(app_manager.RyuApp):
                 headers={'Content-Type': 'application/json'},
                 method='POST'
             )
+            self.logger.info(f"[ATDM LOG] Inference request sent for flow {flow_key} to infer_server: {url}")
             with urllib.request.urlopen(req, timeout=2.0) as response:
                 if response.status == 200:
                     result = json.loads(response.read().decode('utf-8'))
@@ -714,25 +719,26 @@ class MLReactiveController(app_manager.RyuApp):
                     xgb_pred  = result.get("xgb", {}).get("flag", 0)
                     gnn_class = result.get("gnn_prediction", "N/A")
 
-                    # Re-classify using evidence-adapted thresholds
-                    if xgb_pred == 0:
-                        action = "ALLOW"
-                    elif xgb_score < self.log_threshold:
-                        action = "LOG"
-                    elif xgb_score < self.block_threshold:
-                        action = "RATE_LIMIT"
-                    else:
-                        action = "BLOCK"
+                    self.logger.info(f"[ATDM LOG] Inference result from infer_server: verdict={verdict}, action={action}, score={xgb_score:.4f}, gnn_class={gnn_class}")
 
-                    # Uncertainty check → escalate via GNN policy mapper
-                    uncertain = (xgb_pred != if_score) or (
-                        self.log_threshold - 0.1 <= xgb_score <= self.block_threshold + 0.05
-                    )
-                    if uncertain:
-                        self.logger.info(
-                            f"[🧠 UNCERTAIN FLOW] score={xgb_score:.2f}, IF={if_score}. Invoking GNN Mapper."
-                        )
-                        action = self._policy_mapper(gnn_class, action)
+                    if result.get("action") in ["BLOCK", "SOURCE_IP_QUARANTINE", "RATE_LIMIT"] or xgb_pred == 1 or if_score == 1:
+                        action = "BLOCK"
+                        verdict = "KNOWN_ATTACK"
+                    elif xgb_score < self.log_threshold:
+                        action = "ALLOW"
+                    else:
+                        action = "ALLOW"
+
+                    # Uncertainty check or GNN attack classification -> escalate via GNN policy mapper
+                    if action != "BLOCK":
+                        uncertain = (xgb_pred != if_score) or (
+                            self.log_threshold - 0.1 <= xgb_score <= self.block_threshold + 0.05
+                        ) or (gnn_class in ["DoS", "DDoS", "1-to-N"])
+                        if uncertain:
+                            self.logger.info(
+                                f"[🧠 GNN ATTACK DETECTED] score={xgb_score:.2f}, IF={if_score}, GNN={gnn_class}. Invoking GNN Mapper."
+                            )
+                            action = self._policy_mapper(gnn_class, action)
                         if action in ["SOURCE_IP_QUARANTINE", "DEST_SUBNET_METER", "TARPIT_MIRROR",
                                       "GLOBAL_RATE_LIMIT", "HONEYPOT_REDIRECT"]:
                             verdict = (
@@ -765,7 +771,9 @@ class MLReactiveController(app_manager.RyuApp):
             self.send_event_to_observers(ev)
 
     def _policy_mapper(self, gnn_class: str, fallback_action: str) -> str:
-        if gnn_class == "N-to-1":
+        if gnn_class in ("1-to-N", "DoS", "DDoS"):
+            return "SOURCE_IP_QUARANTINE"
+        elif gnn_class == "N-to-1":
             return "DEST_SUBNET_METER"
         elif gnn_class == "1-to-N":
             return "SOURCE_IP_QUARANTINE"
@@ -818,7 +826,6 @@ class MLReactiveController(app_manager.RyuApp):
         )
         state.mitigation_action = action
         state.expiry_time       = time.time() + (60.0 if action != 'ALLOW' else 15.0)
-
         ip_src = state.src
         ip_dst = state.dst
         dpid   = datapath.id
@@ -826,19 +833,27 @@ class MLReactiveController(app_manager.RyuApp):
         # --- Install OpenFlow enforcement rules ---
 
         if action in ("BLOCK", "SOURCE_IP_QUARANTINE"):
+            mitigation_key = (dpid, ip_src, "BLOCK")
+            if mitigation_key in self.active_mitigations:
+                self.duplicate_mitigation_count += 1
+                self.logger.info(
+                    f"[ATDM LOG] Duplicate mitigation rule skipped for ip_src={ip_src} on dpid={dpid} "
+                    f"(Total duplicates prevented: {self.duplicate_mitigation_count})"
+                )
+                return
+
+            self.active_mitigations.add(mitigation_key)
             self.logger.warning(f"[🛡️ MITIGATION] SOURCE_IP_QUARANTINE. Src IP: {ip_src}")
+            self.logger.info(f"[ATDM LOG] Selected mitigation: action={action} on datapath={dpid} for ip_src={ip_src}")
             cookie_ip  = self.next_cookie; self.next_cookie += 1
             cookie_mac = self.next_cookie; self.next_cookie += 1
             self.cookie_to_state[cookie_ip]  = state
             self.cookie_to_state[cookie_mac] = state
 
             match_ip  = parser.OFPMatch(eth_type=ether.ETH_TYPE_IP, ipv4_src=ip_src)
-            self.add_flow(datapath, 100, match_ip,  [], idle_timeout=60,
-                          cookie=cookie_ip,  flags=ofproto.OFPFF_SEND_FLOW_REM)
-
-            match_mac = parser.OFPMatch(eth_src=src_mac)
-            self.add_flow(datapath, 100, match_mac, [], idle_timeout=60,
-                          cookie=cookie_mac, flags=ofproto.OFPFF_SEND_FLOW_REM)
+            self.add_flow(datapath, 100, match_ip, [], idle_timeout=60,
+                          cookie=cookie_ip, flags=ofproto.OFPFF_SEND_FLOW_REM)
+            self.logger.info(f"[ATDM LOG] Installed OpenFlow rule: match=ipv4_src={ip_src}, action=DROP, priority=100, dpid={dpid}")
 
         elif action == "DEST_SUBNET_METER":
             self.logger.warning(f"[🛡️ MITIGATION] DEST_SUBNET_METER. Src IP: {ip_src} → Dst IP: {ip_dst}")
@@ -983,10 +998,23 @@ class MLReactiveController(app_manager.RyuApp):
                 sport = scapy_pkt[UDP].sport
                 dport = scapy_pkt[UDP].dport
 
-            is_monitor = (ip_src == "10.0.0.1" or ip_dst == "10.0.0.1")
-            is_iperf   = (5201 <= sport <= 5210 or 5201 <= dport <= 5210)
+            # Role-aware bypass logic:
+            # Exclude ICMP health probes (proto==1) and synthetic iperf background load (port 5201)
+            is_icmp_probe = (proto == 1)
+            is_iperf_bg   = (5201 <= sport <= 5210 or 5201 <= dport <= 5210)
 
-            if not (is_monitor or is_iperf):
+            bypass_reason = None
+            if is_icmp_probe:
+                bypass_reason = "ICMP probe"
+            elif is_iperf_bg:
+                bypass_reason = "Background iperf3 traffic"
+
+            if bypass_reason is not None:
+                self.logger.info(f"[ATDM LOG] Flow received: {ip_src}:{sport} -> {ip_dst}:{dport} (proto={proto}) | BYPASS: {bypass_reason}")
+            else:
+                self.logger.info(f"[ATDM LOG] Flow received: {ip_src}:{sport} -> {ip_dst}:{dport} (proto={proto}) | Processing for ML Inference")
+
+            if bypass_reason is None:
                 key  = (src, dst, sport, dport, proto)
                 rkey = (dst, src, dport, sport, proto)
 
@@ -1065,7 +1093,7 @@ class MLReactiveController(app_manager.RyuApp):
                     out_port = self.mac_to_port[dpid].get(dst, ofproto.OFPP_FLOOD)
                     actions  = [parser.OFPActionOutput(out_port, 0)]
 
-                    if tot_fwd_pkts >= 3:
+                    if tot_fwd_pkts >= 1:
                         state.status = 'READY'
                         self.pending_inference[key] = {
                             "timestamp":    ts,
@@ -1108,9 +1136,14 @@ class MLReactiveController(app_manager.RyuApp):
                     state   = FlowState(
                         flow_id=flow_id, src=ip_src, dst=ip_dst,
                         created_time=ts, expiry_time=ts + 5.0,
-                        last_updated=ts, status='OBSERVING'
+                        last_updated=ts, status='READY'
                     )
                     self.flow_key_to_state[key] = state
+
+                    feats = flow.compute_features()
+                    flow_features = {kk: feats[kk] for kk in FEATURE_KEYS}
+                    self.pending_inference[key] = {"timestamp": ts, "packet_count": 1}
+                    hub.spawn(self._run_inference_async, datapath, key, flow_features)
 
                     # Temporary holding rule → controller under tarpit meter
                     actions_tarpit = [

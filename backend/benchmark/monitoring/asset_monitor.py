@@ -103,6 +103,7 @@ class AssetMonitor:
             return None, None, str(err)
 
     def _probe_http_via_host(self, url):
+        """Probe HTTP service from monitor host (h1) using curl with robust parsing."""
         try:
             parts = url.split("://")[1].split("/")[0].split(":")
             ip = parts[0]
@@ -110,45 +111,31 @@ class AssetMonitor:
         except Exception as exc:
             return None, None, f"url-parse-error: {exc}"
 
-        timeout = int(max(5, self._timeout_seconds))
-        code_str = (
-            "import socket, time\n"
-            "try:\n"
-            "    s = socket.socket()\n"
-            f"    s.settimeout({timeout})\n"
-            "    t0 = time.perf_counter()\n"
-            f"    s.connect(('{ip}', {port}))\n"
-            "    lat = (time.perf_counter() - t0) * 1000.0\n"
-            f"    s.sendall(b'GET / HTTP/1.0\\\\r\\\\nHost: {ip}\\\\r\\\\n\\\\r\\\\n')\n"
-            "    data = s.recv(1024)\n"
-            "    code = int(data.split()[1]) if data and len(data.split()) > 1 and data.split()[1].isdigit() else 200\n"
-            "    print(f'{code} {lat:.3f}')\n"
-            "except Exception as err:\n"
-            "    print(f'0 0.0 {err}')\n"
-        )
-        cmd = ["python3", "-c", code_str]
+        timeout = int(max(2, self._timeout_seconds))
+        cmd = f"curl -s -o /dev/null -w '%{{http_code}} %{{time_total}}\\n' --max-time {timeout} http://{ip}:{port}/"
         try:
-            proc = self._monitor_host.popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            stdout, stderr = proc.communicate(timeout=timeout + 2)
-            output = stdout.strip()
+            output = self._monitor_host.cmd(cmd).strip()
         except Exception as exc:
-            return None, None, f"popen-error: {exc}"
+            return None, None, f"cmd-error: {exc}"
 
         if not output:
-            return None, None, f"no-output: {stderr[:80] if stderr else 'empty'}"
+            return None, None, "no-output"
 
-        tokens = output.split()
-        if len(tokens) >= 2:
-            try:
-                code = int(tokens[0])
-                lat_ms = float(tokens[1])
-                if code > 0:
-                    return code, lat_ms, None
-                err_msg = " ".join(tokens[2:]) if len(tokens) > 2 else f"HTTP error (code {code})"
-                return None, None, err_msg
-            except ValueError:
-                return None, None, f"parse-error: {output[:80]}"
-        return None, None, f"bad-output: {output[:80]}"
+        # Search line-by-line for HTTP status code and response time
+        for line in output.splitlines():
+            line = line.strip()
+            tokens = line.split()
+            if len(tokens) >= 2 and tokens[0].isdigit():
+                try:
+                    code = int(tokens[0])
+                    time_sec = float(tokens[1])
+                    lat_ms = time_sec * 1000.0
+                    if code > 0:
+                        return code, lat_ms, None
+                except ValueError:
+                    continue
+
+        return None, 2000.0, f"parse-error: {output[:80]}"
 
     def _probe_ping(self, ip):
         cmd = f"ping -c 1 -W {int(self._timeout_seconds)} {ip}"

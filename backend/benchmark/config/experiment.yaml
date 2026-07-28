@@ -11,18 +11,18 @@ monitoring:
   latency_threshold_ms: 500
   down_threshold: 5
   ping_enabled: false
-  monitor_host: h1
+  monitor_host: h2
   assets:
     - name: internal_db
-      host: h2
-      ip: 10.0.0.2
-      port: 80
+      host: h3
+      ip: 10.0.0.3
+      port: 8080
       protocol: http
       service: http
     - name: web_server
       host: h3
       ip: 10.0.0.3
-      port: 80
+      port: 8080
       protocol: http
       service: http
 mode:

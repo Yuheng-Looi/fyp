@@ -1,10 +1,12 @@
+import os
 import time
+
 
 class FlowMonitor:
     def __init__(self):
         self.net = None
         self.running = False
-        self.history = []  # list of dicts: {"elapsed": elapsed, "phase": phase, "throughput": {client: bytes/sec}}
+        self.history = []
         self._last_bytes = {}
         self._last_time = None
 
@@ -20,38 +22,57 @@ class FlowMonitor:
         self.running = False
         print("[monitor] Flow monitor stopped")
 
+    def _read_tx_bytes(self, client_host):
+        pid = getattr(client_host, "pid", None)
+        if pid:
+            path = f"/proc/{pid}/root/sys/class/net/{client_host.name}-eth0/statistics/tx_bytes"
+            if os.path.exists(path):
+                try:
+                    with open(path, "r") as f:
+                        return int(f.read().strip())
+                except Exception:
+                    pass
+        return 0
+
     def tick(self, elapsed, phase):
         if not self.running or not self.net:
             return
-        
+
         now = time.monotonic()
-        clients = [h for h in self.net.hosts if h.name not in ("h2", "h3")]
-        current_bytes = {}
-        for c in clients:
-            try:
-                intf = f"{c.name}-eth0"
-                out = c.cmd(f"cat /sys/class/net/{intf}/statistics/tx_bytes").strip()
-                if not out.isdigit():
-                    out = c.cmd("cat /sys/class/net/eth0/statistics/tx_bytes").strip()
-                current_bytes[c.name] = int(out) if out.isdigit() else 0
-            except Exception:
-                current_bytes[c.name] = 0
+        dt = max(0.001, now - self._last_time) if self._last_time else 1.0
+
+        # Separate client hosts into Attacker Hosts (h1) and Benign User Hosts (h2)
+        attacker_hosts = [h for h in self.net.hosts if h.name in ("h1",)]
+        benign_hosts = [h for h in self.net.hosts if h.name in ("h2", "h4")]
 
         throughput = {}
-        if self._last_time is not None:
-            dt = now - self._last_time
-            if dt > 0:
-                for name in current_bytes:
-                    prev = self._last_bytes.get(name, 0)
-                    curr = current_bytes[name]
-                    diff = max(0, curr - prev)
-                    throughput[name] = diff / dt
+        benign_throughput = {}
+        attack_offered_bps = 0.0
 
-        self._last_bytes = current_bytes
+        # Attacker Offered Load (h1)
+        for a in attacker_hosts:
+            curr = self._read_tx_bytes(a)
+            prev = self._last_bytes.get(a.name, curr)
+            rate = max(0, curr - prev) / dt
+            self._last_bytes[a.name] = curr
+            throughput[a.name] = rate
+            attack_offered_bps += rate
+
+        # Benign User Throughput (h2)
+        for b in benign_hosts:
+            curr = self._read_tx_bytes(b)
+            prev = self._last_bytes.get(b.name, curr)
+            rate = max(0, curr - prev) / dt
+            self._last_bytes[b.name] = curr
+            throughput[b.name] = rate
+            benign_throughput[b.name] = rate
+
         self._last_time = now
 
         self.history.append({
             "elapsed": elapsed,
             "phase": phase,
-            "throughput": throughput
+            "throughput": throughput,
+            "benign_throughput": benign_throughput,
+            "attack_offered_bps": attack_offered_bps,
         })
