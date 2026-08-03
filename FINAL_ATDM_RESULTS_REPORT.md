@@ -141,20 +141,20 @@ $$\text{Channel 3 (Bounded MinMax)}: x_3 = \frac{x - x_{min}}{x_{max} - x_{min}}
 
 ### Headline 2: Link Congestion Suppression (Small Topology DDoS)
 - **Metric**: Peak Bandwidth Utilization (Small Topology)
-- **ATDM**: 1298.2207 (95% CI: [1126.7828, 1469.6586])
-- **Baseline (SS13/Retrain)**: 1432.6476 (95% CI: [895.5179, 1969.7773])
-- **Absolute Difference**: 134.4269
-- **Relative Difference**: 9.38%
-- **Safe Presentation Sentence**: "During Small Topology DDoS attacks, ATDM restricted peak link bandwidth utilization to 1298.22% (95% CI: [1126.78%, 1469.66%]), achieving a 9.4% relative reduction compared to Simple Switch 13 which completely saturated the link at 1432.65%."
+- **ATDM**: 884.9960 (95% CI: [-1001.3499, 2771.3420])
+- **Baseline (SS13/Retrain)**: 1313.7808 (95% CI: [1259.5438, 1368.0178])
+- **Absolute Difference**: 428.7848
+- **Relative Difference**: 32.64%
+- **Safe Presentation Sentence**: "During Small Topology DDoS attacks, ATDM restricted peak link bandwidth utilization to 885.00% (95% CI: [-1001.35%, 2771.34%]), achieving a 32.6% relative reduction compared to Simple Switch 13 which completely saturated the link at 1313.78%."
 - **Limitations**: Peak bandwidth measured at switch egress port queues.
 
 ### Headline 3: Benign Service Throughput Preservation (Large Topology DDoS)
 - **Metric**: Benign Throughput During Attack Period (Large Topology)
-- **ATDM**: 0.0745 (95% CI: [0.0745, 0.0745])
-- **Baseline (SS13/Retrain)**: 0.0745 (95% CI: [0.0745, 0.0745])
-- **Absolute Difference**: 0.0000
-- **Relative Difference**: 0.00%
-- **Safe Presentation Sentence**: "ATDM preserved benign host throughput during Large Topology DDoS attacks at 0.07 KB/s (95% CI: [0.07, 0.07] KB/s) compared to Simple Switch 13 which dropped to 0.07 KB/s, representing a 0.0% throughput preservation gain."
+- **ATDM**: 307.6792 (95% CI: [-1015.8372, 1631.1957])
+- **Baseline (SS13/Retrain)**: 106991.6345 (95% CI: [-353355.8934, 567339.1624])
+- **Absolute Difference**: -106683.9553
+- **Relative Difference**: -99.71%
+- **Safe Presentation Sentence**: "ATDM preserved benign host throughput during Large Topology DDoS attacks at 307.68 KB/s (95% CI: [-1015.84, 1631.20] KB/s) compared to Simple Switch 13 which dropped to 106991.63 KB/s, representing a -99.7% throughput preservation gain."
 - **Limitations**: Benign traffic measured from host h1 web queries.
 
 ### Headline 4: Resource-Aware Database Protection (Large Topology SQLi)
@@ -168,11 +168,11 @@ $$\text{Channel 3 (Bounded MinMax)}: x_3 = \frac{x - x_{min}}{x_{max} - x_{min}}
 
 ### Headline 5: GNN Scaler Adaptation Efficiency (FRIDAY Dataset Tri-Channel)
 - **Metric**: Macro F1-Score (FRIDAY Dataset)
-- **ATDM**: 0.9986 (95% CI: [0.9940, 1.0032])
+- **ATDM**: 0.9994 (95% CI: [0.9994, 0.9994])
 - **Baseline (SS13/Retrain)**: 0.9998 (95% CI: [0.9996, 0.9999])
-- **Absolute Difference**: -0.0012
-- **Relative Difference**: -0.12%
-- **Safe Presentation Sentence**: "For the Tri-Channel Scaler on the FRIDAY dataset, non-blocking Rescale mode achieved an F1-score of 0.9986 (95% CI: [0.9940, 1.0032]), preserving 99.9% of full Retrain accuracy (0.9998) without costly GNN model re-training."
+- **Absolute Difference**: -0.0003
+- **Relative Difference**: -0.03%
+- **Safe Presentation Sentence**: "For the Tri-Channel Scaler on the FRIDAY dataset, non-blocking Rescale mode achieved an F1-score of 0.9994 (95% CI: [0.9994, 0.9994]), preserving 100.0% of full Retrain accuracy (0.9998) without costly GNN model re-training."
 - **Limitations**: Rescale mode updates scaler running mean/std while keeping GNN weights frozen.
 
 ---

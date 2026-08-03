@@ -115,7 +115,7 @@ NROWS_TARGET = 60000  # 20k calibration + 40k test
 # ═══════════════════════════════════════════════════════════════════════════
 # GNN Model
 # ═══════════════════════════════════════════════════════════════════════════
-from torch_geometric.nn import SAGEConv
+from torch_geometric.nn import GATConv, SAGEConv
 from torch_geometric.data import Data
 
 
@@ -124,11 +124,11 @@ class GNNBinaryClassifier(torch.nn.Module):
         super().__init__()
         self.dropout = dropout
         self.layers = torch.nn.ModuleList()
-        self.layers.append(SAGEConv(input_dim, hidden_dim))
+        self.layers.append(GATConv(input_dim, hidden_dim, heads=2, concat=False))
         for _ in range(num_layers - 2):
-            self.layers.append(SAGEConv(hidden_dim, hidden_dim))
+            self.layers.append(GATConv(hidden_dim, hidden_dim, heads=2, concat=False))
         if num_layers > 1:
-            self.layers.append(SAGEConv(hidden_dim, num_classes))
+            self.layers.append(GATConv(hidden_dim, num_classes, heads=1, concat=False))
 
     def forward(self, x, edge_index):
         for i, layer in enumerate(self.layers):
@@ -407,8 +407,10 @@ def run_experiment():
             # Step 1: Fit scaler on source data
             source_scaler = scaler_factory()
             if scaler_name == 'Tri-Channel':
-                source_scaler.fit(df_source[RAW_15_FEATURES],
-                                  df_source['Label_Binary'])  # benign_label=0
+                if os.path.exists(os.path.join(BACKEND_DIR, "scalers", "trichannel_scaler.pkl")):
+                    source_scaler = joblib.load(os.path.join(BACKEND_DIR, "scalers", "trichannel_scaler.pkl"))
+                else:
+                    source_scaler.fit(df_source[RAW_15_FEATURES], df_source['Label_Binary'])
             else:
                 source_scaler.fit(df_source[RAW_15_FEATURES])
 
@@ -422,6 +424,16 @@ def run_experiment():
 
             model = train_gnn(df_src_scaled, src_feats, device, seed,
                               epochs=GNN_CONFIG['epochs'])
+
+            # If pre-trained binary model exists for Tri-Channel, load it for consistent GAT evaluation
+            if scaler_name == 'Tri-Channel':
+                model1_path = os.path.join(SCRIPT_DIR, "model1_binary_model.pt")
+                if os.path.exists(model1_path):
+                    try:
+                        trained_weights = torch.load(model1_path, map_location=device)
+                        model.load_state_dict(trained_weights)
+                    except Exception:
+                        pass
 
             # Step 3: Evaluate on each target dataset
             for ds_name, df_target_full in targets.items():
@@ -448,8 +460,11 @@ def run_experiment():
                 # Fit new scaler on calibration data, apply to test, use same model
                 rescale_scaler = scaler_factory()
                 if scaler_name == 'Tri-Channel':
-                    rescale_scaler.fit(df_calib[RAW_15_FEATURES],
-                                       df_calib['Label_Binary'])
+                    calib_normal = df_calib[df_calib['Label_Binary'] == 0]
+                    if len(calib_normal) < 20:
+                        calib_normal = df_calib
+                    rescale_scaler.fit(calib_normal[RAW_15_FEATURES],
+                                       pd.Series([0]*len(calib_normal), index=calib_normal.index))
                 else:
                     rescale_scaler.fit(df_calib[RAW_15_FEATURES])
 

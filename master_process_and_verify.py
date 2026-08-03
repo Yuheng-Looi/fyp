@@ -89,7 +89,7 @@ def calc_stats_n3(vals):
     }
 
 def load_and_verify_runs():
-    json_files = sorted(glob.glob(os.path.join(FINAL_RUNS_DIR, "*.json")))
+    json_files = sorted(glob.glob(os.path.join(FINAL_RUNS_DIR, "**", "*.json"), recursive=True))
     if len(json_files) != 72:
         raise ValueError(f"Expected 72 JSON files, found {len(json_files)}")
 
@@ -118,10 +118,16 @@ def load_and_verify_runs():
             raise ValueError(f"Duplicate run detected: {combo_key}")
         seen_combos.add(combo_key)
 
-        res_dict = d.get('results', {})
-        ck = list(res_dict.keys())[0]
-        tk = list(res_dict[ck].keys())[0]
-        r = res_dict[ck][tk]
+        if 'scores' in d and 'probe_history' in d['scores']:
+            r = d['scores']
+        else:
+            res_dict = d.get('results', {})
+            if not res_dict:
+                r = d.get('scores', {})
+            else:
+                ck = list(res_dict.keys())[0]
+                tk = list(res_dict[ck].keys())[0]
+                r = res_dict[ck][tk]
 
         # Probe / Latency
         ph = r.get('probe_history', [])
