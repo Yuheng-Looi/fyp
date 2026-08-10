@@ -14,14 +14,14 @@ monitoring:
   monitor_host: h2
   assets:
     - name: internal_db
-      host: h3
-      ip: 10.0.0.3
+      host: db1
+      ip: 10.0.0.16
       port: 8080
       protocol: http
       service: http
     - name: web_server
-      host: h3
-      ip: 10.0.0.3
+      host: ws1
+      ip: 10.0.0.13
       port: 8080
       protocol: http
       service: http

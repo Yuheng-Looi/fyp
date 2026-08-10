@@ -307,13 +307,15 @@ def render_figures_2_to_6(evaluated_runs, out_fig_dir):
     axes3[0].legend(loc='upper right', frameon=True, fontsize=8.5, ncol=2)
     fig3.tight_layout()
     fig3_path = os.path.join(out_fig_dir, "fig3_security_preservation.png")
-    fig3.savefig(fig3_path, dpi=300, bbox_inches='tight')
-    plt.close(fig3)
+    from backend.benchmark.generate_5_figures import generate_fig2, generate_fig3, generate_fig4, generate_fig5, FIGURES_DIR as MASTER_FIG_DIR
 
-    # Copy master figures 2, 4, 5, 6 into figures directory for completeness
-    master_fig_dir = os.path.join(BENCHMARK_DIR, "figures")
-    for fig_name in ["fig2_latency_timeline.png", "fig4_service_availability.png", "fig5_bandwidth_util.png", "fig6_throughput_timeline.png"]:
-        src = os.path.join(master_fig_dir, fig_name)
+    generate_fig2()
+    generate_fig3()
+    generate_fig4()
+    generate_fig5()
+
+    for fig_name in ["fig2_latency_timeline.png", "fig3_security_preservation.png", "fig4_bandwidth_util.png", "fig5_throughput_timeline.png"]:
+        src = os.path.join(MASTER_FIG_DIR, fig_name)
         dst = os.path.join(out_fig_dir, fig_name)
         if os.path.exists(src):
             shutil.copy2(src, dst)
