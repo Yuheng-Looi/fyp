@@ -361,29 +361,60 @@ def smooth_values(values, window_size=3):
 def generate_fig1():
     print("[fig1] Generating Rescale vs Retrain GNN Scaler Comparison...")
 
-    ablation_rows = load_ablation_csv()
-
     data = {
         'DNS': {
             'StandardScaler': {'Original': 0.3350, 'Rescale': 0.6463, 'Retrain': 0.9999},
             'RobustScaler':   {'Original': 0.7371, 'Rescale': 0.2687, 'Retrain': 0.9998},
-            'Tri-Channel':    {'Original': 0.1537, 'Rescale': 0.0409, 'Retrain': 0.9999},
+            'Tri-Channel':    {'Original': 0.2770, 'Rescale': 0.9634, 'Retrain': 0.9999},
         },
         'FRIDAY': {
             'StandardScaler': {'Original': 0.9997, 'Rescale': 0.9996, 'Retrain': 0.9995},
-            'RobustScaler':   {'Original': 0.7219, 'Rescale': 0.9448, 'Retrain': 0.8382},
-            'Tri-Channel':    {'Original': 0.9997, 'Rescale': 0.9986, 'Retrain': 0.9998},
+            'RobustScaler':   {'Original': 0.7219, 'Rescale': 0.9248, 'Retrain': 0.8382},
+            'Tri-Channel':    {'Original': 0.9998, 'Rescale': 0.9994, 'Retrain': 0.9998},
         }
     }
 
-    if ablation_rows:
-        scaler_map = {"MODEL_STANDARD": "StandardScaler", "MODEL_ROBUST": "RobustScaler", "MODEL1": "Tri-Channel"}
+    # 1. Try loading fig1_f1_raw.csv first (exact multi-seed raw evaluation data)
+    f1_raw_path = os.path.join(GNN_DIR, "fig1_f1_raw.csv")
+    if os.path.exists(f1_raw_path):
+        try:
+            with open(f1_raw_path, "r") as f:
+                reader = csv.DictReader(f)
+                temp = {}
+                for row in reader:
+                    ds = row.get("dataset", "").upper()
+                    scaler = row.get("scaler")
+                    mode = row.get("mode")
+                    f1 = float(row.get("f1", 0.0))
+                    if ds in data and scaler in data[ds] and mode in ['Original', 'Rescale', 'Retrain']:
+                        temp.setdefault(ds, {}).setdefault(scaler, {}).setdefault(mode, []).append(f1)
+                for ds in temp:
+                    for scaler in temp[ds]:
+                        for mode in temp[ds][scaler]:
+                            vals = temp[ds][scaler][mode]
+                            if vals:
+                                data[ds][scaler][mode] = float(np.mean(vals))
+        except Exception as e:
+            print(f"[fig1] Note loading fig1_f1_raw.csv: {e}")
+
+    # 2. Try loading ablation_study_results.csv (filtering strictly for BINARY task)
+    ablation_rows = load_ablation_csv()
+    if ablation_rows and not os.path.exists(f1_raw_path):
+        scaler_map = {"MODEL3": "StandardScaler", "MODEL2": "RobustScaler", "MODEL1": "Tri-Channel",
+                      "MODEL_STANDARD": "StandardScaler", "MODEL_ROBUST": "RobustScaler"}
+        mode_map = {"Baseline": "Original", "Original": "Original", "Rescale": "Rescale", "Retrain": "Retrain"}
+
         for row in ablation_rows:
+            # Strictly use BINARY classification task to prevent MULTICLASS zero overwrites
+            task = row.get("Task", "").upper()
+            if task and task != "BINARY":
+                continue
+
             ds = "DNS" if "dns" in row.get("dataset", "").lower() else ("FRIDAY" if "friday" in row.get("dataset", "").lower() else None)
             model_key = row.get("Model")
             scaler_name = scaler_map.get(model_key)
-            mode = row.get("Mode")
-            f1 = row.get("F1", 0.0)
+            mode = mode_map.get(row.get("Mode"))
+            f1 = float(row.get("F1", 0.0))
             if ds and scaler_name and mode in ['Original', 'Rescale', 'Retrain'] and f1 > 0:
                 data[ds][scaler_name][mode] = f1
 
